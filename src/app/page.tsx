@@ -1,103 +1,64 @@
-import Image from "next/image";
+import { DashboardStats } from "@/components/DashboardStats";
+import { NoticeList } from "@/components/NoticeList";
+import { DashboardActions } from "@/components/DashboardActions";
+import { mockDashboardStats, mockNotices } from "@/lib/mock-data";
 
 export default function Home() {
-  return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm/6 text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-[family-name:var(--font-geist-mono)] font-semibold">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+  // 임의의 재미있는 인사말 목록
+  const greetings = [
+    "오늘도 위즈하게 시작해볼까요? ✨",
+    "새로운 하루, 새로운 성과를 만들어보세요! 🚀",
+    "업무가 즐거워지는 마법, WIZ와 함께! 🪄",
+    "우리의 협업이 멋진 결과를 만들어요! 🤝",
+    "오늘의 업무, 게임처럼 즐겁게! 🎮"
+  ];
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+  // 랜덤 인사말 선택
+  const randomGreeting = greetings[Math.floor(Math.random() * greetings.length)];
+
+  return (
+    <div className="min-h-screen bg-[#F9FAFD]">
+      {/* 상단 재미있는 웰컴 배너 */}
+      <div className="bg-gradient-to-r from-[#2251D1] to-[#4169E1] text-white py-3 px-4 text-center text-sm">
+        WIZ WORKS에 오신 것을 환영합니다! 새로운 기능들을 확인해보세요 🎉
+      </div>
+      
+      <div className="container mx-auto px-4 py-8">
+        <div className="mb-8 flex flex-col md:flex-row md:items-end md:justify-between">
+          <div>
+            <h1 className="text-2xl font-bold mb-2 flex items-center">
+              <span className="mr-2">🌟</span> WIZ WORKS 대시보드
+            </h1>
+            <p className="text-gray-600">{randomGreeting}</p>
+          </div>
+          <div className="mt-4 md:mt-0">
+            <button className="wiz-btn flex items-center">
+              <span className="mr-2">🔄</span> 새로고침
+            </button>
+          </div>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+        
+        {/* 상단 통계 카드 */}
+        <DashboardStats stats={mockDashboardStats} />
+        
+        {/* 공지사항 */}
+        <NoticeList notices={mockNotices} />
+        
+        {/* 기능 바로가기 */}
+        <DashboardActions />
+        
+        {/* 하단 팁 섹션 */}
+        <div className="mt-8 bg-[#EEF2FB] rounded-lg p-4 flex items-start border-l-4 border-[#2251D1]">
+          <span role="img" aria-label="팁" className="text-2xl mr-3 mt-1">💡</span>
+          <div>
+            <h3 className="font-medium mb-1">오늘의 팁</h3>
+            <p className="text-sm text-gray-600">
+              종료 임박 고객에게 미리 연락하면 재계약률이 30% 높아진다는 사실, 알고 계셨나요?
+              <a href="#" className="text-[#2251D1] ml-2 hover:underline">더 많은 팁 보기 →</a>
+            </p>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

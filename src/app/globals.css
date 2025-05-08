@@ -76,6 +76,12 @@
   --sidebar-accent-foreground: oklch(0.21 0.006 285.885);
   --sidebar-border: oklch(0.92 0.004 286.32);
   --sidebar-ring: oklch(0.705 0.015 286.067);
+  --brand-blue: #2251D1;
+  --bg-light: #F9FAFD;
+  --bg-medium: #EEF2FB;
+  --success: #4CAF50;
+  --error: #F44336;
+  --warning: #FFC107;
 }
 
 .dark {
@@ -118,5 +124,61 @@
   }
   body {
     @apply bg-background text-foreground;
+    font-family: 'Noto Sans KR', sans-serif;
+    background-color: var(--bg-light);
+  }
+  h1 {
+    @apply text-2xl font-bold;
+  }
+  h2 {
+    @apply text-lg font-semibold;
+  }
+  h3 {
+    @apply text-base font-medium;
+  }
+}
+
+@layer components {
+  .hover-scale {
+    @apply transition-all duration-200;
+  }
+  .hover-scale:hover {
+    @apply transform scale-[1.02];
+  }
+  
+  .wiz-btn {
+    @apply bg-[#2251D1] text-white rounded-lg py-2 px-4 shadow hover:shadow-lg transition-all duration-200 hover:bg-[#1a41b6];
+  }
+  
+  .wiz-card {
+    @apply bg-white rounded-lg shadow-sm hover:shadow-md transition-all duration-200;
+  }
+  
+  .animate-fade-in {
+    animation: fadeIn 0.3s ease-in-out;
+  }
+  
+  .animate-scale-up {
+    animation: scaleUp 0.3s ease-in-out;
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes scaleUp {
+  from {
+    transform: scale(0.95);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
   }
 }
