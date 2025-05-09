@@ -12,6 +12,15 @@ export function DashboardActions() {
       href: "/clients"
     },
     {
+      title: "공지사항",
+      description: "업무 소식, 시스템 공지, 이벤트 안내",
+      icon: "📋",
+      color: "bg-gradient-to-r from-[#FF9800] to-[#FFC107]",
+      hoverEffect: "transform hover:scale-[1.02]",
+      caption: "새로운 공지를 확인하세요",
+      href: "/notices"
+    },
+    {
       title: "WIZ AI 도구",
       description: "AI 자동화 마케팅, 분석, 리포트 생성",
       icon: "🤖",
@@ -28,6 +37,15 @@ export function DashboardActions() {
       hoverEffect: "transform hover:rotate-1",
       caption: "업무도 게임처럼 즐겁게!",
       href: "/game"
+    },
+    {
+      title: "관리자 대시보드",
+      description: "팀 통계, 업무 분석, 성과 트래킹",
+      icon: "📊",
+      color: "bg-gradient-to-r from-[#9C27B0] to-[#CE93D8]",
+      hoverEffect: "transform hover:scale-[1.03]",
+      caption: "팀 성과를 한눈에!",
+      href: "/admin"
     },
   ];
 

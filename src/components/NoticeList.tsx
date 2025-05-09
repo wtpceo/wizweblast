@@ -1,10 +1,12 @@
+'use client';
+
 import { Notice } from "@/lib/mock-data";
+import Link from "next/link";
+import { useNoticeContext } from "@/context/NoticeContext";
 
-type NoticeListProps = {
-  notices: Notice[];
-};
-
-export function NoticeList({ notices }: NoticeListProps) {
+export function NoticeList() {
+  const { notices } = useNoticeContext();
+  
   // 최대 4개의 공지사항을 표시하고, 고정된 공지사항을 우선 표시
   const displayedNotices = notices
     .sort((a, b) => {
@@ -38,17 +40,19 @@ export function NoticeList({ notices }: NoticeListProps) {
           <ul className="divide-y divide-[#EEF2FB]">
             {displayedNotices.map((notice) => (
               <li key={notice.id} className="px-6 py-4 hover:bg-[#F9FAFD] transition-all duration-200 cursor-pointer">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center flex-1 truncate">
-                    {notice.isFixed && (
-                      <span className="bg-[#FFEBEE] text-[#F44336] text-xs px-2 py-0.5 rounded-full mr-2 font-medium flex-shrink-0">
-                        중요
-                      </span>
-                    )}
-                    <span className="text-sm font-medium text-gray-900 truncate">{notice.title}</span>
+                <Link href={`/notices/${notice.id}`} className="block">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center flex-1 truncate">
+                      {notice.isFixed && (
+                        <span className="bg-[#FFEBEE] text-[#F44336] text-xs px-2 py-0.5 rounded-full mr-2 font-medium flex-shrink-0">
+                          중요
+                        </span>
+                      )}
+                      <span className="text-sm font-medium text-gray-900 truncate">{notice.title}</span>
+                    </div>
+                    <span className="text-xs text-gray-500 ml-2 flex-shrink-0">{formatDate(notice.createdAt)}</span>
                   </div>
-                  <span className="text-xs text-gray-500 ml-2 flex-shrink-0">{formatDate(notice.createdAt)}</span>
-                </div>
+                </Link>
               </li>
             ))}
           </ul>
@@ -61,9 +65,9 @@ export function NoticeList({ notices }: NoticeListProps) {
       </div>
       
       <div className="px-6 py-3 border-t border-[#EEF2FB] bg-[#F9FAFD]">
-        <button className="wiz-btn flex items-center justify-center w-full bg-opacity-10 text-[#2251D1] hover:bg-opacity-20 transition-all">
+        <Link href="/notices" className="wiz-btn flex items-center justify-center w-full bg-opacity-10 text-[#2251D1] hover:bg-opacity-20 transition-all">
           전체보기 <span className="ml-1">→</span>
-        </button>
+        </Link>
       </div>
     </div>
   );

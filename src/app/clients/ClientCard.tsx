@@ -66,7 +66,7 @@ export function ClientCard({ client, onAddTodo, onAddNote }: ClientCardProps) {
   
   return (
     <div 
-      className={`wiz-card p-0 overflow-hidden transition-all duration-200 ${
+      className={`wiz-card p-0 overflow-hidden transition-all duration-200 flex flex-col h-[320px] ${
         isHovered ? 'shadow-md transform scale-[1.01]' : 'shadow-sm'
       }`}
       onMouseEnter={() => setIsHovered(true)}
@@ -83,7 +83,7 @@ export function ClientCard({ client, onAddTodo, onAddNote }: ClientCardProps) {
         </div>
       </div>
       
-      <div className="p-5">
+      <div className="p-5 flex-1 flex flex-col">
         {/* 계약 기간 */}
         <div className="mb-3 text-sm">
           <div className="flex justify-between items-center">
@@ -98,6 +98,22 @@ export function ClientCard({ client, onAddTodo, onAddNote }: ClientCardProps) {
               </span>
             </div>
           )}
+        </div>
+        
+        {/* 서비스 사용 현황 */}
+        <div className="mb-4 flex flex-wrap gap-2">
+          <div className={`text-xs px-2.5 py-1 rounded-full flex items-center ${client.usesCoupon ? 'bg-[#E3F2FD] text-[#2196F3]' : 'bg-gray-100 text-gray-500'}`}>
+            <span className="mr-1">🎟️</span>
+            {client.usesCoupon ? '쿠폰 사용중' : '쿠폰 미사용'}
+          </div>
+          <div className={`text-xs px-2.5 py-1 rounded-full flex items-center ${client.publishesNews ? 'bg-[#E8F5E9] text-[#4CAF50]' : 'bg-gray-100 text-gray-500'}`}>
+            <span className="mr-1">📰</span>
+            {client.publishesNews ? '소식 발행중' : '소식 미발행'}
+          </div>
+          <div className={`text-xs px-2.5 py-1 rounded-full flex items-center ${client.usesReservation ? 'bg-[#F3E5F5] text-[#9C27B0]' : 'bg-gray-100 text-gray-500'}`}>
+            <span className="mr-1">📅</span>
+            {client.usesReservation ? '예약 사용중' : '예약 미사용'}
+          </div>
         </div>
         
         {/* 상태 태그 */}
@@ -130,8 +146,10 @@ export function ClientCard({ client, onAddTodo, onAddNote }: ClientCardProps) {
           </p>
         )}
         
+        <div className="flex-grow"></div>
+        
         {/* 액션 버튼 */}
-        <div className="flex gap-2 mt-5">
+        <div className="flex gap-2 mt-auto">
           <Link 
             href={`/clients/${client.id}`} 
             className="wiz-btn flex-1 py-1.5 text-center text-sm flex items-center justify-center hover:translate-y-[-1px]"

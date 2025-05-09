@@ -22,6 +22,11 @@ export type Client = {
   contractStart: string;
   contractEnd: string;
   statusTags: string[]; // 예: ["관리 소홀", "민원 중"]
+  usesCoupon: boolean; // 쿠폰 사용 여부
+  publishesNews: boolean; // 소식 발행 여부
+  usesReservation: boolean; // 예약 시스템 사용 여부
+  phoneNumber?: string; // 전화번호
+  naverPlaceUrl?: string; // 네이버플레이스 링크
 };
 
 // 할일 데이터 타입
@@ -39,6 +44,22 @@ export type ClientNote = {
   clientId: string;
   note: string;
   createdAt: string;
+};
+
+// 관리자 통계 데이터 타입
+export type AdminStats = {
+  departmentSummary: {
+    department: string;
+    totalTodos: number;
+    completedTodos: number;
+  }[];
+  userSummary: {
+    userId: string;
+    name: string;
+    department: string;
+    totalTodos: number;
+    completedTodos: number;
+  }[];
 };
 
 // 대시보드 통계 목업 데이터
@@ -91,7 +112,12 @@ export const mockClients: Client[] = [
     icon: '🍗',
     contractStart: '2023-09-01T00:00:00Z',
     contractEnd: '2024-08-31T23:59:59Z',
-    statusTags: []
+    statusTags: [],
+    usesCoupon: true,
+    publishesNews: true,
+    usesReservation: false,
+    phoneNumber: '02-1234-5678',
+    naverPlaceUrl: 'https://place.naver.com/12345678'
   },
   {
     id: '2',
@@ -99,7 +125,12 @@ export const mockClients: Client[] = [
     icon: '🍕',
     contractStart: '2023-10-15T00:00:00Z',
     contractEnd: '2024-01-15T23:59:59Z',
-    statusTags: ['종료 임박']
+    statusTags: ['종료 임박'],
+    usesCoupon: false,
+    publishesNews: true,
+    usesReservation: true,
+    phoneNumber: '02-1234-5678',
+    naverPlaceUrl: 'https://place.naver.com/12345678'
   },
   {
     id: '3',
@@ -107,7 +138,12 @@ export const mockClients: Client[] = [
     icon: '🐟',
     contractStart: '2023-08-20T00:00:00Z',
     contractEnd: '2024-08-20T23:59:59Z',
-    statusTags: ['관리 소홀']
+    statusTags: ['관리 소홀'],
+    usesCoupon: true,
+    publishesNews: false,
+    usesReservation: true,
+    phoneNumber: '02-1234-5678',
+    naverPlaceUrl: 'https://place.naver.com/12345678'
   },
   {
     id: '4',
@@ -115,7 +151,12 @@ export const mockClients: Client[] = [
     icon: '🧂',
     contractStart: '2023-11-01T00:00:00Z',
     contractEnd: '2024-11-01T23:59:59Z',
-    statusTags: ['민원 중']
+    statusTags: ['민원 중'],
+    usesCoupon: false,
+    publishesNews: false,
+    usesReservation: false,
+    phoneNumber: '02-1234-5678',
+    naverPlaceUrl: 'https://place.naver.com/12345678'
   },
   {
     id: '5',
@@ -123,7 +164,12 @@ export const mockClients: Client[] = [
     icon: '🍱',
     contractStart: '2023-07-15T00:00:00Z',
     contractEnd: '2024-01-15T23:59:59Z',
-    statusTags: ['종료 임박', '관리 소홀']
+    statusTags: ['종료 임박', '관리 소홀'],
+    usesCoupon: true,
+    publishesNews: false,
+    usesReservation: true,
+    phoneNumber: '02-1234-5678',
+    naverPlaceUrl: 'https://place.naver.com/12345678'
   },
   {
     id: '6',
@@ -131,7 +177,12 @@ export const mockClients: Client[] = [
     icon: '☕',
     contractStart: '2023-05-10T00:00:00Z',
     contractEnd: '2024-05-10T23:59:59Z',
-    statusTags: []
+    statusTags: [],
+    usesCoupon: false,
+    publishesNews: true,
+    usesReservation: true,
+    phoneNumber: '02-1234-5678',
+    naverPlaceUrl: 'https://place.naver.com/12345678'
   },
   {
     id: '7',
@@ -139,7 +190,12 @@ export const mockClients: Client[] = [
     icon: '🛒',
     contractStart: '2023-06-01T00:00:00Z',
     contractEnd: '2024-06-01T23:59:59Z',
-    statusTags: ['관리 소홀', '민원 중']
+    statusTags: ['관리 소홀', '민원 중'],
+    usesCoupon: false,
+    publishesNews: false,
+    usesReservation: false,
+    phoneNumber: '02-1234-5678',
+    naverPlaceUrl: 'https://place.naver.com/12345678'
   },
   {
     id: '8',
@@ -147,6 +203,34 @@ export const mockClients: Client[] = [
     icon: '🍰',
     contractStart: '2023-10-01T00:00:00Z',
     contractEnd: '2024-03-31T23:59:59Z',
-    statusTags: ['종료 임박']
+    statusTags: ['종료 임박'],
+    usesCoupon: true,
+    publishesNews: true,
+    usesReservation: false,
+    phoneNumber: '02-1234-5678',
+    naverPlaceUrl: 'https://place.naver.com/12345678'
   }
-]; 
+];
+
+// 관리자 통계 목업 데이터
+export const mockAdminStats: AdminStats = {
+  departmentSummary: [
+    { department: '디자인', totalTodos: 78, completedTodos: 62 },
+    { department: '콘텐츠', totalTodos: 124, completedTodos: 93 },
+    { department: '미디어', totalTodos: 96, completedTodos: 67 },
+    { department: '고객관리', totalTodos: 45, completedTodos: 38 },
+    { department: '관리자', totalTodos: 32, completedTodos: 30 }
+  ],
+  userSummary: [
+    { userId: 'user1', name: '김담당', department: '미디어', totalTodos: 32, completedTodos: 28 },
+    { userId: 'user2', name: '이매니저', department: '콘텐츠', totalTodos: 45, completedTodos: 37 },
+    { userId: 'user3', name: '박대리', department: '디자인', totalTodos: 27, completedTodos: 20 },
+    { userId: 'user4', name: '최주임', department: '고객관리', totalTodos: 19, completedTodos: 15 },
+    { userId: 'user5', name: '정과장', department: '미디어', totalTodos: 38, completedTodos: 24 },
+    { userId: 'user6', name: '조디자이너', department: '디자인', totalTodos: 51, completedTodos: 42 },
+    { userId: 'user7', name: '한팀장', department: '관리자', totalTodos: 32, completedTodos: 30 },
+    { userId: 'user8', name: '유대리', department: '콘텐츠', totalTodos: 41, completedTodos: 32 },
+    { userId: 'user9', name: '임주임', department: '고객관리', totalTodos: 26, completedTodos: 23 },
+    { userId: 'user10', name: '차대리', department: '콘텐츠', totalTodos: 38, completedTodos: 24 }
+  ]
+}; 

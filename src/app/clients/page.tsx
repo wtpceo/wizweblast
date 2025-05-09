@@ -4,16 +4,24 @@ import { useState, useEffect } from 'react';
 import { ClientCard } from './ClientCard';
 import { ClientMemoDialog } from '@/components/ClientMemoDialog';
 import { ClientTodoDialog } from '@/components/ClientTodoDialog';
+import { ClientRegisterDialog } from '@/components/ClientRegisterDialog';
 import { mockClients, Client } from '@/lib/mock-data';
+import Link from 'next/link';
 
 export default function ClientsPage() {
   const [clients, setClients] = useState<Client[]>(mockClients);
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const [memoDialogOpen, setMemoDialogOpen] = useState(false);
   const [todoDialogOpen, setTodoDialogOpen] = useState(false);
+  const [registerDialogOpen, setRegisterDialogOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [animateIn, setAnimateIn] = useState(false);
+  
+  // 새로운 필터 상태 추가
+  const [filterNoCoupon, setFilterNoCoupon] = useState<boolean>(false);
+  const [filterNoNews, setFilterNoNews] = useState<boolean>(false);
+  const [filterNoReservation, setFilterNoReservation] = useState<boolean>(false);
   
   // 페이지 로딩 시 애니메이션 효과
   useEffect(() => {
@@ -42,7 +50,24 @@ export default function ClientsPage() {
       matchesStatus = client.statusTags.includes(statusFilter);
     }
     
-    return matchesSearch && matchesStatus;
+    // 추가 필터링 (쿠폰/소식/예약)
+    let matchesCouponFilter = true;
+    let matchesNewsFilter = true;
+    let matchesReservationFilter = true;
+    
+    if (filterNoCoupon) {
+      matchesCouponFilter = !client.usesCoupon;
+    }
+    
+    if (filterNoNews) {
+      matchesNewsFilter = !client.publishesNews;
+    }
+    
+    if (filterNoReservation) {
+      matchesReservationFilter = !client.usesReservation;
+    }
+    
+    return matchesSearch && matchesStatus && matchesCouponFilter && matchesNewsFilter && matchesReservationFilter;
   });
   
   // 상태별 카운트
@@ -50,7 +75,21 @@ export default function ClientsPage() {
     total: clients.length,
     nearExpiry: clients.filter(c => c.statusTags.includes('종료 임박')).length,
     poorManaged: clients.filter(c => c.statusTags.includes('관리 소홀')).length,
-    complaints: clients.filter(c => c.statusTags.includes('민원 중')).length
+    complaints: clients.filter(c => c.statusTags.includes('민원 중')).length,
+    noCoupon: clients.filter(c => !c.usesCoupon).length,
+    noNews: clients.filter(c => !c.publishesNews).length,
+    noReservation: clients.filter(c => !c.usesReservation).length
+  };
+  
+  // 필터 토글 함수
+  const toggleFilter = (filter: 'coupon' | 'news' | 'reservation') => {
+    if (filter === 'coupon') {
+      setFilterNoCoupon(!filterNoCoupon);
+    } else if (filter === 'news') {
+      setFilterNoNews(!filterNoNews);
+    } else if (filter === 'reservation') {
+      setFilterNoReservation(!filterNoReservation);
+    }
   };
   
   // 메모 추가 처리
@@ -87,39 +126,48 @@ export default function ClientsPage() {
     }
   };
   
+  // 광고주 등록 처리
+  const handleRegisterClient = (newClient: Omit<Client, 'id'>) => {
+    // 실제로는 API 호출하여 백엔드에 저장하고 ID를 받아옴
+    // 여기서는 클라이언트에서 임시 ID 생성
+    const tempId = `temp_${Date.now()}`;
+    const clientWithId: Client = {
+      ...newClient,
+      id: tempId
+    };
+    
+    setClients([clientWithId, ...clients]);
+    setRegisterDialogOpen(false);
+    
+    alert(`'${newClient.name}' 광고주가 성공적으로 등록되었습니다! 👍`);
+  };
+  
   return (
     <div className="min-h-screen bg-[#F9FAFD] pb-10">
       {/* 상단 헤더 */}
       <div className="bg-gradient-to-r from-[#2251D1] to-[#4169E1] text-white">
         <div className="container mx-auto px-4 py-8">
-          <h1 className="text-2xl font-bold mb-1 flex items-center">
-            <span className="text-3xl mr-3">👥</span> 광고주 관리
-          </h1>
+          <div className="flex justify-between items-center mb-2">
+            <h1 className="text-2xl font-bold flex items-center">
+              <span className="text-3xl mr-3">👥</span> 광고주 관리
+            </h1>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => setRegisterDialogOpen(true)}
+                className="bg-white text-[#2251D1] px-4 py-2 rounded-lg hover:bg-opacity-90 transition-all duration-200 flex items-center text-sm font-medium shadow-sm hover:shadow"
+              >
+                <span className="mr-2">➕</span> 신규 광고주 등록
+              </button>
+              <Link href="/dashboard" className="bg-white text-[#2251D1] px-4 py-2 rounded-lg hover:bg-opacity-90 transition-all duration-200 flex items-center text-sm font-medium shadow-sm hover:shadow">
+                <span className="mr-2">📊</span> 대시보드로 돌아가기
+              </Link>
+            </div>
+          </div>
           <p className="text-white text-opacity-90">광고주 정보를 확인하고 할 일이나 메모를 관리하세요.</p>
         </div>
       </div>
       
       <div className="container mx-auto px-4 py-6">
-        {/* 요약 통계 */}
-        <div className={`grid grid-cols-2 md:grid-cols-4 gap-4 mb-6 transition-all duration-500 ${animateIn ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-5'}`}>
-          <div className="bg-white rounded-lg shadow-sm p-4 border-l-4 border-[#2251D1]">
-            <div className="text-sm text-gray-600">총 광고주</div>
-            <div className="text-2xl font-bold">{statusCounts.total}</div>
-          </div>
-          <div className="bg-white rounded-lg shadow-sm p-4 border-l-4 border-[#FFC107]">
-            <div className="text-sm text-gray-600">종료 임박</div>
-            <div className="text-2xl font-bold">{statusCounts.nearExpiry}</div>
-          </div>
-          <div className="bg-white rounded-lg shadow-sm p-4 border-l-4 border-[#FF9800]">
-            <div className="text-sm text-gray-600">관리 소홀</div>
-            <div className="text-2xl font-bold">{statusCounts.poorManaged}</div>
-          </div>
-          <div className="bg-white rounded-lg shadow-sm p-4 border-l-4 border-[#F44336]">
-            <div className="text-sm text-gray-600">민원 진행</div>
-            <div className="text-2xl font-bold">{statusCounts.complaints}</div>
-          </div>
-        </div>
-        
         {/* 팁 메시지 */}
         <div className={`bg-[#EEF2FB] rounded-lg p-4 mb-6 flex items-start transition-all duration-500 delay-100 ${animateIn ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-5'}`}>
           <span className="text-2xl mr-3 mt-1">💡</span>
@@ -149,7 +197,7 @@ export default function ClientsPage() {
             {/* 필터 */}
             <div className="flex items-center gap-2">
               <span className="text-sm text-gray-600">상태:</span>
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
                 <button
                   className={`px-3 py-2 rounded-lg text-sm transition-all ${statusFilter === 'all' ? 'bg-[#2251D1] text-white' : 'bg-gray-100 hover:bg-gray-200'}`}
                   onClick={() => setStatusFilter('all')}
@@ -177,6 +225,63 @@ export default function ClientsPage() {
               </div>
             </div>
           </div>
+          
+          {/* 추가 필터 (쿠폰/소식/예약) */}
+          <div className="mt-4 flex flex-wrap gap-3">
+            <span className="text-sm text-gray-600 self-center">추가 필터:</span>
+            <button
+              className={`px-3 py-2 rounded-lg text-sm transition-all flex items-center ${filterNoCoupon ? 'bg-[#E3F2FD] text-[#2196F3] border border-[#2196F3]' : 'bg-gray-100 hover:bg-gray-200'}`}
+              onClick={() => toggleFilter('coupon')}
+            >
+              <span className="mr-1">🎟️</span> 쿠폰 미사용 ({statusCounts.noCoupon})
+            </button>
+            <button
+              className={`px-3 py-2 rounded-lg text-sm transition-all flex items-center ${filterNoNews ? 'bg-[#E8F5E9] text-[#4CAF50] border border-[#4CAF50]' : 'bg-gray-100 hover:bg-gray-200'}`}
+              onClick={() => toggleFilter('news')}
+            >
+              <span className="mr-1">📰</span> 소식 미발행 ({statusCounts.noNews})
+            </button>
+            <button
+              className={`px-3 py-2 rounded-lg text-sm transition-all flex items-center ${filterNoReservation ? 'bg-[#F3E5F5] text-[#9C27B0] border border-[#9C27B0]' : 'bg-gray-100 hover:bg-gray-200'}`}
+              onClick={() => toggleFilter('reservation')}
+            >
+              <span className="mr-1">📅</span> 예약 미사용 ({statusCounts.noReservation})
+            </button>
+            {(filterNoCoupon || filterNoNews || filterNoReservation) && (
+              <button
+                className="px-3 py-2 rounded-lg text-sm transition-all flex items-center bg-gray-200 hover:bg-gray-300 text-gray-700"
+                onClick={() => {
+                  setFilterNoCoupon(false);
+                  setFilterNoNews(false);
+                  setFilterNoReservation(false);
+                }}
+              >
+                <span className="mr-1">❌</span> 필터 초기화
+              </button>
+            )}
+          </div>
+          
+          {/* 활성화된 필터 표시 */}
+          {(filterNoCoupon || filterNoNews || filterNoReservation) && (
+            <div className="mt-3 flex flex-wrap gap-2">
+              <span className="text-xs text-gray-500">적용된 필터:</span>
+              {filterNoCoupon && (
+                <span className="text-xs bg-[#E3F2FD] text-[#2196F3] px-2 py-1 rounded-full">
+                  쿠폰 미사용
+                </span>
+              )}
+              {filterNoNews && (
+                <span className="text-xs bg-[#E8F5E9] text-[#4CAF50] px-2 py-1 rounded-full">
+                  소식 미발행
+                </span>
+              )}
+              {filterNoReservation && (
+                <span className="text-xs bg-[#F3E5F5] text-[#9C27B0] px-2 py-1 rounded-full">
+                  예약 미사용
+                </span>
+              )}
+            </div>
+          )}
         </div>
         
         {/* 광고주 카드 그리드 */}
@@ -206,6 +311,9 @@ export default function ClientsPage() {
               onClick={() => {
                 setSearchTerm('');
                 setStatusFilter('all');
+                setFilterNoCoupon(false);
+                setFilterNoNews(false);
+                setFilterNoReservation(false);
               }}
             >
               모든 광고주 보기
@@ -228,6 +336,13 @@ export default function ClientsPage() {
         isOpen={todoDialogOpen}
         onClose={() => setTodoDialogOpen(false)}
         onSave={handleAddTodo}
+      />
+      
+      {/* 광고주 등록 다이얼로그 */}
+      <ClientRegisterDialog
+        isOpen={registerDialogOpen}
+        onClose={() => setRegisterDialogOpen(false)}
+        onSave={handleRegisterClient}
       />
     </div>
   );
