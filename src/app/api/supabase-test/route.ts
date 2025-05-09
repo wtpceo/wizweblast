@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '../../../lib/supabase';
+import { PlaywrightService } from '@/lib/playwright-service';
 
 export async function GET() {
   try {
@@ -23,4 +24,30 @@ export async function GET() {
       error: 'Supabase 연결에 실패했습니다.'
     }, { status: 500 });
   }
-} 
+}
+
+export async function POST(request: Request) {
+  try {
+    const { url } = await request.json();
+    
+    if (!url) {
+      return NextResponse.json(
+        { error: 'URL is required' },
+        { status: 400 }
+      );
+    }
+    
+    const playwrightService = new PlaywrightService();
+    const data = await playwrightService.scrapeData(url);
+    await playwrightService.close();
+    
+    return NextResponse.json({ success: true, data });
+    
+  } catch (error) {
+    console.error('Scraping API error:', error);
+    return NextResponse.json(
+      { error: 'Failed to scrape data' },
+      { status: 500 }
+    );
+  }
+}

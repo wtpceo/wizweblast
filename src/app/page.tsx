@@ -1,6 +1,7 @@
 import { DashboardStats } from "@/components/DashboardStats";
 import { NoticeList } from "@/components/NoticeList";
 import { DashboardActions } from "@/components/DashboardActions";
+import { EmailVerification } from "@/components/EmailVerification";
 import { mockDashboardStats, mockNotices } from "@/lib/mock-data";
 
 export default function Home() {
@@ -37,6 +38,9 @@ export default function Home() {
             </button>
           </div>
         </div>
+        
+        {/* 이메일 검증 알림 */}
+        <EmailVerification />
         
         {/* 상단 통계 카드 */}
         <DashboardStats stats={mockDashboardStats} />
