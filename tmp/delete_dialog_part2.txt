@@ -1,0 +1,13 @@
+export function ClientDeleteDialog({ 
+  client, 
+  isOpen, 
+  onClose, 
+  onDelete,
+  isDeleting 
+}: ClientDeleteDialogProps) {
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 animate-fade-in">
+      <div 
+        className="bg-white rounded-xl shadow-xl p-6 w-full max-w-md transform transition-all animate-scale-up"
+        onClick={(e) => e.stopPropagation()}
+      >

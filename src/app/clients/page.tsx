@@ -25,6 +25,9 @@ export default function ClientsPage() {
   const [filterNoNews, setFilterNoNews] = useState<boolean>(false);
   const [filterNoReservation, setFilterNoReservation] = useState<boolean>(false);
   
+  // 상태 추가
+  const [tipMessage, setTipMessage] = useState<string>('광고주 관리 시스템을 활용해 업무 효율을 높여보세요!');
+  
   // API에서 광고주 데이터 가져오기
   useEffect(() => {
     const fetchClients = async () => {
@@ -65,18 +68,12 @@ export default function ClientsPage() {
   // 페이지 로딩 시 애니메이션 효과
   useEffect(() => {
     setAnimateIn(true);
+    
+    // 재미있는 팁 메시지 설정 (클라이언트 사이드에서만)
+    const tips = ["종료 임박 고객에게 미리 연락하면 재계약률이 30% 높아져요! 🚀", "정기적인 고객 체크인으로 관리 소홀을 예방하세요! ⏰", "대시보드에서 민원 진행 상황을 실시간으로 확인하세요! 📊", "WIZ AI로 고객 데이터를 분석하면 성공률이 높아져요! 🤖", "할 일을 관리하면 업무 효율이 두 배로 올라갑니다! ✅"];
+    const randomIndex = Math.floor(Math.random() * tips.length);
+    setTipMessage(tips[randomIndex]);
   }, []);
-  
-  // 재미있는 팁 메시지
-  const tips = [
-    "종료 임박 고객에게 미리 연락하면 재계약률이 30% 높아져요! 🚀",
-    "정기적인 고객 체크인으로 관리 소홀을 예방하세요! ⏰",
-    "대시보드에서 민원 진행 상황을 실시간으로 확인하세요! 📊",
-    "WIZ AI로 고객 데이터를 분석하면 성공률이 높아져요! 🤖",
-    "할 일을 관리하면 업무 효율이 두 배로 올라갑니다! ✅"
-  ];
-  
-  const randomTip = tips[Math.floor(Math.random() * tips.length)];
   
   // 필터링된 광고주 목록
   const filteredClients = clients.filter(client => {
@@ -276,7 +273,7 @@ export default function ClientsPage() {
           <span className="text-2xl mr-3 mt-1">💡</span>
           <div>
             <h3 className="font-medium mb-1">오늘의 팁</h3>
-            <p className="text-sm text-gray-700">{randomTip}</p>
+            <p className="text-sm text-gray-700">{tipMessage}</p>
           </div>
         </div>
         

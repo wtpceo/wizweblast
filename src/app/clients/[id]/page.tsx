@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { mockClients, Client } from '@/lib/mock-data';
 import { ClientInfo } from './ClientInfo';
 import { ClientTabs } from './ClientTabs';
+import { ClientDeleteDialog } from '@/components/ClientDeleteDialog';
 import { ChevronLeft } from 'lucide-react';
 
 export default function ClientDetailPage() {
@@ -16,28 +17,56 @@ export default function ClientDetailPage() {
   const [client, setClient] = useState<Client | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   
-  // 목업 데이터에서 광고주 정보 가져오기
+  // API에서 광고주 정보 가져오기
   useEffect(() => {
-    // 백엔드 API 연동 시 fetch 사용
-    // 현재는 목업 데이터 사용
-    setLoading(true);
-    
-    try {
-      const foundClient = mockClients.find(c => c.id === clientId);
+    const fetchClientData = async () => {
+      setLoading(true);
       
-      if (foundClient) {
-        setClient(foundClient);
+      try {
+        const response = await fetch(`/api/clients/${clientId}`);
+        
+        if (!response.ok) {
+          throw new Error('광고주 정보를 가져오는 데 실패했습니다.');
+        }
+        
+        const data = await response.json();
+        
+        // API 응답을 Client 타입에 맞게 변환
+        const clientData: Client = {
+          id: data.id,
+          name: data.name,
+          icon: '🏢', // 기본 아이콘
+          contractStart: data.contract_start,
+          contractEnd: data.contract_end,
+          statusTags: data.status_tags || [],
+          usesCoupon: data.uses_coupon || false,
+          publishesNews: data.publishes_news || false,
+          usesReservation: data.uses_reservation || false,
+          phoneNumber: data.phone_number,
+          naverPlaceUrl: data.naver_place_url
+        };
+        
+        setClient(clientData);
         setError(null);
-      } else {
-        setError('해당 광고주를 찾을 수 없습니다.');
+      } catch (err) {
+        console.error('광고주 데이터 로딩 오류:', err);
+        setError('광고주 정보를 불러오는 중 오류가 발생했습니다.');
+        
+        // 개발 편의를 위해 목업 데이터로 폴백
+        const fallbackClient = mockClients.find(c => c.id === clientId);
+        if (fallbackClient) {
+          setClient(fallbackClient);
+          setError(null);
+        }
+      } finally {
+        setLoading(false);
       }
-    } catch (err) {
-      setError('데이터를 불러오는 중 오류가 발생했습니다.');
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
+    };
+    
+    fetchClientData();
   }, [clientId]);
   
   // 계약 날짜 업데이트 핸들러
@@ -53,6 +82,31 @@ export default function ClientDetailPage() {
     });
     
     alert('계약 정보가 업데이트 되었습니다! 👍');
+  };
+
+  // 광고주 삭제 핸들러
+  const handleDeleteClient = async (clientId: string) => {
+    setIsDeleting(true);
+    
+    try {
+      const response = await fetch(`/api/clients/${clientId}`, {
+        method: 'DELETE'
+      });
+      
+      if (!response.ok) {
+        throw new Error('광고주 삭제에 실패했습니다.');
+      }
+      
+      // 삭제 성공 시 목록 페이지로 이동
+      alert('광고주가 성공적으로 삭제되었습니다.');
+      router.push('/clients');
+    } catch (err) {
+      console.error('광고주 삭제 오류:', err);
+      alert('광고주 삭제 중 오류가 발생했습니다.');
+    } finally {
+      setIsDeleting(false);
+      setIsDeleteDialogOpen(false);
+    }
   };
   
   if (loading) {
@@ -88,24 +142,32 @@ export default function ClientDetailPage() {
       {/* 상단 헤더 */}
       <div className="bg-gradient-to-r from-[#2251D1] to-[#4169E1] text-white">
         <div className="container mx-auto px-4 py-6">
-          <div className="flex items-center mb-2">
-            <Link 
-              href="/clients" 
-              className="mr-4 p-2 rounded-full hover:bg-white/10 transition-colors"
-            >
-              <ChevronLeft className="w-5 h-5" />
-            </Link>
-            <div>
-              <div className="flex items-center">
-                <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center text-2xl shadow-sm mr-3">
-                  <span role="img" aria-label={client.name}>{client.icon}</span>
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center">
+              <Link 
+                href="/clients" 
+                className="mr-4 p-2 rounded-full hover:bg-white/10 transition-colors"
+              >
+                <ChevronLeft className="w-5 h-5" />
+              </Link>
+              <div>
+                <div className="flex items-center">
+                  <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center text-2xl shadow-sm mr-3">
+                    <span role="img" aria-label={client.name}>{client.icon}</span>
+                  </div>
+                  <h1 className="text-2xl font-bold">{client.name}</h1>
                 </div>
-                <h1 className="text-2xl font-bold">{client.name}</h1>
+                <p className="text-white text-opacity-90 text-sm mt-1">
+                  광고주 상세 정보 및 관리 센터
+                </p>
               </div>
-              <p className="text-white text-opacity-90 text-sm mt-1">
-                광고주 상세 정보 및 관리 센터
-              </p>
             </div>
+            <button
+              onClick={() => setIsDeleteDialogOpen(true)}
+              className="bg-red-600 hover:bg-red-700 text-white py-2 px-4 rounded-lg flex items-center transition-all hover:shadow"
+            >
+              <span className="mr-1">🗑️</span> 광고주 삭제
+            </button>
           </div>
         </div>
       </div>
@@ -124,6 +186,15 @@ export default function ClientDetailPage() {
           </div>
         </div>
       </div>
+      
+      {/* 삭제 확인 다이얼로그 */}
+      <ClientDeleteDialog
+        client={client}
+        isOpen={isDeleteDialogOpen}
+        onClose={() => setIsDeleteDialogOpen(false)}
+        onDelete={handleDeleteClient}
+        isDeleting={isDeleting}
+      />
     </div>
   );
 } 

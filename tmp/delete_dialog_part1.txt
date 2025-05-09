@@ -1,0 +1,11 @@
+'use client';
+
+import { Client } from '@/lib/mock-data';
+
+interface ClientDeleteDialogProps {
+  client: Client | null;
+  isOpen: boolean;
+  onClose: () => void;
+  onDelete: (clientId: string) => void;
+  isDeleting: boolean;
+}
