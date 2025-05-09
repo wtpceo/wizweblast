@@ -5,11 +5,13 @@ import { ClientCard } from './ClientCard';
 import { ClientMemoDialog } from '@/components/ClientMemoDialog';
 import { ClientTodoDialog } from '@/components/ClientTodoDialog';
 import { ClientRegisterDialog } from '@/components/ClientRegisterDialog';
-import { mockClients, Client } from '@/lib/mock-data';
+import { Client } from '@/lib/mock-data';  // 타입만 가져옵니다
 import Link from 'next/link';
 
 export default function ClientsPage() {
-  const [clients, setClients] = useState<Client[]>(mockClients);
+  const [clients, setClients] = useState<Client[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const [memoDialogOpen, setMemoDialogOpen] = useState(false);
   const [todoDialogOpen, setTodoDialogOpen] = useState(false);
@@ -22,6 +24,43 @@ export default function ClientsPage() {
   const [filterNoCoupon, setFilterNoCoupon] = useState<boolean>(false);
   const [filterNoNews, setFilterNoNews] = useState<boolean>(false);
   const [filterNoReservation, setFilterNoReservation] = useState<boolean>(false);
+  
+  // API에서 광고주 데이터 가져오기
+  useEffect(() => {
+    const fetchClients = async () => {
+      try {
+        setIsLoading(true);
+        const response = await fetch('/api/clients');
+        
+        if (!response.ok) {
+          throw new Error('광고주 데이터를 가져오는 데 실패했습니다.');
+        }
+        
+        const data = await response.json();
+        
+        // API 응답에 필요한 필드가 없는 경우, 기본값 추가
+        const enhancedData = data.map((client: any) => ({
+          ...client,
+          icon: client.icon || '🏢', // 기본 아이콘
+          usesCoupon: client.uses_coupon ?? false,
+          publishesNews: client.publishes_news ?? false,
+          usesReservation: client.uses_reservation ?? false,
+          phoneNumber: client.phone_number,
+          naverPlaceUrl: client.naver_place_url,
+        }));
+        
+        setClients(enhancedData);
+        setError(null);
+      } catch (err) {
+        console.error('광고주 데이터 로딩 오류:', err);
+        setError('광고주 데이터를 불러오는 중 오류가 발생했습니다.');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    fetchClients();
+  }, []);
   
   // 페이지 로딩 시 애니메이션 효과
   useEffect(() => {
@@ -93,19 +132,54 @@ export default function ClientsPage() {
   };
   
   // 메모 추가 처리
-  const handleAddNote = (clientId: string, note: string) => {
-    console.log(`메모 추가: ${clientId}, ${note}`);
-    // 실제로는 API 호출하여 백엔드에 저장
-    // 여기서는 목업 데이터만 사용하므로 콘솔에 출력
-    alert(`'${note}' 메모가 저장되었습니다. 굿잡! 🙌`);
+  const handleAddNote = async (clientId: string, note: string) => {
+    try {
+      const response = await fetch('/api/notes', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          clientId,
+          note
+        })
+      });
+      
+      if (!response.ok) {
+        throw new Error('메모 추가에 실패했습니다.');
+      }
+      
+      alert(`'${note}' 메모가 저장되었습니다. 굿잡! 🙌`);
+    } catch (err) {
+      console.error('메모 추가 오류:', err);
+      alert('메모 추가 중 오류가 발생했습니다.');
+    }
   };
   
   // 할 일 추가 처리
-  const handleAddTodo = (clientId: string, content: string, assignedTo: string) => {
-    console.log(`할 일 추가: ${clientId}, ${content}, 담당: ${assignedTo}`);
-    // 실제로는 API 호출하여 백엔드에 저장
-    // 여기서는 목업 데이터만 사용하므로 콘솔에 출력
-    alert(`'${content}' 할 일이 성공적으로 등록되었습니다! 👍`);
+  const handleAddTodo = async (clientId: string, content: string, assignedTo: string) => {
+    try {
+      const response = await fetch('/api/todos', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          clientId,
+          content,
+          assignedTo
+        })
+      });
+      
+      if (!response.ok) {
+        throw new Error('할 일 추가에 실패했습니다.');
+      }
+      
+      alert(`'${content}' 할 일이 성공적으로 등록되었습니다! 👍`);
+    } catch (err) {
+      console.error('할 일 추가 오류:', err);
+      alert('할 일 추가 중 오류가 발생했습니다.');
+    }
   };
   
   // 메모 다이얼로그 열기
@@ -127,19 +201,48 @@ export default function ClientsPage() {
   };
   
   // 광고주 등록 처리
-  const handleRegisterClient = (newClient: Omit<Client, 'id'>) => {
-    // 실제로는 API 호출하여 백엔드에 저장하고 ID를 받아옴
-    // 여기서는 클라이언트에서 임시 ID 생성
-    const tempId = `temp_${Date.now()}`;
-    const clientWithId: Client = {
-      ...newClient,
-      id: tempId
-    };
-    
-    setClients([clientWithId, ...clients]);
-    setRegisterDialogOpen(false);
-    
-    alert(`'${newClient.name}' 광고주가 성공적으로 등록되었습니다! 👍`);
+  const handleRegisterClient = async (newClient: Omit<Client, 'id'>) => {
+    try {
+      const response = await fetch('/api/clients', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          name: newClient.name,
+          contractStart: newClient.contractStart,
+          contractEnd: newClient.contractEnd,
+          statusTags: newClient.statusTags,
+          // 추가 필드도 전송
+          icon: newClient.icon,
+          uses_coupon: newClient.usesCoupon,
+          publishes_news: newClient.publishesNews,
+          uses_reservation: newClient.usesReservation,
+          phone_number: newClient.phoneNumber,
+          naver_place_url: newClient.naverPlaceUrl
+        })
+      });
+      
+      if (!response.ok) {
+        throw new Error('광고주 등록에 실패했습니다.');
+      }
+      
+      const data = await response.json();
+      
+      // 추가된 광고주를 목록에 추가
+      const clientWithId: Client = {
+        ...newClient,
+        id: data.client.id
+      };
+      
+      setClients([clientWithId, ...clients]);
+      setRegisterDialogOpen(false);
+      
+      alert(`'${newClient.name}' 광고주가 성공적으로 등록되었습니다! 👍`);
+    } catch (err) {
+      console.error('광고주 등록 오류:', err);
+      alert('광고주 등록 중 오류가 발생했습니다.');
+    }
   };
   
   return (
@@ -176,169 +279,178 @@ export default function ClientsPage() {
             <p className="text-sm text-gray-700">{randomTip}</p>
           </div>
         </div>
-      
-        {/* 검색 및 필터 */}
-        <div className={`bg-white rounded-lg shadow-sm p-4 mb-6 transition-all duration-500 delay-200 ${animateIn ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-5'}`}>
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-            {/* 검색 */}
-            <div className="relative flex-1">
-              <input
-                type="text"
-                placeholder="광고주 이름, 상태 검색..."
-                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2251D1] focus:border-transparent transition-all"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-              <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">
-                🔍
-              </span>
-            </div>
-            
-            {/* 필터 */}
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-gray-600">상태:</span>
-              <div className="flex flex-wrap gap-2">
-                <button
-                  className={`px-3 py-2 rounded-lg text-sm transition-all ${statusFilter === 'all' ? 'bg-[#2251D1] text-white' : 'bg-gray-100 hover:bg-gray-200'}`}
-                  onClick={() => setStatusFilter('all')}
-                >
-                  전체 보기
-                </button>
-                <button
-                  className={`px-3 py-2 rounded-lg text-sm transition-all flex items-center ${statusFilter === '종료 임박' ? 'bg-[#FFF8E1] text-[#FFC107] border border-[#FFC107]' : 'bg-gray-100 hover:bg-gray-200'}`}
-                  onClick={() => setStatusFilter('종료 임박')}
-                >
-                  <span className="mr-1">⏰</span> 종료 임박
-                </button>
-                <button
-                  className={`px-3 py-2 rounded-lg text-sm transition-all flex items-center ${statusFilter === '관리 소홀' ? 'bg-[#FFF3E0] text-[#FF9800] border border-[#FF9800]' : 'bg-gray-100 hover:bg-gray-200'}`}
-                  onClick={() => setStatusFilter('관리 소홀')}
-                >
-                  <span className="mr-1">⚠️</span> 관리 소홀
-                </button>
-                <button
-                  className={`px-3 py-2 rounded-lg text-sm transition-all flex items-center ${statusFilter === '민원 중' ? 'bg-[#FFEBEE] text-[#F44336] border border-[#F44336]' : 'bg-gray-100 hover:bg-gray-200'}`}
-                  onClick={() => setStatusFilter('민원 중')}
-                >
-                  <span className="mr-1">🔔</span> 민원 중
-                </button>
-              </div>
-            </div>
-          </div>
-          
-          {/* 추가 필터 (쿠폰/소식/예약) */}
-          <div className="mt-4 flex flex-wrap gap-3">
-            <span className="text-sm text-gray-600 self-center">추가 필터:</span>
-            <button
-              className={`px-3 py-2 rounded-lg text-sm transition-all flex items-center ${filterNoCoupon ? 'bg-[#E3F2FD] text-[#2196F3] border border-[#2196F3]' : 'bg-gray-100 hover:bg-gray-200'}`}
-              onClick={() => toggleFilter('coupon')}
-            >
-              <span className="mr-1">🎟️</span> 쿠폰 미사용 ({statusCounts.noCoupon})
-            </button>
-            <button
-              className={`px-3 py-2 rounded-lg text-sm transition-all flex items-center ${filterNoNews ? 'bg-[#E8F5E9] text-[#4CAF50] border border-[#4CAF50]' : 'bg-gray-100 hover:bg-gray-200'}`}
-              onClick={() => toggleFilter('news')}
-            >
-              <span className="mr-1">📰</span> 소식 미발행 ({statusCounts.noNews})
-            </button>
-            <button
-              className={`px-3 py-2 rounded-lg text-sm transition-all flex items-center ${filterNoReservation ? 'bg-[#F3E5F5] text-[#9C27B0] border border-[#9C27B0]' : 'bg-gray-100 hover:bg-gray-200'}`}
-              onClick={() => toggleFilter('reservation')}
-            >
-              <span className="mr-1">📅</span> 예약 미사용 ({statusCounts.noReservation})
-            </button>
-            {(filterNoCoupon || filterNoNews || filterNoReservation) && (
-              <button
-                className="px-3 py-2 rounded-lg text-sm transition-all flex items-center bg-gray-200 hover:bg-gray-300 text-gray-700"
-                onClick={() => {
-                  setFilterNoCoupon(false);
-                  setFilterNoNews(false);
-                  setFilterNoReservation(false);
-                }}
-              >
-                <span className="mr-1">❌</span> 필터 초기화
-              </button>
-            )}
-          </div>
-          
-          {/* 활성화된 필터 표시 */}
-          {(filterNoCoupon || filterNoNews || filterNoReservation) && (
-            <div className="mt-3 flex flex-wrap gap-2">
-              <span className="text-xs text-gray-500">적용된 필터:</span>
-              {filterNoCoupon && (
-                <span className="text-xs bg-[#E3F2FD] text-[#2196F3] px-2 py-1 rounded-full">
-                  쿠폰 미사용
-                </span>
-              )}
-              {filterNoNews && (
-                <span className="text-xs bg-[#E8F5E9] text-[#4CAF50] px-2 py-1 rounded-full">
-                  소식 미발행
-                </span>
-              )}
-              {filterNoReservation && (
-                <span className="text-xs bg-[#F3E5F5] text-[#9C27B0] px-2 py-1 rounded-full">
-                  예약 미사용
-                </span>
-              )}
-            </div>
-          )}
-        </div>
         
-        {/* 광고주 카드 그리드 */}
-        {filteredClients.length > 0 ? (
-          <div className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 transition-all duration-500 delay-300 ${animateIn ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-5'}`}>
-            {filteredClients.map((client, index) => (
-              <div 
-                key={client.id} 
-                className={`transition-all duration-500`} 
-                style={{ transitionDelay: `${300 + index * 100}ms` }}
-              >
-                <ClientCard
-                  client={client} 
-                  onAddTodo={openTodoDialog} 
-                  onAddNote={openMemoDialog}
-                />
-              </div>
-            ))}
+        {/* 로딩 상태 표시 */}
+        {isLoading && (
+          <div className="bg-white rounded-lg shadow-sm p-8 mb-6 text-center">
+            <div className="animate-pulse flex flex-col items-center">
+              <div className="h-12 w-12 bg-blue-200 rounded-full mb-4"></div>
+              <div className="h-4 bg-blue-100 rounded w-1/3 mb-2"></div>
+              <div className="h-3 bg-blue-50 rounded w-1/4"></div>
+            </div>
+            <p className="mt-4 text-gray-500">광고주 데이터 로드 중...</p>
           </div>
-        ) : (
-          <div className={`bg-white rounded-lg shadow-sm p-10 text-center transition-all duration-500 delay-300 ${animateIn ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-5'}`}>
-            <div className="text-5xl mb-4">🔍</div>
-            <h3 className="text-xl font-medium mb-2">결과를 찾을 수 없습니다</h3>
-            <p className="text-gray-600 mb-5">검색어나 필터를 변경해 보세요.</p>
+        )}
+        
+        {/* 오류 메시지 */}
+        {error && (
+          <div className="bg-red-50 border border-red-200 text-red-700 rounded-lg p-4 mb-6">
+            <h3 className="font-medium flex items-center mb-1">
+              <span className="mr-2">⚠️</span> 오류 발생
+            </h3>
+            <p className="text-sm">{error}</p>
             <button 
-              className="wiz-btn"
-              onClick={() => {
-                setSearchTerm('');
-                setStatusFilter('all');
-                setFilterNoCoupon(false);
-                setFilterNoNews(false);
-                setFilterNoReservation(false);
-              }}
+              onClick={() => window.location.reload()} 
+              className="mt-2 text-red-700 bg-white border border-red-300 px-3 py-1 rounded-md text-sm hover:bg-red-50"
             >
-              모든 광고주 보기
+              새로고침
             </button>
           </div>
         )}
+      
+        {/* 검색 및 필터 */}
+        {!isLoading && !error && (
+          <>
+            <div className={`bg-white rounded-lg shadow-sm p-4 mb-6 transition-all duration-500 delay-200 ${animateIn ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-5'}`}>
+              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                {/* 검색 */}
+                <div className="relative flex-1">
+                  <input
+                    type="text"
+                    placeholder="광고주 이름, 상태 검색..."
+                    className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2251D1] focus:border-transparent transition-all"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                  />
+                  <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">
+                    🔍
+                  </span>
+                </div>
+                
+                {/* 필터 */}
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-gray-600">상태:</span>
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      className={`px-3 py-2 rounded-lg text-sm transition-all ${statusFilter === 'all' ? 'bg-[#2251D1] text-white' : 'bg-gray-100 hover:bg-gray-200'}`}
+                      onClick={() => setStatusFilter('all')}
+                    >
+                      전체 보기
+                    </button>
+                    <button
+                      className={`px-3 py-2 rounded-lg text-sm transition-all flex items-center ${statusFilter === '종료 임박' ? 'bg-[#FFF8E1] text-[#FFC107] border border-[#FFC107]' : 'bg-gray-100 hover:bg-gray-200'}`}
+                      onClick={() => setStatusFilter('종료 임박')}
+                    >
+                      <span className="mr-1">⏰</span> 종료 임박
+                    </button>
+                    <button
+                      className={`px-3 py-2 rounded-lg text-sm transition-all flex items-center ${statusFilter === '관리 소홀' ? 'bg-[#FFF3E0] text-[#FF9800] border border-[#FF9800]' : 'bg-gray-100 hover:bg-gray-200'}`}
+                      onClick={() => setStatusFilter('관리 소홀')}
+                    >
+                      <span className="mr-1">⚠️</span> 관리 소홀
+                    </button>
+                    <button
+                      className={`px-3 py-2 rounded-lg text-sm transition-all flex items-center ${statusFilter === '민원 중' ? 'bg-[#FFEBEE] text-[#F44336] border border-[#F44336]' : 'bg-gray-100 hover:bg-gray-200'}`}
+                      onClick={() => setStatusFilter('민원 중')}
+                    >
+                      <span className="mr-1">🔔</span> 민원 중
+                    </button>
+                  </div>
+                </div>
+              </div>
+              
+              {/* 추가 필터 (쿠폰/소식/예약) */}
+              <div className="mt-4 flex flex-wrap gap-3">
+                <span className="text-sm text-gray-600 self-center">추가 필터:</span>
+                <button
+                  className={`px-3 py-2 rounded-lg text-sm transition-all flex items-center ${filterNoCoupon ? 'bg-[#E3F2FD] text-[#2196F3] border border-[#2196F3]' : 'bg-gray-100 hover:bg-gray-200'}`}
+                  onClick={() => toggleFilter('coupon')}
+                >
+                  <span className="mr-1">🎟️</span> 쿠폰 미사용 ({statusCounts.noCoupon})
+                </button>
+                <button
+                  className={`px-3 py-2 rounded-lg text-sm transition-all flex items-center ${filterNoNews ? 'bg-[#E8F5E9] text-[#4CAF50] border border-[#4CAF50]' : 'bg-gray-100 hover:bg-gray-200'}`}
+                  onClick={() => toggleFilter('news')}
+                >
+                  <span className="mr-1">📰</span> 소식 미발행 ({statusCounts.noNews})
+                </button>
+                <button
+                  className={`px-3 py-2 rounded-lg text-sm transition-all flex items-center ${filterNoReservation ? 'bg-[#F3E5F5] text-[#9C27B0] border border-[#9C27B0]' : 'bg-gray-100 hover:bg-gray-200'}`}
+                  onClick={() => toggleFilter('reservation')}
+                >
+                  <span className="mr-1">📅</span> 예약 미사용 ({statusCounts.noReservation})
+                </button>
+                {(filterNoCoupon || filterNoNews || filterNoReservation) && (
+                  <button
+                    className="px-3 py-2 rounded-lg text-sm transition-all bg-gray-200 hover:bg-gray-300 flex items-center"
+                    onClick={() => {
+                      setFilterNoCoupon(false);
+                      setFilterNoNews(false);
+                      setFilterNoReservation(false);
+                    }}
+                  >
+                    <span className="mr-1">🔄</span> 필터 초기화
+                  </button>
+                )}
+              </div>
+            </div>
+          
+            {/* 광고주 목록 */}
+            <div className={`transition-all duration-500 delay-300 ${animateIn ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-5'}`}>
+              {filteredClients.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {filteredClients.map(client => (
+                    <ClientCard
+                      key={client.id}
+                      client={client}
+                      onAddTodo={() => openTodoDialog(client.id)}
+                      onAddNote={() => openMemoDialog(client.id)}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <div className="bg-white rounded-lg shadow-sm p-8 text-center">
+                  <div className="text-6xl mb-4">🔍</div>
+                  <h3 className="text-xl font-medium mb-2">검색 결과가 없습니다</h3>
+                  <p className="text-gray-500 mb-4">다른 검색어나 필터를 사용해 보세요.</p>
+                  <button
+                    onClick={() => {
+                      setSearchTerm('');
+                      setStatusFilter('all');
+                      setFilterNoCoupon(false);
+                      setFilterNoNews(false);
+                      setFilterNoReservation(false);
+                    }}
+                    className="bg-[#2251D1] text-white px-4 py-2 rounded-lg hover:bg-[#1a3fa0] transition-all"
+                  >
+                    모두 보기
+                  </button>
+                </div>
+              )}
+            </div>
+          </>
+        )}
       </div>
       
-      {/* 메모 다이얼로그 */}
-      <ClientMemoDialog
-        client={selectedClient}
-        isOpen={memoDialogOpen}
-        onClose={() => setMemoDialogOpen(false)}
-        onSave={handleAddNote}
-      />
+      {/* 다이얼로그 컴포넌트 */}
+      {selectedClient && (
+        <>
+          <ClientMemoDialog
+            isOpen={memoDialogOpen}
+            onClose={() => setMemoDialogOpen(false)}
+            client={selectedClient}
+            onSave={handleAddNote}
+          />
+          
+          <ClientTodoDialog
+            isOpen={todoDialogOpen}
+            onClose={() => setTodoDialogOpen(false)}
+            client={selectedClient}
+            onSave={handleAddTodo}
+          />
+        </>
+      )}
       
-      {/* 할 일 다이얼로그 */}
-      <ClientTodoDialog
-        client={selectedClient}
-        isOpen={todoDialogOpen}
-        onClose={() => setTodoDialogOpen(false)}
-        onSave={handleAddTodo}
-      />
-      
-      {/* 광고주 등록 다이얼로그 */}
       <ClientRegisterDialog
         isOpen={registerDialogOpen}
         onClose={() => setRegisterDialogOpen(false)}

@@ -10,10 +10,11 @@ export default function CreateNoticePage() {
   const { addNotice } = useNoticeContext();
   
   const [title, setTitle] = useState('');
+  const [content, setContent] = useState('');
   const [isFixed, setIsFixed] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!title.trim()) {
@@ -21,13 +22,28 @@ export default function CreateNoticePage() {
       return;
     }
     
+    if (!content.trim()) {
+      alert('내용을 입력해주세요.');
+      return;
+    }
+    
     setIsSubmitting(true);
     
-    // Context를 통해 공지사항 등록
-    addNotice(title, isFixed);
-    
-    // 목록 페이지로 이동
-    router.push('/notices');
+    try {
+      // Context를 통해 공지사항 등록
+      const result = await addNotice(title, content, isFixed);
+      
+      if (result.success) {
+        // 목록 페이지로 이동
+        router.push('/notices');
+      } else {
+        alert(result.error || '공지사항 등록에 실패했습니다.');
+        setIsSubmitting(false);
+      }
+    } catch (err) {
+      alert('공지사항 등록 중 오류가 발생했습니다.');
+      setIsSubmitting(false);
+    }
   };
   
   return (
@@ -63,6 +79,21 @@ export default function CreateNoticePage() {
           </div>
           
           <div className="mb-6">
+            <label htmlFor="content" className="block text-sm font-medium text-gray-700 mb-1">
+              내용 <span className="text-red-500">*</span>
+            </label>
+            <textarea
+              id="content"
+              value={content}
+              onChange={(e) => setContent(e.target.value)}
+              rows={10}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#2251D1] focus:border-transparent"
+              placeholder="공지사항 내용을 입력하세요"
+              required
+            />
+          </div>
+          
+          <div className="mb-6">
             <div className="flex items-center">
               <input
                 id="isFixed"
@@ -89,10 +120,10 @@ export default function CreateNoticePage() {
             </Link>
             <button
               type="submit"
-              disabled={isSubmitting || !title.trim()}
+              disabled={isSubmitting || !title.trim() || !content.trim()}
               className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-[#2251D1] hover:bg-[#1A41B6] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#2251D1] disabled:bg-gray-300 disabled:cursor-not-allowed"
             >
-              등록하기
+              {isSubmitting ? '등록 중...' : '등록하기'}
             </button>
           </div>
         </form>

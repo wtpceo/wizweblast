@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNoticeContext } from '@/context/NoticeContext';
 
 // 날짜 포맷팅 함수
@@ -16,12 +16,72 @@ export default function NoticeDetailPage({ params }: { params: { id: string } })
   const { notices, deleteNotice } = useNoticeContext();
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [noticeDetail, setNoticeDetail] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   
-  // 목업 데이터에서 해당 ID의 공지사항 찾기
+  // 현재 데이터를 초기값으로 설정
   const notice = notices.find(notice => notice.id === params.id);
   
-  // 공지사항이 없는 경우
-  if (!notice) {
+  // 상세 공지사항 데이터를 가져오는 함수
+  useEffect(() => {
+    const fetchNoticeDetail = async () => {
+      try {
+        setIsLoading(true);
+        const response = await fetch(`/api/notices/${params.id}`);
+        
+        if (!response.ok) {
+          throw new Error('공지사항을 불러오는데 실패했습니다.');
+        }
+        
+        const data = await response.json();
+        setNoticeDetail(data);
+        setError(null);
+      } catch (err) {
+        console.error('공지사항 상세 로딩 오류:', err);
+        setError('공지사항을 불러오는 중 오류가 발생했습니다.');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    fetchNoticeDetail();
+  }, [params.id]);
+  
+  // 로딩 중일 때
+  if (isLoading) {
+    return (
+      <div className="container mx-auto py-8 px-4 text-center">
+        <div className="animate-pulse">
+          <div className="h-8 bg-gray-200 rounded w-1/3 mx-auto mb-4"></div>
+          <div className="h-4 bg-gray-200 rounded w-1/4 mx-auto mb-8"></div>
+          <div className="h-24 bg-gray-200 rounded w-full mb-4"></div>
+          <div className="h-24 bg-gray-200 rounded w-full"></div>
+        </div>
+      </div>
+    );
+  }
+  
+  // 에러가 있을 때
+  if (error) {
+    return (
+      <div className="container mx-auto py-8 px-4 text-center">
+        <div className="bg-red-50 p-4 rounded-lg">
+          <h2 className="text-xl font-semibold mb-4 text-red-700">오류가 발생했습니다</h2>
+          <p className="text-red-600 mb-4">{error}</p>
+          <Link 
+            href="/notices" 
+            className="text-[#2251D1] hover:underline"
+          >
+            목록으로 돌아가기
+          </Link>
+        </div>
+      </div>
+    );
+  }
+  
+  // 서버에서 데이터를 가져왔지만 존재하지 않는 경우
+  if (!noticeDetail) {
     return (
       <div className="container mx-auto py-8 px-4 text-center">
         <h2 className="text-xl font-semibold mb-4">공지사항을 찾을 수 없습니다.</h2>
@@ -35,16 +95,28 @@ export default function NoticeDetailPage({ params }: { params: { id: string } })
     );
   }
   
-  const formattedDate = formatNoticeDate(notice.createdAt);
+  const formattedDate = formatNoticeDate(noticeDetail.createdAt);
   
-  const handleDelete = () => {
+  const handleDelete = async () => {
     setIsDeleting(true);
     
-    // Context를 통해 공지사항 삭제
-    deleteNotice(notice.id);
-    
-    // 목록 페이지로 이동
-    router.push('/notices');
+    try {
+      // Context를 통해 공지사항 삭제
+      const result = await deleteNotice(noticeDetail.id);
+      
+      if (result.success) {
+        // 목록 페이지로 이동
+        router.push('/notices');
+      } else {
+        alert(result.error || '삭제 중 오류가 발생했습니다.');
+        setIsDeleting(false);
+        setShowDeleteConfirm(false);
+      }
+    } catch (err) {
+      alert('삭제 중 오류가 발생했습니다.');
+      setIsDeleting(false);
+      setShowDeleteConfirm(false);
+    }
   };
   
   return (
@@ -78,32 +150,20 @@ export default function NoticeDetailPage({ params }: { params: { id: string } })
       <div className="bg-white rounded-lg shadow-sm p-6">
         <div className="border-b border-gray-200 pb-4 mb-4">
           <div className="flex items-center mb-2">
-            {notice.isFixed && (
+            {noticeDetail.isFixed && (
               <span className="bg-[#EEF2FB] text-[#2251D1] text-xs font-medium mr-2 px-2 py-1 rounded-full flex items-center">
                 <span className="mr-1">📌</span> 
                 고정
               </span>
             )}
           </div>
-          <h2 className="text-xl font-bold text-gray-800 mb-2">{notice.title}</h2>
+          <h2 className="text-xl font-bold text-gray-800 mb-2">{noticeDetail.title}</h2>
           <div className="text-sm text-gray-500">{formattedDate}</div>
         </div>
         
-        {/* 실제로는 공지사항 내용이 들어갈 부분 */}
-        <div className="prose max-w-none text-gray-700">
-          <p>
-            안녕하세요, WIZ WORKS 사용자 여러분.
-          </p>
-          <p className="mt-4">
-            이 부분은 실제 공지사항 내용이 들어갈 자리입니다. 현재는 백엔드 연동 전이므로 목업 데이터로 표시됩니다.
-            추후 백엔드 개발 시 실제 공지사항 내용이 표시될 예정입니다.
-          </p>
-          <p className="mt-4">
-            공지사항 {notice.id}번: {notice.title}
-          </p>
-          <p className="mt-4">
-            감사합니다.
-          </p>
+        {/* 공지사항 내용 표시 */}
+        <div className="prose max-w-none text-gray-700 whitespace-pre-wrap">
+          {noticeDetail.content}
         </div>
       </div>
       

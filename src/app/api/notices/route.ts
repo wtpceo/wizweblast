@@ -4,29 +4,25 @@ import { supabase } from '@/lib/supabase';
 // 공지사항 목록 조회 API
 export async function GET(request: Request) {
   try {
+    // URL에서 파라미터 추출
     const url = new URL(request.url);
-    // 쿼리 파라미터 추출
+    const isFixed = url.searchParams.get('is_fixed');
     const limit = parseInt(url.searchParams.get('limit') || '10', 10);
-    const fixedFirst = url.searchParams.get('fixedFirst') === 'true';
     
-    // 쿼리 구성
+    // Supabase 쿼리 구성
     let query = supabase
       .from('notices')
-      .select('*');
+      .select('*')
+      .order('is_fixed', { ascending: false })
+      .order('created_at', { ascending: false })
+      .limit(limit);
     
-    // 정렬 적용 (고정 공지 우선 옵션 처리)
-    if (fixedFirst) {
-      query = query.order('is_fixed', { ascending: false })
-                   .order('created_at', { ascending: false });
-    } else {
-      query = query.order('created_at', { ascending: false });
+    // 고정 공지만 필터링
+    if (isFixed !== null) {
+      query = query.eq('is_fixed', isFixed === 'true');
     }
     
-    // 결과 수 제한
-    if (limit > 0) {
-      query = query.limit(limit);
-    }
-    
+    // 데이터 조회
     const { data, error } = await query;
     
     if (error) {
@@ -34,7 +30,7 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: '공지사항 목록을 가져오는 데 실패했습니다.' }, { status: 500 });
     }
     
-    // 응답 데이터 포맷 변환 (프론트엔드 기대 형식에 맞게)
+    // 응답 데이터 형식 변환
     const formattedData = data.map(notice => ({
       id: notice.id,
       title: notice.title,
@@ -50,7 +46,7 @@ export async function GET(request: Request) {
   }
 }
 
-// 공지사항 등록 API
+// 공지사항 추가 API
 export async function POST(request: Request) {
   try {
     const body = await request.json();
@@ -76,22 +72,22 @@ export async function POST(request: Request) {
       .select();
     
     if (error) {
-      console.error('공지사항 등록 오류:', error);
-      return NextResponse.json({ error: '공지사항 등록에 실패했습니다.' }, { status: 500 });
+      console.error('공지사항 추가 오류:', error);
+      return NextResponse.json({ error: '공지사항 추가에 실패했습니다.' }, { status: 500 });
     }
     
-    // 응답 데이터 포맷 변환
-    const formattedNotice = {
-      id: data[0].id,
-      title: data[0].title,
-      content: data[0].content,
-      isFixed: data[0].is_fixed,
-      createdAt: data[0].created_at
-    };
-    
-    return NextResponse.json({ success: true, notice: formattedNotice });
+    return NextResponse.json({ 
+      success: true, 
+      notice: {
+        id: data[0].id,
+        title: data[0].title,
+        content: data[0].content,
+        isFixed: data[0].is_fixed,
+        createdAt: data[0].created_at
+      }
+    });
   } catch (error) {
-    console.error('공지사항 등록 API 오류:', error);
+    console.error('공지사항 추가 API 오류:', error);
     return NextResponse.json({ error: '서버 오류가 발생했습니다.' }, { status: 500 });
   }
 } 
