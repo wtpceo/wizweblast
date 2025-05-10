@@ -39,15 +39,15 @@ export default function ClientDetailPage() {
         const clientData: Client = {
           id: data.id,
           name: data.name,
-          icon: '🏢', // 기본 아이콘
-          contractStart: data.contract_start,
-          contractEnd: data.contract_end,
-          statusTags: data.status_tags || [],
-          usesCoupon: data.uses_coupon || false,
-          publishesNews: data.publishes_news || false,
-          usesReservation: data.uses_reservation || false,
-          phoneNumber: data.phone_number,
-          naverPlaceUrl: data.naver_place_url
+          icon: data.icon || '🏢', // 기본 아이콘
+          contractStart: data.contractStart,
+          contractEnd: data.contractEnd,
+          statusTags: data.statusTags || [],
+          usesCoupon: data.usesCoupon || false,
+          publishesNews: data.publishesNews || false,
+          usesReservation: data.usesReservation || false,
+          phoneNumber: data.phoneNumber,
+          naverPlaceUrl: data.naverPlaceUrl
         };
         
         setClient(clientData);

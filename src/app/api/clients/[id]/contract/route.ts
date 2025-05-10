@@ -1,74 +1,142 @@
 import { NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { auth } from '@clerk/nextjs/server';
+import { db } from '@/lib/db';
+import { clients } from '@/lib/db/schema';
+import { eq } from 'drizzle-orm';
 
-// 계약 날짜 변경 API
-export async function PATCH(request: Request, { params }: { params: { id: string } }) {
+/**
+ * 광고주 계약 정보 업데이트 API
+ * PATCH /api/clients/[id]/contract
+ */
+export async function PATCH(
+  request: Request,
+  { params }: { params: { id: string } }
+) {
   try {
-    const id = params.id;
+    // 1. 인증 확인
+    const session = await auth();
+    if (!session.userId) {
+      return new NextResponse(
+        JSON.stringify({ success: false, error: 'Unauthorized' }),
+        { status: 401 }
+      );
+    }
+
+    const clientId = parseInt(params.id);
+    
+    // 2. 요청 본문 파싱
     const body = await request.json();
     const { contractStart, contractEnd } = body;
     
-    // 최소한 하나의 날짜는 제공되어야 함
+    // 3. 유효성 검사: 최소한 한 필드는 있어야 함
     if (!contractStart && !contractEnd) {
-      return NextResponse.json(
-        { error: '계약 시작일 또는 계약 종료일 중 하나는 필수 입력 항목입니다.' },
+      return new NextResponse(
+        JSON.stringify({ 
+          success: false, 
+          error: 'At least one of contractStart or contractEnd must be provided' 
+        }),
         { status: 400 }
       );
     }
     
-    // 날짜 유효성 검증
-    const updateFields: any = {};
+    // 4. 날짜 형식 유효성 검사
+    const updateData: any = {};
     
     if (contractStart) {
-      const startDate = new Date(contractStart);
-      if (isNaN(startDate.getTime())) {
-        return NextResponse.json(
-          { error: '유효하지 않은 계약 시작일입니다.' },
+      if (!isValidISODate(contractStart)) {
+        return new NextResponse(
+          JSON.stringify({ 
+            success: false, 
+            error: 'Invalid contractStart date format. Expected YYYY-MM-DD' 
+          }),
           { status: 400 }
         );
       }
-      updateFields.contract_start = contractStart;
+      updateData.contractStart = new Date(contractStart);
     }
     
     if (contractEnd) {
-      const endDate = new Date(contractEnd);
-      if (isNaN(endDate.getTime())) {
-        return NextResponse.json(
-          { error: '유효하지 않은 계약 종료일입니다.' },
+      if (!isValidISODate(contractEnd)) {
+        return new NextResponse(
+          JSON.stringify({ 
+            success: false, 
+            error: 'Invalid contractEnd date format. Expected YYYY-MM-DD' 
+          }),
           { status: 400 }
         );
       }
-      updateFields.contract_end = contractEnd;
+      updateData.contractEnd = new Date(contractEnd);
     }
     
-    // 계약 날짜 유효성 검증 (시작일이 종료일보다 이후인 경우)
-    if (contractStart && contractEnd) {
-      const startDate = new Date(contractStart);
-      const endDate = new Date(contractEnd);
-      
-      if (startDate > endDate) {
-        return NextResponse.json(
-          { error: '계약 시작일은 계약 종료일보다 이전이어야 합니다.' },
-          { status: 400 }
-        );
-      }
+    // 5. 광고주 존재 여부 확인
+    const client = await db.query.clients.findFirst({
+      where: eq(clients.id, clientId),
+    });
+
+    if (!client) {
+      return new NextResponse(
+        JSON.stringify({ success: false, error: 'Client not found' }),
+        { status: 404 }
+      );
     }
     
-    // 데이터 업데이트
-    const { data, error } = await supabase
-      .from('clients')
-      .update(updateFields)
-      .eq('id', id)
-      .select();
+    // 6. 계약 날짜가 논리적으로 유효한지 확인
+    const startDate = updateData.contractStart || client.contractStart;
+    const endDate = updateData.contractEnd || client.contractEnd;
     
-    if (error) {
-      console.error('계약 날짜 수정 오류:', error);
-      return NextResponse.json({ error: '계약 날짜 수정에 실패했습니다.' }, { status: 500 });
+    if (startDate > endDate) {
+      return new NextResponse(
+        JSON.stringify({ 
+          success: false, 
+          error: 'Contract start date cannot be later than end date' 
+        }),
+        { status: 400 }
+      );
     }
     
-    return NextResponse.json({ success: true, client: data[0] });
-  } catch (error) {
-    console.error('계약 날짜 수정 API 오류:', error);
-    return NextResponse.json({ error: '서버 오류가 발생했습니다.' }, { status: 500 });
+    // 7. 데이터베이스 업데이트
+    updateData.updatedAt = new Date();
+    
+    const updatedClient = await db
+      .update(clients)
+      .set(updateData)
+      .where(eq(clients.id, clientId))
+      .returning();
+    
+    // 8. 성공 응답 반환
+    return new NextResponse(
+      JSON.stringify({ 
+        success: true, 
+        message: 'Contract dates updated successfully',
+        data: updatedClient[0]
+      })
+    );
+    
+  } catch (error: any) {
+    console.error('Contract update error:', error);
+    
+    return new NextResponse(
+      JSON.stringify({ 
+        success: false, 
+        error: `Failed to update contract: ${error.message}` 
+      }),
+      { status: 500 }
+    );
   }
+}
+
+/**
+ * ISO 날짜 형식(YYYY-MM-DD) 유효성 검사
+ */
+function isValidISODate(dateStr: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+    return false;
+  }
+  
+  const date = new Date(dateStr);
+  if (isNaN(date.getTime())) {
+    return false;
+  }
+  
+  return true;
 } 

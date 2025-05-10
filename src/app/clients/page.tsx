@@ -34,31 +34,227 @@ export default function ClientsPage() {
     const fetchClients = async () => {
       try {
         setIsLoading(true);
-        const response = await fetch('/api/clients');
+        console.log('[클라이언트] 광고주 목록 API 호출 시작');
         
-        if (!response.ok) {
-          throw new Error('광고주 데이터를 가져오는 데 실패했습니다.');
+        // 환경 정보 로깅 (개발 환경에서만)
+        if (process.env.NODE_ENV !== 'production') {
+          console.log('[클라이언트] 환경 정보:', { 
+            env: process.env.NODE_ENV,
+            baseUrl: window.location.origin
+          });
         }
         
-        const data = await response.json();
+        const response = await fetch('/api/clients');
+        console.log('[클라이언트] API 응답 상태:', response.status, response.statusText);
+        
+        if (!response.ok) {
+          let errorMessage = '광고주 데이터를 가져오는 데 실패했습니다.';
+          try {
+            const errorData = await response.json();
+            console.error('[클라이언트] API 응답 오류:', response.status, errorData);
+            
+            // fallbackData가 있으면 사용
+            if (errorData && errorData.fallbackData && Array.isArray(errorData.fallbackData)) {
+              console.log('[클라이언트] 서버 제공 폴백 데이터 사용:', errorData.fallbackData.length + '개 항목');
+              
+              const enhancedFallbackData = errorData.fallbackData.map((client: any, index: number) => {
+                // 필요한 필드가 없는 경우 기본값 추가
+                return {
+                  id: client.id ? String(client.id) : `fallback-${Date.now()}-${index}`,
+                  name: client.name || '이름 없음',
+                  icon: client.icon || '🏢',
+                  contractStart: client.contractStart || new Date().toISOString(),
+                  contractEnd: client.contractEnd || new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString(),
+                  statusTags: Array.isArray(client.statusTags) ? client.statusTags : ['정상'],
+                  usesCoupon: client.usesCoupon !== undefined ? client.usesCoupon : false,
+                  publishesNews: client.publishesNews !== undefined ? client.publishesNews : false,
+                  usesReservation: client.usesReservation !== undefined ? client.usesReservation : false,
+                  phoneNumber: client.phoneNumber || '',
+                  naverPlaceUrl: client.naverPlaceUrl || ''
+                };
+              });
+              
+              setClients(enhancedFallbackData);
+              setError(`서버 오류 발생: ${errorData.error || errorMessage} (서버 제공 폴백 데이터 사용 중)`);
+              
+              // 로컬 스토리지에 저장
+              try {
+                localStorage.setItem('wizweblast_clients', JSON.stringify(enhancedFallbackData));
+              } catch (storageErr) {
+                console.error('[클라이언트] 로컬 스토리지 저장 오류:', storageErr);
+              }
+              
+              setIsLoading(false);
+              return;
+            }
+            
+            // 더 자세한 오류 메시지 사용
+            errorMessage = errorData.error || errorData.message || errorMessage;
+          } catch (jsonError) {
+            console.error('[클라이언트] API 응답 JSON 파싱 오류:', jsonError);
+          }
+          
+          throw new Error(errorMessage);
+        }
+        
+        let data: any;
+        try {
+          data = await response.json();
+          console.log('[클라이언트] 광고주 목록 API 응답:', data);
+        } catch (jsonError) {
+          console.error('[클라이언트] API 응답 JSON 파싱 오류:', jsonError);
+          throw new Error('서버 응답을 파싱하는 중 오류가 발생했습니다.');
+        }
+        
+        // API 응답 유효성 검사
+        if (!data) {
+          console.error('[클라이언트] 빈 API 응답:', data);
+          throw new Error('서버에서 데이터를 받지 못했습니다.');
+        }
+        
+        if (!Array.isArray(data)) {
+          console.error('[클라이언트] 유효하지 않은 API 응답 데이터 형식:', data);
+          
+          // 오류 응답에 폴백 데이터가 있는지 확인
+          if (data.fallbackData && Array.isArray(data.fallbackData)) {
+            console.log('[클라이언트] 오류 응답의 폴백 데이터 사용:', data.fallbackData.length + '개 항목');
+            data = data.fallbackData;
+          } else {
+            throw new Error('서버에서 유효하지 않은 데이터 형식을 받았습니다.');
+          }
+        }
         
         // API 응답에 필요한 필드가 없는 경우, 기본값 추가
-        const enhancedData = data.map((client: any) => ({
-          ...client,
-          icon: client.icon || '🏢', // 기본 아이콘
-          usesCoupon: client.uses_coupon ?? false,
-          publishesNews: client.publishes_news ?? false,
-          usesReservation: client.uses_reservation ?? false,
-          phoneNumber: client.phone_number,
-          naverPlaceUrl: client.naver_place_url,
-          statusTags: client.status_tags || ['정상'] // 기본 상태 태그 추가
-        }));
+        const enhancedData = data.map((client: any, index: number) => {
+          // client가 객체가 아닌 경우 처리
+          if (!client || typeof client !== 'object') {
+            console.warn('[클라이언트] 유효하지 않은 광고주 데이터 항목 발견, 기본값으로 대체합니다.');
+            return {
+              id: `fallback-${Date.now()}-${index}`,
+              name: '유효하지 않은 데이터',
+              icon: '⚠️',
+              contractStart: new Date().toISOString(),
+              contractEnd: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString(),
+              statusTags: ['오류'],
+              usesCoupon: false,
+              publishesNews: false,
+              usesReservation: false,
+              phoneNumber: '',
+              naverPlaceUrl: ''
+            };
+          }
+          
+          // snake_case와 camelCase 모두 지원
+          const name = client.name || '';
+          const icon = client.icon || '🏢';
+          const contractStart = client.contractStart || client.contract_start || new Date().toISOString();
+          const contractEnd = client.contractEnd || client.contract_end || new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString();
+          const statusTags = Array.isArray(client.statusTags) ? client.statusTags : 
+                             (Array.isArray(client.status_tags) ? client.status_tags : ['정상']);
+          
+          const usesCoupon = client.usesCoupon !== undefined ? client.usesCoupon : 
+                              (client.uses_coupon !== undefined ? client.uses_coupon : false);
+                              
+          const publishesNews = client.publishesNews !== undefined ? client.publishesNews : 
+                                (client.publishes_news !== undefined ? client.publishes_news : false);
+                                
+          const usesReservation = client.usesReservation !== undefined ? client.usesReservation : 
+                                  (client.uses_reservation !== undefined ? client.uses_reservation : false);
+                                  
+          const phoneNumber = client.phoneNumber || client.phone_number || '';
+          const naverPlaceUrl = client.naverPlaceUrl || client.naver_place_url || '';
+          
+          return {
+            id: client.id ? String(client.id) : `id-${Date.now()}-${index}`,
+            name,
+            icon,
+            contractStart,
+            contractEnd,
+            statusTags,
+            usesCoupon,
+            publishesNews,
+            usesReservation,
+            phoneNumber,
+            naverPlaceUrl
+          };
+        });
         
+        console.log('[클라이언트] 처리된 광고주 데이터:', enhancedData.length + '개');
         setClients(enhancedData);
         setError(null);
+        
+        // 로컬 스토리지에 저장
+        try {
+          localStorage.setItem('wizweblast_clients', JSON.stringify(enhancedData));
+        } catch (storageErr) {
+          console.error('[클라이언트] 로컬 스토리지 저장 오류:', storageErr);
+        }
       } catch (err) {
-        console.error('광고주 데이터 로딩 오류:', err);
-        setError('광고주 데이터를 불러오는 중 오류가 발생했습니다.');
+        console.error('[클라이언트] 광고주 데이터 로딩 오류:', err);
+        
+        const errMsg = err instanceof Error ? err.message : String(err);
+        setError(`광고주 데이터를 불러오는 중 오류가 발생했습니다: ${errMsg}`);
+        
+        // API 호출 실패 시 로컬 스토리지에서 데이터 가져오기
+        try {
+          const storedClients = localStorage.getItem('wizweblast_clients');
+          if (storedClients) {
+            try {
+              const parsedClients = JSON.parse(storedClients);
+              if (Array.isArray(parsedClients) && parsedClients.length > 0) {
+                console.log('[클라이언트] 로컬 스토리지에서 광고주 데이터를 불러왔습니다:', parsedClients.length + '개');
+                setClients(parsedClients);
+                setError((prev) => prev + ' (저장된 데이터를 대신 표시합니다.)');
+                
+                // 로컬 스토리지에서 가져온 데이터도 유효성 검사
+                const validClients = parsedClients.filter((c: any) => c && typeof c === 'object' && c.name);
+                if (validClients.length < parsedClients.length) {
+                  console.warn('[클라이언트] 로컬 스토리지에 유효하지 않은 데이터가 있습니다:', parsedClients.length - validClients.length + '개');
+                  setClients(validClients);
+                }
+                
+                return; // 로컬 스토리지 데이터 사용 시 모의 데이터 사용 안함
+              }
+            } catch (parseErr) {
+              console.error('[클라이언트] 로컬 스토리지 데이터 파싱 오류:', parseErr);
+            }
+          }
+          
+          // 모의 데이터 표시
+          console.log('[클라이언트] 모의 데이터 사용');
+          const mockClients = [
+            {
+              id: 'mock-1',
+              name: '샘플 광고주 (모의 데이터)',
+              icon: '🏢',
+              contractStart: '2024-01-01',
+              contractEnd: '2024-12-31',
+              statusTags: ['정상', '모의 데이터'],
+              usesCoupon: true,
+              publishesNews: true,
+              usesReservation: true,
+              phoneNumber: '02-1234-5678',
+              naverPlaceUrl: 'https://place.naver.com/restaurant/12345678'
+            },
+            {
+              id: 'mock-2',
+              name: '카페 드림 (모의 데이터)',
+              icon: '☕',
+              contractStart: '2024-02-15',
+              contractEnd: '2025-02-14',
+              statusTags: ['정상', '모의 데이터'],
+              usesCoupon: false,
+              publishesNews: false,
+              usesReservation: true,
+              phoneNumber: '02-9876-5432',
+              naverPlaceUrl: 'https://place.naver.com/restaurant/87654321'
+            }
+          ];
+          setClients(mockClients);
+          setError((prev) => prev + ' (모의 데이터를 대신 표시합니다.)');
+        } catch (storageErr) {
+          console.error('[클라이언트] 로컬 스토리지 데이터 로딩 오류:', storageErr);
+        }
       } finally {
         setIsLoading(false);
       }
@@ -79,8 +275,15 @@ export default function ClientsPage() {
   
   // 필터링된 광고주 목록
   const filteredClients = clients.filter(client => {
+    // 클라이언트가 유효하지 않은 경우 필터링에서 제외
+    if (!client || typeof client !== 'object') {
+      return false;
+    }
+    
     // 검색어 필터링
-    const matchesSearch = client.name.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesSearch = client.name 
+      ? client.name.toLowerCase().includes(searchTerm.toLowerCase()) 
+      : false;
     
     // 상태 필터링
     let matchesStatus = true;
@@ -111,12 +314,12 @@ export default function ClientsPage() {
   // 상태별 카운트
   const statusCounts = {
     total: clients.length,
-    nearExpiry: clients.filter(c => c.statusTags.includes('종료 임박')).length,
-    poorManaged: clients.filter(c => c.statusTags.includes('관리 소홀')).length,
-    complaints: clients.filter(c => c.statusTags.includes('민원 중')).length,
-    noCoupon: clients.filter(c => !c.usesCoupon).length,
-    noNews: clients.filter(c => !c.publishesNews).length,
-    noReservation: clients.filter(c => !c.usesReservation).length
+    nearExpiry: clients.filter(c => c && c.statusTags && Array.isArray(c.statusTags) && c.statusTags.includes('종료 임박')).length,
+    poorManaged: clients.filter(c => c && c.statusTags && Array.isArray(c.statusTags) && c.statusTags.includes('관리 소홀')).length,
+    complaints: clients.filter(c => c && c.statusTags && Array.isArray(c.statusTags) && c.statusTags.includes('민원 중')).length,
+    noCoupon: clients.filter(c => c && c.usesCoupon === false).length,
+    noNews: clients.filter(c => c && c.publishesNews === false).length,
+    noReservation: clients.filter(c => c && c.usesReservation === false).length
   };
   
   // 필터 토글 함수
@@ -202,6 +405,17 @@ export default function ClientsPage() {
   // 광고주 등록 처리
   const handleRegisterClient = async (newClient: Omit<Client, 'id'>) => {
     try {
+      console.log('등록 요청 데이터:', newClient);
+      
+      // 로컬 ID 생성 (DB 저장 실패 시 폴백으로 사용)
+      const localId = `temp-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+      
+      // 임시 클라이언트 객체 생성 (폴백용)
+      const tempClient: Client = {
+        ...newClient,
+        id: localId
+      };
+      
       const response = await fetch('/api/clients', {
         method: 'POST',
         headers: {
@@ -212,21 +426,48 @@ export default function ClientsPage() {
           contractStart: newClient.contractStart,
           contractEnd: newClient.contractEnd,
           statusTags: newClient.statusTags,
-          // 추가 필드도 전송
           icon: newClient.icon,
-          uses_coupon: newClient.usesCoupon,
-          publishes_news: newClient.publishesNews,
-          uses_reservation: newClient.usesReservation,
-          phone_number: newClient.phoneNumber,
-          naver_place_url: newClient.naverPlaceUrl
+          usesCoupon: newClient.usesCoupon,
+          publishesNews: newClient.publishesNews,
+          usesReservation: newClient.usesReservation,
+          phoneNumber: newClient.phoneNumber,
+          naverPlaceUrl: newClient.naverPlaceUrl
         })
       });
       
       if (!response.ok) {
-        throw new Error('광고주 등록에 실패했습니다.');
+        const errorData = await response.json().catch(() => null);
+        console.error('서버 응답 오류:', response.status, errorData);
+        
+        // 폴백: 실패해도 UI에는 추가 (로컬에서만 작동)
+        console.log('서버 저장 실패, 로컬 캐시에 임시 저장:', tempClient);
+        setClients([tempClient, ...clients]);
+        
+        // 로컬 스토리지에도 임시 저장
+        try {
+          const storedClients = JSON.parse(localStorage.getItem('wizweblast_clients') || '[]');
+          localStorage.setItem('wizweblast_clients', JSON.stringify([tempClient, ...storedClients]));
+        } catch (storageErr) {
+          console.error('로컬 스토리지 저장 오류:', storageErr);
+        }
+        
+        setRegisterDialogOpen(false);
+        alert(`'${newClient.name}' 광고주가 임시로 추가되었습니다. (서버 저장 실패: ${errorData?.error || '알 수 없는 오류'})`);
+        return;
       }
       
       const data = await response.json();
+      console.log('등록 성공 응답:', data);
+      
+      if (!data.client || !data.client.id) {
+        console.error('서버 응답에 유효한 광고주 ID가 없음:', data);
+        
+        // 폴백: 서버 응답에 ID가 없어도 UI에는 추가
+        setClients([tempClient, ...clients]);
+        setRegisterDialogOpen(false);
+        alert(`'${newClient.name}' 광고주가 임시로 추가되었습니다. (서버 응답 이상)`);
+        return;
+      }
       
       // 추가된 광고주를 목록에 추가
       const clientWithId: Client = {
@@ -235,12 +476,21 @@ export default function ClientsPage() {
       };
       
       setClients([clientWithId, ...clients]);
+      
+      // 로컬 스토리지에도 저장
+      try {
+        const storedClients = JSON.parse(localStorage.getItem('wizweblast_clients') || '[]');
+        localStorage.setItem('wizweblast_clients', JSON.stringify([clientWithId, ...storedClients]));
+      } catch (storageErr) {
+        console.error('로컬 스토리지 저장 오류:', storageErr);
+      }
+      
       setRegisterDialogOpen(false);
       
       alert(`'${newClient.name}' 광고주가 성공적으로 등록되었습니다! 👍`);
-    } catch (err) {
+    } catch (err: any) {
       console.error('광고주 등록 오류:', err);
-      alert('광고주 등록 중 오류가 발생했습니다.');
+      alert(err.message || '광고주 등록 중 오류가 발생했습니다.');
     }
   };
   

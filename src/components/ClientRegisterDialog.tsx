@@ -92,9 +92,13 @@ export function ClientRegisterDialog({ isOpen, onClose, onSave }: ClientRegister
               id="naverPlaceUrl"
               value={naverPlaceUrl}
               onChange={(e) => setNaverPlaceUrl(e.target.value)}
-              placeholder="예: https://place.naver.com/restaurant/1234567890"
+              placeholder="예: https://place.naver.com/... 또는 naver.me/..."
               className="col-span-3"
             />
+            <p className="text-xs text-gray-500">
+              네이버 플레이스 전체 URL 또는 단축 URL(naver.me)을 입력하세요. 
+              "http://" 또는 "https://"는 생략 가능합니다.
+            </p>
           </div>
         </div>
         

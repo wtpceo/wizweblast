@@ -137,9 +137,94 @@ export function ClientTabs({ client }: ClientTabsProps) {
   };
   
   // 정보 자동 갱신 처리
-  const handleRefreshInfo = () => {
-    // 실제 구현 시 Playwright 기반 크롤링 API 호출
-    alert('네이버 플레이스에서 정보를 갱신 중입니다. 이 기능은 향후 구현 예정입니다.');
+  const handleRefreshInfo = async () => {
+    if (!client.naverPlaceUrl) {
+      alert('네이버 플레이스 URL이 설정되어 있지 않습니다.');
+      return;
+    }
+    
+    console.log("정보 갱신하기 버튼 클릭됨");
+    console.log("API 호출 URL:", `/api/clients/${client.id}/scrape`);
+    console.log("클라이언트 ID:", client.id);
+    
+    // 버튼 요소 찾기
+    const button = document.querySelector('button[data-refresh-button]');
+    const originalButtonText = button?.innerHTML || '';
+    
+    // 버튼 텍스트를 로딩 표시로 변경
+    if (button) {
+      button.innerHTML = '<span class="mr-1">🔄</span><span class="animate-pulse">정보 갱신 중...</span>';
+      button.setAttribute('disabled', 'true');
+      button.classList.add('opacity-70');
+    }
+    
+    try {
+      console.log("API 요청 시작");
+      const response = await fetch(`/api/clients/${client.id}/scrape`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      console.log("API 응답 상태:", response.status, response.statusText);
+      
+      if (!response.ok) {
+        console.error("API 응답 오류:", response.status);
+        const errorData = await response.json();
+        console.error("오류 데이터:", errorData);
+        throw new Error(errorData.error || '정보 가져오기에 실패했습니다.');
+      }
+      
+      console.log("응답 데이터 파싱 시작");
+      const data = await response.json();
+      console.log("파싱된 응답 데이터:", data);
+      
+      if (data.success) {
+        console.log("API 호출 성공, 클라이언트 데이터:", data.client);
+        
+        // 로컬 스토리지에 업데이트된 클라이언트 정보 저장
+        if (data.allClients) {
+          try {
+            localStorage.setItem('wizweblast_clients', JSON.stringify(data.allClients));
+            console.log("클라이언트 데이터가 로컬 스토리지에 저장되었습니다.");
+          } catch (storageErr) {
+            console.error("로컬 스토리지 저장 실패:", storageErr);
+          }
+        }
+        
+        // 성공 알림을 자세하게 표시
+        alert(`
+네이버 플레이스에서 정보를 성공적으로 가져왔습니다!
+
+업데이트된 정보:
+- 쿠폰 사용: ${data.client.usesCoupon ? '사용중' : '미사용'}
+- 소식 발행: ${data.client.publishesNews ? '발행중' : '미발행'}
+- 예약 시스템: ${data.client.usesReservation ? '사용중' : '미사용'}
+- 상태: ${data.client.statusTags.join(', ')}
+
+페이지를 새로고침하여 변경사항을 확인하세요.
+        `);
+        
+        // 2초 후 페이지 새로고침
+        setTimeout(() => {
+          window.location.reload();
+        }, 2000);
+      } else {
+        console.error("API 호출 실패:", data);
+        throw new Error(data.error || '정보 가져오기에 실패했습니다.');
+      }
+    } catch (err: any) {
+      console.error('크롤링 오류:', err);
+      alert(`정보 갱신 중 오류가 발생했습니다: ${err.message}`);
+      
+      // 오류 발생 시 버튼 원상 복구
+      if (button) {
+        button.innerHTML = originalButtonText;
+        button.removeAttribute('disabled');
+        button.classList.remove('opacity-70');
+      }
+    }
   };
   
   return (
@@ -205,6 +290,7 @@ export function ClientTabs({ client }: ClientTabsProps) {
             <div className="flex justify-between items-center mb-6">
               <h3 className="font-medium text-lg">네이버 플레이스 정보</h3>
               <button 
+                data-refresh-button
                 onClick={handleRefreshInfo}
                 className="text-[#2251D1] text-sm hover:underline flex items-center"
               >
