@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { ClientCard } from './ClientCard';
 import { ClientMemoDialog } from '@/components/ClientMemoDialog';
 import { ClientTodoDialog } from '@/components/ClientTodoDialog';
@@ -29,12 +29,68 @@ export default function ClientsPage() {
   // 상태 추가
   const [tipMessage, setTipMessage] = useState<string>('광고주 관리 시스템을 활용해 업무 효율을 높여보세요!');
   
+  // 검색 입력란 ref 추가
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  
+  // 키보드 단축키 처리
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Alt+N: 새 광고주 등록
+      if (e.altKey && e.key === 'n') {
+        e.preventDefault();
+        setRegisterDialogOpen(true);
+      }
+      
+      // /: 검색창 포커스
+      if (e.key === '/' && !registerDialogOpen && !memoDialogOpen && !todoDialogOpen) {
+        // 입력 필드에서 이벤트가 발생하지 않았을 때만 처리
+        if (!(e.target instanceof HTMLInputElement) && !(e.target instanceof HTMLTextAreaElement)) {
+          e.preventDefault();
+          searchInputRef.current?.focus();
+        }
+      }
+      
+      // Esc: 검색어 초기화 (대화상자가 열려있지 않을 때만)
+      if (e.key === 'Escape' && !registerDialogOpen && !memoDialogOpen && !todoDialogOpen) {
+        if (searchTerm) {
+          setSearchTerm('');
+        }
+      }
+    };
+    
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [registerDialogOpen, memoDialogOpen, todoDialogOpen, searchTerm]);
+  
   // API에서 광고주 데이터 가져오기
   useEffect(() => {
     const fetchClients = async () => {
       try {
         setIsLoading(true);
-        console.log('[클라이언트] 광고주 목록 API 호출 시작');
+        console.log('[클라이언트] 광고주 목록 로드 시작');
+        
+        // 먼저 로컬 스토리지에서 데이터 확인
+        try {
+          const storedClients = localStorage.getItem('wizweblast_clients');
+          if (storedClients) {
+            try {
+              const parsedClients = JSON.parse(storedClients);
+              if (Array.isArray(parsedClients) && parsedClients.length > 0) {
+                console.log('[클라이언트] 로컬 스토리지에서 광고주 데이터를 불러왔습니다:', parsedClients.length + '개');
+                setClients(parsedClients);
+                setError(null);
+                setIsLoading(false);
+                return; // 로컬 스토리지에서 데이터를 찾았으므로 API 호출 스킵
+              }
+            } catch (parseErr) {
+              console.error('[클라이언트] 로컬 스토리지 데이터 파싱 오류:', parseErr);
+            }
+          }
+        } catch (storageErr) {
+          console.error('[클라이언트] 로컬 스토리지 접근 오류:', storageErr);
+        }
         
         // 환경 정보 로깅 (개발 환경에서만)
         if (process.env.NODE_ENV !== 'production') {
@@ -504,9 +560,11 @@ export default function ClientsPage() {
           <>
             <button
               onClick={() => setRegisterDialogOpen(true)}
-              className="bg-white text-[#2251D1] px-4 py-2 rounded-lg hover:bg-opacity-90 transition-all duration-200 flex items-center text-sm font-medium shadow-sm hover:shadow"
+              className="wiz-btn py-2 px-4 rounded-md shadow-sm flex items-center"
+              aria-label="새 광고주 등록"
+              title="새 광고주 등록 (Alt+N)"
             >
-              <span className="mr-2">➕</span> 신규 광고주 등록
+              <span className="mr-1">✨</span> 새 광고주 등록
             </button>
             <Link href="/dashboard" className="bg-white text-[#2251D1] px-4 py-2 rounded-lg hover:bg-opacity-90 transition-all duration-200 flex items-center text-sm font-medium shadow-sm hover:shadow">
               <span className="mr-2">📊</span> 대시보드로 돌아가기
@@ -560,16 +618,29 @@ export default function ClientsPage() {
               <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                 {/* 검색 */}
                 <div className="relative flex-1">
-                  <input
-                    type="text"
-                    placeholder="광고주 이름, 상태 검색..."
-                    className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2251D1] focus:border-transparent transition-all"
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                  />
-                  <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">
-                    🔍
-                  </span>
+                  <div className="mb-6">
+                    <div className="relative">
+                      <input
+                        type="text"
+                        ref={searchInputRef}
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        placeholder="광고주 이름 검색... (/ 키로 포커스)"
+                        className="w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        aria-label="광고주 검색"
+                      />
+                      {searchTerm && (
+                        <button
+                          onClick={() => setSearchTerm('')}
+                          className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                          aria-label="검색어 지우기"
+                          title="검색어 지우기 (Esc)"
+                        >
+                          ✕
+                        </button>
+                      )}
+                    </div>
+                  </div>
                 </div>
                 
                 {/* 필터 */}

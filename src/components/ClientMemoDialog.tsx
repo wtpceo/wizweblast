@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Client } from '@/lib/mock-data';
 
 interface ClientMemoDialogProps {
@@ -13,14 +13,59 @@ interface ClientMemoDialogProps {
 export function ClientMemoDialog({ client, isOpen, onClose, onSave }: ClientMemoDialogProps) {
   const [note, setNote] = useState('');
   
+  // 메모 입력 영역 ref 추가
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  
+  // 대화상자가 열릴 때 텍스트 영역에 포커스
+  useEffect(() => {
+    if (isOpen && textareaRef.current) {
+      setTimeout(() => {
+        textareaRef.current?.focus();
+      }, 100);
+    }
+  }, [isOpen]);
+  
+  // 키보드 단축키 처리
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Esc: 다이얼로그 닫기
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+    
+    if (isOpen) {
+      window.addEventListener('keydown', handleKeyDown);
+    }
+    
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isOpen, onClose]);
+  
   if (!isOpen || !client) return null;
   
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+  // 메모 저장 처리 함수
+  const handleSaveAction = () => {
     if (note.trim()) {
       onSave(client.id, note);
       setNote('');
       onClose();
+    }
+  };
+  
+  // 폼 제출 핸들러
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    handleSaveAction();
+  };
+  
+  // 텍스트 영역 키 이벤트 처리
+  const handleTextareaKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    // Ctrl+Enter 키로 저장
+    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey) && note.trim()) {
+      e.preventDefault();
+      handleSaveAction();
     }
   };
 
@@ -54,6 +99,7 @@ export function ClientMemoDialog({ client, isOpen, onClose, onSave }: ClientMemo
           <button 
             onClick={onClose}
             className="bg-gray-100 hover:bg-gray-200 rounded-full w-8 h-8 flex items-center justify-center transition-colors"
+            title="닫기 (Esc)"
           >
             ✕
           </button>
@@ -68,14 +114,17 @@ export function ClientMemoDialog({ client, isOpen, onClose, onSave }: ClientMemo
         <form onSubmit={handleSubmit}>
           <div className="mb-4">
             <textarea
+              ref={textareaRef}
               className="w-full border border-gray-300 rounded-lg p-3 h-32 focus:ring-2 focus:ring-[#2251D1] focus:border-transparent transition-all resize-none"
-              placeholder="메모 내용을 입력하세요..."
+              placeholder="메모 내용을 입력한 후 Ctrl+Enter를 눌러 저장하세요..."
               value={note}
               onChange={(e) => setNote(e.target.value)}
+              onKeyDown={handleTextareaKeyDown}
               required
             />
-            <div className="mt-1 text-xs text-right text-gray-500">
-              {note.length}/500자
+            <div className="flex justify-between mt-1 text-xs text-gray-500">
+              <span>Ctrl+Enter로 저장</span>
+              <span>{note.length}/500자</span>
             </div>
           </div>
           
@@ -84,12 +133,14 @@ export function ClientMemoDialog({ client, isOpen, onClose, onSave }: ClientMemo
               type="button"
               onClick={onClose}
               className="bg-gray-200 hover:bg-gray-300 text-gray-800 py-2 px-4 rounded-lg transition-all hover:shadow flex items-center"
+              title="취소 (Esc)"
             >
               <span className="mr-1">✕</span> 취소
             </button>
             <button
               type="submit"
               className="wiz-btn hover:translate-y-[-1px] flex items-center"
+              title="저장 (Ctrl+Enter)"
             >
               <span className="mr-1">💾</span> 저장
             </button>

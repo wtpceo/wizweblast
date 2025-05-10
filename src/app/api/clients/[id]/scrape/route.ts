@@ -1,12 +1,5 @@
 import { NextResponse } from 'next/server';
-import { auth } from '@clerk/nextjs/server';
-import { db } from '@/lib/db';
-import { clients, clientExternalData } from '@/lib/db/schema';
-import { eq } from 'drizzle-orm';
-import { updateClientExternalData, updateClientFromCrawlData } from '@/lib/db/query';
-
-// Edge 런타임 사용 (실제로는 데이터베이스 액세스 등이 필요하므로 Node.js 런타임으로 변경 필요)
-// export const runtime = 'edge';
+import { createServerClient } from '../../../../../lib/supabase';
 
 /**
  * 네이버 플레이스 정보 크롤링 API
@@ -19,19 +12,10 @@ export async function POST(
   try {
     console.log("크롤링 API 호출됨: clientId =", params.id);
     
-    // 1. 인증 검증 비활성화 (개발 편의를 위함)
-    // const { userId } = await auth();
-    // if (!userId) {
-    //   return NextResponse.json(
-    //     { success: false, error: '인증되지 않은 사용자입니다.' },
-    //     { status: 401 }
-    //   );
-    // }
-
-    // 2. 클라이언트 ID 파라미터 받기
-    const clientId = parseInt(params.id);
+    // 클라이언트 ID 파라미터 받기
+    const clientId = params.id;
     
-    if (isNaN(clientId)) {
+    if (!clientId) {
       return NextResponse.json(
         { success: false, error: '유효하지 않은 광고주 ID입니다.' },
         { status: 400, headers: { 'Content-Type': 'application/json' } }
@@ -40,84 +24,61 @@ export async function POST(
     
     console.log("처리 중인 clientId:", clientId);
     
-    // 3. 클라이언트 찾기 (보호 로직 추가)
-    let client;
-    try {
-      if (db.query?.clients?.findFirst) {
-        client = await db.query.clients.findFirst({
-          where: eq(clients.id, clientId)
-        });
-      } else {
-        console.log("DB 쿼리 메서드가 없음, 로컬 스토리지 또는 모의 데이터 사용");
-        // 로컬 스토리지에서 데이터 가져오기 시도
-        if (typeof window !== 'undefined') {
-          try {
-            const storedClients = localStorage.getItem('wizweblast_clients');
-            if (storedClients) {
-              const parsedClients = JSON.parse(storedClients);
-              client = parsedClients.find((c: any) => c.id === clientId || c.id === String(clientId));
-            }
-          } catch (storageErr) {
-            console.error("로컬 스토리지 접근 오류:", storageErr);
-          }
-        }
-        
-        // 찾지 못한 경우 (API의 모의 클라이언트 직접 사용)
-        if (!client) {
-          // 모의 데이터에서 찾기
-          const mockClients = [
-            {
-              id: clientId,
-              name: '임시 광고주 데이터',
-              icon: '🏢',
-              contractStart: new Date('2024-01-01'),
-              contractEnd: new Date('2024-12-31'),
-              statusTags: ['정상'],
-              usesCoupon: false,
-              publishesNews: false,
-              usesReservation: false,
-              phoneNumber: '02-1234-5678',
-              naverPlaceUrl: 'https://place.naver.com/restaurant/12345678',
-              teamId: 1,
-              createdAt: new Date(),
-              updatedAt: new Date()
-            }
-          ];
-          client = mockClients[0];
-        }
-      }
-    } catch (findError) {
-      console.error("클라이언트 조회 오류:", findError);
-      // 오류 발생 시 모의 데이터 사용
-      client = {
+    // Supabase 클라이언트 생성
+    const supabase = createServerClient();
+    
+    // 클라이언트 찾기
+    const { data: client, error: clientError } = await supabase
+      .from('clients')
+      .select('*')
+      .eq('id', clientId)
+      .single();
+    
+    if (clientError || !client) {
+      console.log("클라이언트를 찾을 수 없음", clientError);
+      
+      // 폴백 데이터
+      const mockClient = {
         id: clientId,
         name: '임시 광고주 데이터',
         icon: '🏢',
-        contractStart: new Date('2024-01-01'),
-        contractEnd: new Date('2024-12-31'),
-        statusTags: ['정상'],
-        usesCoupon: false,
-        publishesNews: false,
-        usesReservation: false,
-        phoneNumber: '02-1234-5678',
-        naverPlaceUrl: 'https://place.naver.com/restaurant/12345678',
-        teamId: 1,
-        createdAt: new Date(),
-        updatedAt: new Date()
+        contract_start: '2024-01-01',
+        contract_end: '2024-12-31',
+        status_tags: ['정상'],
+        uses_coupon: false,
+        publishes_news: false,
+        uses_reservation: false,
+        phone_number: '02-1234-5678',
+        naver_place_url: 'https://place.naver.com/restaurant/12345678',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
       };
-    }
-
-    if (!client) {
-      console.log("클라이언트를 찾을 수 없음");
+      
       return NextResponse.json(
-        { success: false, error: '광고주를 찾을 수 없습니다.' },
-        { status: 404, headers: { 'Content-Type': 'application/json' } }
+        { 
+          success: true, 
+          message: '모의 데이터를 사용합니다 (클라이언트를 찾을 수 없음).',
+          client: {
+            id: mockClient.id,
+            name: mockClient.name,
+            icon: mockClient.icon,
+            contractStart: mockClient.contract_start,
+            contractEnd: mockClient.contract_end,
+            statusTags: mockClient.status_tags,
+            usesCoupon: mockClient.uses_coupon,
+            publishesNews: mockClient.publishes_news,
+            usesReservation: mockClient.uses_reservation,
+            phoneNumber: mockClient.phone_number,
+            naverPlaceUrl: mockClient.naver_place_url
+          }
+        },
+        { status: 200, headers: { 'Content-Type': 'application/json' } }
       );
     }
     
     console.log("찾은 클라이언트:", client);
 
-    if (!client.naverPlaceUrl) {
+    if (!client.naver_place_url) {
       console.log("네이버 플레이스 URL이 없음");
       return NextResponse.json(
         { success: false, error: '네이버 플레이스 URL이 설정되어 있지 않습니다.' },
@@ -127,80 +88,22 @@ export async function POST(
     
     // 네이버 URL 유효성 검사 (place.naver.com 또는 naver.me 형식 모두 지원)
     const isValidNaverUrl = 
-      client.naverPlaceUrl.includes('place.naver.com') || 
-      client.naverPlaceUrl.includes('naver.me');
+      client.naver_place_url.includes('place.naver.com') || 
+      client.naver_place_url.includes('naver.me');
       
     if (!isValidNaverUrl) {
-      console.log("유효하지 않은 네이버 URL:", client.naverPlaceUrl);
+      console.log("유효하지 않은 네이버 URL:", client.naver_place_url);
       return NextResponse.json(
         { success: false, error: '유효한 네이버 플레이스 URL이 아닙니다.' },
         { status: 400, headers: { 'Content-Type': 'application/json' } }
       );
     }
     
-    // 4. 크롤링 시뮬레이션 - 실제 구현 시 Playwright 사용 필요
+    // 크롤링 시뮬레이션 - 실제 구현 시 Playwright 사용 필요
     const now = new Date();
     console.log("크롤링 시뮬레이션 시작 시간:", now.toISOString());
     
-    // 5. 광고주 정보 업데이트 (직접 업데이트 처리)
-    let updatedClient;
-    try {
-      const updatedClientResult = await updateClientFromCrawlData(client.id, {
-        usesCoupon: true,        // 항상 true로 업데이트
-        publishesNews: true,     // 항상 true로 업데이트
-        usesReservation: true    // 항상 true로 업데이트
-      });
-      
-      if (updatedClientResult && updatedClientResult.length > 0) {
-        updatedClient = updatedClientResult[0];
-      } else {
-        // DB 업데이트 실패 시 직접 객체 생성
-        updatedClient = {
-          ...client,
-          usesCoupon: true,
-          publishesNews: true,
-          usesReservation: true,
-          statusTags: [...(client.statusTags || []), '크롤링 완료'].filter((tag, index, self) => 
-            self.indexOf(tag) === index
-          )
-        };
-      }
-    } catch (updateError) {
-      console.error("클라이언트 업데이트 오류:", updateError);
-      // 오류 발생 시 직접 객체 생성
-      updatedClient = {
-        ...client,
-        usesCoupon: true,
-        publishesNews: true,
-        usesReservation: true,
-        statusTags: [...(client.statusTags || []), '크롤링 완료'].filter((tag, index, self) => 
-          self.indexOf(tag) === index
-        )
-      };
-    }
-    
-    // API 응답을 위한 클라이언트 정보 포맷팅
-    const clientResponse = {
-      id: String(updatedClient.id),
-      name: updatedClient.name,
-      icon: updatedClient.icon || '🏢',
-      contractStart: updatedClient.contractStart instanceof Date 
-        ? updatedClient.contractStart.toISOString() 
-        : (typeof updatedClient.contractStart === 'string' ? updatedClient.contractStart : ''),
-      contractEnd: updatedClient.contractEnd instanceof Date 
-        ? updatedClient.contractEnd.toISOString() 
-        : (typeof updatedClient.contractEnd === 'string' ? updatedClient.contractEnd : ''),
-      statusTags: updatedClient.statusTags || ['정상', '크롤링 완료'],
-      usesCoupon: updatedClient.usesCoupon || false,
-      publishesNews: updatedClient.publishesNews || false,
-      usesReservation: updatedClient.usesReservation || false,
-      phoneNumber: updatedClient.phoneNumber || '',
-      naverPlaceUrl: updatedClient.naverPlaceUrl || '',
-    };
-    
-    console.log("업데이트된 클라이언트 정보:", clientResponse);
-    
-    // 6. 크롤링된 외부 데이터 (모의 데이터)
+    // 크롤링된 외부 데이터 (모의 데이터)
     const externalData = {
       lastScrapedAt: now.toISOString(),
       industry: '음식점 > 카페/디저트',
@@ -210,63 +113,111 @@ export async function POST(
       keywords: ['아늑한', '데이트', '디저트', '커피맛집', '브런치']
     };
     
-    // 7. 외부 데이터 DB에 저장 (보호 로직 추가)
-    try {
-      await updateClientExternalData(client.id, {
-        industry: externalData.industry,
-        coupon: externalData.coupon,
-        news: externalData.news,
-        reservation: externalData.reservation,
-        keywords: externalData.keywords
-      });
-    } catch (externalDataError) {
-      console.error("외부 데이터 저장 오류:", externalDataError);
-      // 오류 발생 시 계속 진행 (비필수 작업)
+    // 광고주 정보 업데이트
+    // 기존 상태 태그에 '크롤링 완료' 추가 (중복 방지)
+    const updatedStatusTags = [...(client.status_tags || [])];
+    if (!updatedStatusTags.includes('크롤링 완료')) {
+      updatedStatusTags.push('크롤링 완료');
     }
     
-    console.log("생성된 외부 데이터:", externalData);
+    // Supabase에 업데이트
+    const { data: updatedClient, error: updateError } = await supabase
+      .from('clients')
+      .update({
+        uses_coupon: true,
+        publishes_news: true,
+        uses_reservation: true,
+        status_tags: updatedStatusTags,
+        updated_at: now.toISOString()
+      })
+      .eq('id', clientId)
+      .select()
+      .single();
     
-    // 8. 성공 응답 반환
-    const response = { 
-      success: true, 
-      message: '네이버 플레이스에서 정보를 성공적으로 가져왔습니다.',
-      data: externalData,
-      client: clientResponse
-    };
+    if (updateError) {
+      console.error("클라이언트 업데이트 오류:", updateError);
+      return NextResponse.json(
+        { success: false, error: '광고주 정보 업데이트에 실패했습니다.' },
+        { status: 500, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
     
-    console.log("반환할 응답:", response);
-    
-    // 9. 전체 광고주 목록도 함께 보내기 (보호 로직 추가)
-    let allClients: any[] = [];
+    // 외부 데이터 저장
     try {
-      if (db.query?.clients?.findMany) {
-        allClients = await db.query.clients.findMany({
-          orderBy: (clientsTable: any, { desc }: { desc: any }) => [desc(clientsTable.createdAt)]
-        });
-      } else {
-        // 로컬 스토리지에서 데이터 가져오기 시도
-        if (typeof window !== 'undefined') {
-          const storedClients = localStorage.getItem('wizweblast_clients');
-          if (storedClients) {
-            allClients = JSON.parse(storedClients);
-          }
+      // 기존 외부 데이터 확인
+      const { data: existingData } = await supabase
+        .from('client_external_data')
+        .select('*')
+        .eq('client_id', clientId)
+        .maybeSingle();
+      
+      if (existingData) {
+        // 기존 데이터 업데이트
+        const { error: updateExtError } = await supabase
+          .from('client_external_data')
+          .update({
+            platform: 'naver_place',
+            source_url: client.naver_place_url,
+            scraped_data: externalData,
+            scraped_at: now.toISOString()
+          })
+          .eq('client_id', clientId);
+          
+        if (updateExtError) {
+          console.error("외부 데이터 업데이트 오류:", updateExtError);
         }
-        
-        if (!allClients || allClients.length === 0) {
-          // 모의 데이터
-          allClients = [updatedClient];
+      } else {
+        // 새 데이터 삽입
+        const { error: insertExtError } = await supabase
+          .from('client_external_data')
+          .insert({
+            client_id: clientId,
+            platform: 'naver_place',
+            source_url: client.naver_place_url,
+            scraped_data: externalData,
+            scraped_at: now.toISOString()
+          });
+          
+        if (insertExtError) {
+          console.error("외부 데이터 삽입 오류:", insertExtError);
         }
       }
-    } catch (findManyError) {
-      console.error("전체 광고주 목록 조회 오류:", findManyError);
-      // 오류 발생 시 현재 클라이언트만 포함
-      allClients = [updatedClient];
+    } catch (externalDataError) {
+      console.error("외부 데이터 저장 오류:", externalDataError);
+      // 이 오류는 무시하고 계속 진행 (비필수 작업)
+    }
+    
+    // API 응답을 위한 클라이언트 정보 포맷팅 (camelCase로 변환)
+    const clientResponse = {
+      id: String(updatedClient.id),
+      name: updatedClient.name,
+      icon: updatedClient.icon || '🏢',
+      contractStart: updatedClient.contract_start || '',
+      contractEnd: updatedClient.contract_end || '',
+      statusTags: updatedClient.status_tags || ['정상', '크롤링 완료'],
+      usesCoupon: updatedClient.uses_coupon || false,
+      publishesNews: updatedClient.publishes_news || false,
+      usesReservation: updatedClient.uses_reservation || false,
+      phoneNumber: updatedClient.phone_number || '',
+      naverPlaceUrl: updatedClient.naver_place_url || '',
+    };
+    
+    console.log("업데이트된 클라이언트 정보:", clientResponse);
+    
+    // 전체 광고주 목록 조회
+    const { data: allClients = [], error: listError } = await supabase
+      .from('clients')
+      .select('*')
+      .order('created_at', { ascending: false });
+    
+    if (listError) {
+      console.error("전체 광고주 목록 조회 오류:", listError);
     }
     
     // API 응답 데이터 포맷팅 (camelCase로 통일)
-    const formattedClients = allClients.map((client: any) => {
+    const formattedClients = (allClients || []).map((client: any) => {
       // 현재 업데이트한 클라이언트는 최신 상태로 교체
-      if (client.id === updatedClient.id || String(client.id) === String(updatedClient.id)) {
+      if (client.id === updatedClient.id) {
         return clientResponse;
       }
       
@@ -275,32 +226,25 @@ export async function POST(
         id: String(client.id),
         name: client.name,
         icon: client.icon || '🏢',
-        contractStart: client.contractStart instanceof Date 
-          ? client.contractStart.toISOString() 
-          : (typeof client.contractStart === 'string' ? client.contractStart : ''),
-        contractEnd: client.contractEnd instanceof Date 
-          ? client.contractEnd.toISOString() 
-          : (typeof client.contractEnd === 'string' ? client.contractEnd : ''),
-        statusTags: client.statusTags || ['정상'],
-        usesCoupon: client.usesCoupon || false,
-        publishesNews: client.publishesNews || false, 
-        usesReservation: client.usesReservation || false,
-        phoneNumber: client.phoneNumber || '',
-        naverPlaceUrl: client.naverPlaceUrl || '',
+        contractStart: client.contract_start || '',
+        contractEnd: client.contract_end || '',
+        statusTags: client.status_tags || ['정상'],
+        usesCoupon: client.uses_coupon || false,
+        publishesNews: client.publishes_news || false, 
+        usesReservation: client.uses_reservation || false,
+        phoneNumber: client.phone_number || '',
+        naverPlaceUrl: client.naver_place_url || '',
       };
     });
     
-    // 로컬 스토리지 업데이트 시도 (브라우저 환경에서만)
-    if (typeof window !== 'undefined') {
-      try {
-        localStorage.setItem('wizweblast_clients', JSON.stringify(formattedClients));
-        console.log("로컬 스토리지 업데이트 완료");
-      } catch (storageError) {
-        console.error("로컬 스토리지 업데이트 오류:", storageError);
-      }
-    }
-    
-    return NextResponse.json({...response, allClients: formattedClients}, { 
+    // 성공 응답 반환
+    return NextResponse.json({
+      success: true, 
+      message: '네이버 플레이스에서 정보를 성공적으로 가져왔습니다.',
+      data: externalData,
+      client: clientResponse,
+      allClients: formattedClients
+    }, { 
       headers: { 'Content-Type': 'application/json' } 
     });
     

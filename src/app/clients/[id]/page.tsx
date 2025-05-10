@@ -27,6 +27,18 @@ export default function ClientDetailPage() {
       setLoading(true);
       
       try {
+        // 로컬 스토리지에서 클라이언트 데이터 확인
+        const localClientData = localStorage.getItem(`wizweblast_client_${clientId}`);
+        if (localClientData) {
+          const parsedClientData = JSON.parse(localClientData);
+          console.log("로컬 스토리지에서 불러온 클라이언트 데이터:", parsedClientData);
+          setClient(parsedClientData);
+          setError(null);
+          setLoading(false);
+          return;
+        }
+        
+        // 로컬 스토리지에 없으면 API 호출
         const response = await fetch(`/api/clients/${clientId}`);
         
         if (!response.ok) {
@@ -74,13 +86,37 @@ export default function ClientDetailPage() {
   const handleContractUpdate = (start?: string, end?: string) => {
     if (!client) return;
     
-    // 실제로는 API 호출
-    // 현재는 클라이언트에서 상태 업데이트
-    setClient({
+    // 업데이트된 클라이언트 정보
+    const updatedClient = {
       ...client,
       contractStart: start || client.contractStart,
       contractEnd: end || client.contractEnd
-    });
+    };
+    
+    // 클라이언트 상태 업데이트
+    setClient(updatedClient);
+    
+    // 로컬 스토리지에 업데이트된 정보 저장
+    try {
+      // 단일 클라이언트 데이터 저장
+      localStorage.setItem(`wizweblast_client_${client.id}`, JSON.stringify(updatedClient));
+      
+      // 목록에 있는 경우 해당 데이터도 업데이트
+      const storedClientsJSON = localStorage.getItem('wizweblast_clients');
+      if (storedClientsJSON) {
+        const storedClients = JSON.parse(storedClientsJSON);
+        if (Array.isArray(storedClients)) {
+          const updatedClients = storedClients.map(c => 
+            c.id === client.id ? updatedClient : c
+          );
+          localStorage.setItem('wizweblast_clients', JSON.stringify(updatedClients));
+        }
+      }
+      
+      console.log("계약 정보가 로컬 스토리지에 저장되었습니다.");
+    } catch (storageErr) {
+      console.error("로컬 스토리지 저장 실패:", storageErr);
+    }
     
     alert('계약 정보가 업데이트 되었습니다! 👍');
   };

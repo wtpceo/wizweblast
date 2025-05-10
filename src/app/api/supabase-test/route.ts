@@ -1,71 +1,79 @@
 import { NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { createServerClient } from '../../../lib/supabase';
 import fs from 'fs';
 import path from 'path';
 
 // Supabase 테스트 API
-export async function GET(request: Request) {
+export async function GET() {
   try {
-    // 테이블 존재 여부 확인
-    const { data: tablesData, error: tablesError } = await supabase
-      .from('pg_tables')
-      .select('tablename')
-      .eq('schemaname', 'public');
+    const supabase = createServerClient();
     
-    if (tablesError) {
-      return NextResponse.json({ 
-        error: '테이블 목록 조회에 실패했습니다.', 
-        details: tablesError 
-      }, { status: 500 });
-    }
+    // Supabase에서 현재 날짜/시간 가져오기 (연결 테스트)
+    const { data, error } = await supabase.from('_test').select('*').limit(1);
     
-    const tables = tablesData.map(t => t.tablename);
-    
-    // 각 테이블의 레코드 수 확인
-    const tablesInfo = [];
-    
-    for (const table of tables) {
-      try {
-        const { count, error } = await supabase
-          .from(table)
-          .select('*', { count: 'exact', head: true });
+    if (error) {
+      // 테이블이 없는 경우 raw query로 현재 시간만 가져오기
+      const { data: timeData, error: timeError } = await supabase.rpc('get_current_timestamp');
+      
+      if (timeError) {
+        // RPC 함수가 없는 경우, 직접 SQL 실행
+        const { data: rawData, error: rawError } = await supabase
+          .from('_dummy_query')
+          .select('now()')
+          .limit(1);
         
-        tablesInfo.push({
-          table,
-          recordCount: error ? 'Error' : count,
-          error: error ? error.message : null
-        });
-      } catch (err) {
-        tablesInfo.push({
-          table,
-          recordCount: 'Error',
-          error: err instanceof Error ? err.message : '알 수 없는 오류'
+        if (rawError) {
+          // 마지막 방법: 시스템 상태 확인
+          const { data: systemData, error: systemError } = await supabase
+            .from('pg_stat_activity')
+            .select('datname')
+            .limit(1);
+          
+          if (systemError) {
+            return NextResponse.json({ 
+              success: false, 
+              error: systemError.message,
+              message: '연결 실패: 데이터베이스에 접근할 수 없습니다.' 
+            }, { status: 500 });
+          }
+          
+          return NextResponse.json({ 
+            success: true, 
+            connection: 'system_tables_only',
+            data: systemData,
+            message: '제한된 연결 성공: 시스템 테이블만 접근 가능합니다.' 
+          });
+        }
+        
+        return NextResponse.json({ 
+          success: true, 
+          connection: 'raw_query',
+          message: '기본 SQL 쿼리 가능' 
         });
       }
+      
+      return NextResponse.json({ 
+        success: true, 
+        connection: 'rpc',
+        timestamp: timeData,
+        message: 'RPC 함수 호출 가능' 
+      });
     }
     
-    // RLS 정책 확인
-    const { data: policiesData, error: policiesError } = await supabase
-      .rpc('list_policies');
-    
-    // Supabase 클라이언트 인증 상태 확인
-    const { data: authData, error: authError } = await supabase.auth.getSession();
-    
-    return NextResponse.json({
-      status: 'success',
-      database: {
-        tables: tablesInfo,
-        policies: policiesError ? { error: policiesError.message } : policiesData
-      },
-      auth: {
-        session: authError ? { error: authError.message } : authData
-      }
-    });
-  } catch (error) {
-    console.error('Supabase 테스트 API 오류:', error);
+    // 정상 연결
     return NextResponse.json({ 
-      error: '서버 오류가 발생했습니다.', 
-      details: error instanceof Error ? error.message : error 
+      success: true, 
+      connection: 'full',
+      data,
+      message: '정상 연결됨: 테이블 쿼리 가능' 
+    });
+    
+  } catch (error) {
+    console.error('Supabase 연결 오류:', error);
+    return NextResponse.json({ 
+      success: false, 
+      error: error instanceof Error ? error.message : '알 수 없는 오류',
+      message: '서버 오류: Supabase 클라이언트 생성 실패' 
     }, { status: 500 });
   }
 }
@@ -73,6 +81,7 @@ export async function GET(request: Request) {
 // Supabase 테이블 생성 테스트
 export async function POST(request: Request) {
   try {
+    const supabase = createServerClient();
     const body = await request.json();
     const { action } = body;
     

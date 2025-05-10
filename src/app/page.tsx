@@ -4,6 +4,7 @@ import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useUser, SignInButton, SignUpButton } from '@clerk/nextjs';
 import { Header } from '@/components/Header';
+import Link from 'next/link';
 
 export default function Home() {
   const router = useRouter();
@@ -79,12 +80,18 @@ export default function Home() {
             </div>
           </div>
 
-          <div className="flex justify-center gap-4">
+          <div className="flex justify-center gap-4 mb-8">
             <SignInButton mode="modal">
               <button className="bg-[#2251D1] text-white px-8 py-3 rounded-lg hover:bg-[#1A41B6] transition-all duration-200 flex items-center text-lg font-medium shadow-sm hover:shadow">
                 <span className="mr-2">🔑</span> 지금 시작하기
               </button>
             </SignInButton>
+          </div>
+          
+          <div className="flex justify-center gap-4 mt-12 text-sm">
+            <Link href="/clients" className="text-gray-600 hover:text-[#2251D1]">광고주 목록</Link>
+            <span className="text-gray-400">|</span>
+            <Link href="/supabase-view" className="text-gray-600 hover:text-[#2251D1]">Supabase 데이터 뷰어</Link>
           </div>
         </div>
       </div>

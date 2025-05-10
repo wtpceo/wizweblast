@@ -3,6 +3,88 @@
 -- UUID 확장 활성화
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
+-- 기존 테이블 삭제 (있는 경우)
+DROP TABLE IF EXISTS comments;
+DROP TABLE IF EXISTS posts;
+DROP TABLE IF EXISTS users;
+
+-- 다른 객체들과 함께 role 타입 삭제 (CASCADE 옵션 사용)
+-- DETAIL: column role of table profiles depends on type role
+DROP TYPE IF EXISTS role CASCADE;
+
+-- role 타입 생성
+CREATE TYPE role AS ENUM ('user', 'admin');
+
+-- 사용자 테이블
+CREATE TABLE users (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  email TEXT NOT NULL UNIQUE,
+  name TEXT,
+  password TEXT NOT NULL,
+  role role NOT NULL DEFAULT 'user',
+  created_at TIMESTAMP NOT NULL DEFAULT now(),
+  updated_at TIMESTAMP NOT NULL DEFAULT now()
+);
+
+-- 게시물 테이블
+CREATE TABLE posts (
+  id SERIAL PRIMARY KEY,
+  title TEXT NOT NULL,
+  content TEXT NOT NULL,
+  published BOOLEAN NOT NULL DEFAULT false,
+  author_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  created_at TIMESTAMP NOT NULL DEFAULT now(),
+  updated_at TIMESTAMP NOT NULL DEFAULT now()
+);
+
+-- 댓글 테이블
+CREATE TABLE comments (
+  id SERIAL PRIMARY KEY,
+  content TEXT NOT NULL,
+  post_id INTEGER NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
+  author_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  created_at TIMESTAMP NOT NULL DEFAULT now(),
+  updated_at TIMESTAMP NOT NULL DEFAULT now()
+);
+
+-- updated_at 자동 갱신 트리거 함수
+CREATE OR REPLACE FUNCTION update_updated_at_column()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.updated_at = now();
+  RETURN NEW;
+END;
+$$ language 'plpgsql';
+
+-- 트리거 설정
+CREATE TRIGGER update_users_updated_at
+BEFORE UPDATE ON users
+FOR EACH ROW
+EXECUTE PROCEDURE update_updated_at_column();
+
+CREATE TRIGGER update_posts_updated_at
+BEFORE UPDATE ON posts
+FOR EACH ROW
+EXECUTE PROCEDURE update_updated_at_column();
+
+CREATE TRIGGER update_comments_updated_at
+BEFORE UPDATE ON comments
+FOR EACH ROW
+EXECUTE PROCEDURE update_updated_at_column();
+
+-- 인덱스 생성
+CREATE INDEX idx_posts_author_id ON posts(author_id);
+CREATE INDEX idx_comments_post_id ON comments(post_id);
+CREATE INDEX idx_comments_author_id ON comments(author_id);
+
+-- 연결 테스트용 함수
+CREATE OR REPLACE FUNCTION get_current_timestamp()
+RETURNS TIMESTAMP AS $$
+BEGIN
+  RETURN now();
+END;
+$$ language 'plpgsql';
+
 -- 1. clients (광고주) 테이블
 CREATE TABLE IF NOT EXISTS clients (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),

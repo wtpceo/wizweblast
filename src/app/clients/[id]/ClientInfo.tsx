@@ -181,10 +181,11 @@ export function ClientInfo({ client, onContractUpdate }: ClientInfoProps) {
       if (data.success) {
         console.log("API 호출 성공, 클라이언트 데이터:", data.client);
         
-        // 로컬 스토리지에 업데이트된 클라이언트 정보 저장
+        // 로컬 스토리지에 업데이트된 클라이언트 정보 저장 (선택적)
         if (data.allClients && data.allClients.length > 0) {
           try {
             localStorage.setItem('wizweblast_clients', JSON.stringify(data.allClients));
+            localStorage.setItem(`wizweblast_client_${client.id}`, JSON.stringify(data.client));
             console.log("클라이언트 데이터가 로컬 스토리지에 저장되었습니다.");
           } catch (storageErr) {
             console.error("로컬 스토리지 저장 실패:", storageErr);
@@ -250,6 +251,157 @@ export function ClientInfo({ client, onContractUpdate }: ClientInfoProps) {
     }
   };
   
+  // 서비스 이용 현황 편집 상태
+  const [isServiceEditing, setIsServiceEditing] = useState(false);
+  const [services, setServices] = useState({
+    usesCoupon: client.usesCoupon,
+    publishesNews: client.publishesNews,
+    usesReservation: client.usesReservation
+  });
+  
+  // 업종 정보 상태
+  const [category, setCategory] = useState<string>('');
+  const [existingCategory, setExistingCategory] = useState<boolean>(false);
+
+  // 업종 정보 로컬 스토리지에서 불러오기
+  useEffect(() => {
+    try {
+      const savedCategory = localStorage.getItem(`wizweblast_client_${client.id}_category`);
+      if (savedCategory) {
+        setCategory(savedCategory);
+        setExistingCategory(true);
+      }
+    } catch (e) {
+      console.error('업종 정보 로드 실패:', e);
+    }
+  }, [client.id]);
+
+  // 키보드 단축키 처리 핸들러 추가
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // 수정 모드에서만 단축키 활성화
+      if (isServiceEditing) {
+        // Alt+S: 저장
+        if (e.altKey && e.key === 's') {
+          e.preventDefault();
+          handleSaveServices();
+        }
+        // Esc: 취소
+        else if (e.key === 'Escape') {
+          e.preventDefault();
+          setIsServiceEditing(false);
+        }
+      }
+      
+      // 계약 정보 수정 모드
+      if (isEditing) {
+        // Alt+S: 저장
+        if (e.altKey && e.key === 's') {
+          e.preventDefault();
+          handleSaveContract();
+        }
+        // Esc: 취소
+        else if (e.key === 'Escape') {
+          e.preventDefault();
+          setIsEditing(false);
+        }
+      }
+    };
+
+    // 이벤트 리스너 등록
+    window.addEventListener('keydown', handleKeyDown);
+    
+    // 컴포넌트 언마운트 시 이벤트 리스너 제거
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isServiceEditing, isEditing]);
+
+  // 서비스 이용 현황 저장
+  const handleSaveServices = async () => {
+    try {
+      // 업종 정보 저장
+      if (category.trim()) {
+        localStorage.setItem(`wizweblast_client_${client.id}_category`, category);
+        setExistingCategory(true);
+      }
+
+      // 서비스 정보 업데이트
+      const updatedClient = {
+        ...client,
+        usesCoupon: services.usesCoupon,
+        publishesNews: services.publishesNews,
+        usesReservation: services.usesReservation
+      };
+
+      // 로컬 스토리지 클라이언트 업데이트
+      localStorage.setItem(`wizweblast_client_${client.id}`, JSON.stringify(updatedClient));
+
+      // 목록에 있는 경우 해당 데이터도 업데이트
+      const storedClientsJSON = localStorage.getItem('wizweblast_clients');
+      if (storedClientsJSON) {
+        const storedClients = JSON.parse(storedClientsJSON);
+        if (Array.isArray(storedClients)) {
+          const updatedClients = storedClients.map(c => 
+            c.id === client.id ? { 
+              ...c, 
+              usesCoupon: services.usesCoupon,
+              publishesNews: services.publishesNews,
+              usesReservation: services.usesReservation
+            } : c
+          );
+          localStorage.setItem('wizweblast_clients', JSON.stringify(updatedClients));
+        }
+      }
+
+      console.log('서비스 정보가 로컬 스토리지에 저장되었습니다.');
+
+      // API 요청 시도 (실패해도 로컬 변경 사항은 유지)
+      try {
+        const response = await fetch(`/api/clients/${client.id}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            name: client.name,
+            contractStart: client.contractStart,
+            contractEnd: client.contractEnd,
+            icon: client.icon,
+            usesCoupon: services.usesCoupon,
+            publishesNews: services.publishesNews,
+            usesReservation: services.usesReservation,
+            phoneNumber: client.phoneNumber,
+            naverPlaceUrl: client.naverPlaceUrl
+          })
+        });
+
+        if (!response.ok) {
+          console.warn('API 저장 실패하였으나 로컬 저장은 성공했습니다.');
+        } else {
+          console.log('API 저장도 성공했습니다.');
+        }
+      } catch (apiError) {
+        console.warn('API 저장 중 오류 발생:', apiError);
+        console.log('로컬 저장은 성공했습니다.');
+      }
+
+      // 편집 모드 종료
+      setIsServiceEditing(false);
+      
+      // 성공 메시지
+      alert('서비스 이용 정보가 업데이트 되었습니다! 👍');
+      
+      // 페이지 새로고침 (API 저장 여부와 상관없이 로컬 데이터로 표시)
+      setTimeout(() => {
+        window.location.reload();
+      }, 1000);
+    } catch (error) {
+      console.error('서비스 정보 저장 실패:', error);
+      alert('서비스 정보 저장 중 오류가 발생했습니다. 다시 시도해주세요.');
+    }
+  };
+  
   return (
     <div className="bg-white rounded-lg shadow-sm overflow-hidden">
       {/* 섹션 헤더 */}
@@ -308,6 +460,8 @@ export function ClientInfo({ client, onContractUpdate }: ClientInfoProps) {
               <button 
                 onClick={() => setIsEditing(true)} 
                 className="text-xs bg-[#EEF2FB] text-[#2251D1] px-2 py-1 rounded hover:bg-[#DCE4F9] transition-colors"
+                aria-label="계약 정보 수정"
+                title="수정하기 (편집 모드에서 Alt+S로 저장, Esc로 취소)"
               >
                 수정
               </button>
@@ -316,12 +470,16 @@ export function ClientInfo({ client, onContractUpdate }: ClientInfoProps) {
                 <button 
                   onClick={() => setIsEditing(false)} 
                   className="text-xs bg-gray-200 text-gray-700 px-2 py-1 rounded hover:bg-gray-300 transition-colors"
+                  aria-label="계약 정보 수정 취소"
+                  title="취소 (Esc)"
                 >
                   취소
                 </button>
                 <button 
                   onClick={handleSaveContract} 
                   className="text-xs bg-[#2251D1] text-white px-2 py-1 rounded hover:bg-[#1A41B6] transition-colors"
+                  aria-label="계약 정보 저장"
+                  title="저장 (Alt+S)"
                 >
                   저장
                 </button>
@@ -445,22 +603,127 @@ export function ClientInfo({ client, onContractUpdate }: ClientInfoProps) {
         
         {/* 서비스 이용 현황 */}
         <div>
-          <h3 className="text-sm font-semibold text-gray-500 mb-3">서비스 이용 현황</h3>
-          
-          <div className="flex flex-wrap gap-2">
-            <div className={`text-xs px-3 py-1.5 rounded-full flex items-center ${client.usesCoupon ? 'bg-[#E3F2FD] text-[#2196F3]' : 'bg-gray-100 text-gray-500'}`}>
-              <span className="mr-1">🎟️</span>
-              {client.usesCoupon ? '쿠폰 사용중' : '쿠폰 미사용'}
-            </div>
-            <div className={`text-xs px-3 py-1.5 rounded-full flex items-center ${client.publishesNews ? 'bg-[#E8F5E9] text-[#4CAF50]' : 'bg-gray-100 text-gray-500'}`}>
-              <span className="mr-1">📰</span>
-              {client.publishesNews ? '소식 발행중' : '소식 미발행'}
-            </div>
-            <div className={`text-xs px-3 py-1.5 rounded-full flex items-center ${client.usesReservation ? 'bg-[#F3E5F5] text-[#9C27B0]' : 'bg-gray-100 text-gray-500'}`}>
-              <span className="mr-1">📅</span>
-              {client.usesReservation ? '예약 사용중' : '예약 미사용'}
-            </div>
+          <div className="flex justify-between items-center mb-3">
+            <h3 className="text-sm font-semibold text-gray-500">서비스 이용 현황</h3>
+            {!isServiceEditing ? (
+              <button 
+                onClick={() => setIsServiceEditing(true)} 
+                className="text-xs bg-[#EEF2FB] text-[#2251D1] px-2 py-1 rounded hover:bg-[#DCE4F9] transition-colors"
+                aria-label="서비스 이용 현황 수정"
+                title="수정하기 (편집 모드에서 Alt+S로 저장, Esc로 취소)"
+              >
+                수정
+              </button>
+            ) : (
+              <div className="flex space-x-2">
+                <button 
+                  onClick={() => setIsServiceEditing(false)} 
+                  className="text-xs bg-gray-200 text-gray-700 px-2 py-1 rounded hover:bg-gray-300 transition-colors"
+                  aria-label="서비스 이용 현황 수정 취소"
+                  title="취소 (Esc)"
+                >
+                  취소
+                </button>
+                <button 
+                  onClick={handleSaveServices} 
+                  className="text-xs bg-[#2251D1] text-white px-2 py-1 rounded hover:bg-[#1A41B6] transition-colors"
+                  aria-label="서비스 이용 현황 저장"
+                  title="저장 (Alt+S)"
+                >
+                  저장
+                </button>
+              </div>
+            )}
           </div>
+          
+          {isServiceEditing ? (
+            <div className="space-y-4 mb-4">
+              {/* 업종 정보 */}
+              <div>
+                <label htmlFor="category" className="block text-sm text-gray-600 mb-1">
+                  업종 정보
+                </label>
+                <input
+                  id="category"
+                  type="text"
+                  value={category}
+                  onChange={(e) => setCategory(e.target.value)}
+                  placeholder="예: 요리주점, 한식, 카페 등"
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#2251D1]"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  업체의 카테고리를 입력하세요 (예: 요리주점, 한식, 카페 등)
+                </p>
+              </div>
+              
+              {/* 쿠폰 사용 */}
+              <div className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  id="usesCoupon"
+                  checked={services.usesCoupon}
+                  onChange={(e) => setServices({...services, usesCoupon: e.target.checked})}
+                  className="h-4 w-4 text-[#2251D1] rounded border-gray-300 focus:ring-[#2251D1]"
+                />
+                <label htmlFor="usesCoupon" className="text-sm text-gray-600">
+                  쿠폰 사용
+                </label>
+              </div>
+              
+              {/* 소식 발행 */}
+              <div className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  id="publishesNews"
+                  checked={services.publishesNews}
+                  onChange={(e) => setServices({...services, publishesNews: e.target.checked})}
+                  className="h-4 w-4 text-[#2251D1] rounded border-gray-300 focus:ring-[#2251D1]"
+                />
+                <label htmlFor="publishesNews" className="text-sm text-gray-600">
+                  소식 발행
+                </label>
+              </div>
+              
+              {/* 예약 사용 */}
+              <div className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  id="usesReservation"
+                  checked={services.usesReservation}
+                  onChange={(e) => setServices({...services, usesReservation: e.target.checked})}
+                  className="h-4 w-4 text-[#2251D1] rounded border-gray-300 focus:ring-[#2251D1]"
+                />
+                <label htmlFor="usesReservation" className="text-sm text-gray-600">
+                  예약 시스템 사용
+                </label>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {/* 업종 표시 */}
+              {existingCategory && (
+                <div className="mb-3">
+                  <span className="text-gray-600">업종:</span>
+                  <span className="font-medium ml-2">{category}</span>
+                </div>
+              )}
+              
+              <div className="flex flex-wrap gap-2">
+                <div className={`text-xs px-3 py-1.5 rounded-full flex items-center ${client.usesCoupon ? 'bg-[#E3F2FD] text-[#2196F3]' : 'bg-gray-100 text-gray-500'}`}>
+                  <span className="mr-1">🎟️</span>
+                  {client.usesCoupon ? '쿠폰 사용중' : '쿠폰 미사용'}
+                </div>
+                <div className={`text-xs px-3 py-1.5 rounded-full flex items-center ${client.publishesNews ? 'bg-[#E8F5E9] text-[#4CAF50]' : 'bg-gray-100 text-gray-500'}`}>
+                  <span className="mr-1">📰</span>
+                  {client.publishesNews ? '소식 발행중' : '소식 미발행'}
+                </div>
+                <div className={`text-xs px-3 py-1.5 rounded-full flex items-center ${client.usesReservation ? 'bg-[#F3E5F5] text-[#9C27B0]' : 'bg-gray-100 text-gray-500'}`}>
+                  <span className="mr-1">📅</span>
+                  {client.usesReservation ? '예약 사용중' : '예약 미사용'}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
         
         {/* 상태 태그 */}

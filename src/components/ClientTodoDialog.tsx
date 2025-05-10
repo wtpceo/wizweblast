@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Client } from '@/lib/mock-data';
 
 interface ClientTodoDialogProps {
@@ -14,6 +14,45 @@ export function ClientTodoDialog({ client, isOpen, onClose, onSave }: ClientTodo
   const [content, setContent] = useState('');
   const [assignedTo, setAssignedTo] = useState('');
   
+  // 입력 필드 ref 추가
+  const contentInputRef = useRef<HTMLInputElement>(null);
+  
+  // 다이얼로그가 열릴 때 content 입력 필드에 포커스
+  useEffect(() => {
+    if (isOpen && contentInputRef.current) {
+      setTimeout(() => {
+        contentInputRef.current?.focus();
+      }, 100);
+    }
+  }, [isOpen]);
+  
+  // 키보드 단축키 처리
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // 엔터키: 할 일 등록 (Alt키가 눌려있지 않을 때만)
+      if (e.key === 'Enter' && !e.altKey && content.trim() && assignedTo) {
+        // 입력 필드에서 발생한 이벤트가 아닐 때만 처리
+        if (!(e.target instanceof HTMLInputElement) && !(e.target instanceof HTMLTextAreaElement)) {
+          e.preventDefault();
+          handleSaveAction();
+        }
+      }
+      
+      // Esc: 다이얼로그 닫기
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+    
+    if (isOpen) {
+      window.addEventListener('keydown', handleKeyDown);
+    }
+    
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isOpen, content, assignedTo, onClose]);
+  
   // 담당자 목록 (실제로는 API에서 가져올 수 있음)
   const teamMembers = [
     { id: 'user1', name: '김민수', emoji: '👨‍💼' },
@@ -24,13 +63,28 @@ export function ClientTodoDialog({ client, isOpen, onClose, onSave }: ClientTodo
   
   if (!isOpen || !client) return null;
   
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+  // 할 일 저장 처리 함수
+  const handleSaveAction = () => {
     if (content.trim() && assignedTo) {
       onSave(client.id, content, assignedTo);
       setContent('');
       setAssignedTo('');
       onClose();
+    }
+  };
+  
+  // 폼 제출 핸들러
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    handleSaveAction();
+  };
+  
+  // 내용 입력 필드 키 이벤트 처리
+  const handleContentKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    // 엔터키 + 담당자 선택 완료 → 저장
+    if (e.key === 'Enter' && assignedTo) {
+      e.preventDefault();
+      handleSaveAction();
     }
   };
   
@@ -85,10 +139,12 @@ export function ClientTodoDialog({ client, isOpen, onClose, onSave }: ClientTodo
             </label>
             <input
               type="text"
+              ref={contentInputRef}
               className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-[#4CAF50] focus:border-transparent transition-all"
-              placeholder="구체적이고 명확한 할 일을 입력하세요"
+              placeholder="할 일을 입력한 후 Enter 키를 눌러 등록하세요"
               value={content}
               onChange={(e) => setContent(e.target.value)}
+              onKeyDown={handleContentKeyDown}
               required
             />
           </div>
@@ -131,7 +187,7 @@ export function ClientTodoDialog({ client, isOpen, onClose, onSave }: ClientTodo
           <div className="flex justify-between items-center">
             <div className="text-xs text-gray-500">
               {content.length > 0 && assignedTo
-                ? "모든 정보가 입력되었어요! 👍"
+                ? "모든 정보가 입력되었어요! 👍 (Enter 키로 등록)"
                 : "모든 항목을 입력해주세요"}
             </div>
             
@@ -140,6 +196,7 @@ export function ClientTodoDialog({ client, isOpen, onClose, onSave }: ClientTodo
                 type="button"
                 onClick={onClose}
                 className="bg-gray-200 hover:bg-gray-300 text-gray-800 py-2 px-4 rounded-lg transition-all hover:shadow flex items-center"
+                title="취소 (Esc)"
               >
                 <span className="mr-1">✕</span> 취소
               </button>
@@ -151,6 +208,7 @@ export function ClientTodoDialog({ client, isOpen, onClose, onSave }: ClientTodo
                     ? 'bg-[#4CAF50] hover:bg-[#3d8b40] text-white hover:translate-y-[-1px]'
                     : 'bg-gray-200 text-gray-500 cursor-not-allowed'
                 }`}
+                title="추가 (Enter)"
               >
                 <span className="mr-1">✓</span> 추가
               </button>
