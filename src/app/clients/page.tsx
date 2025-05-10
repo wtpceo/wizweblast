@@ -7,6 +7,7 @@ import { ClientTodoDialog } from '@/components/ClientTodoDialog';
 import { ClientRegisterDialog } from '@/components/ClientRegisterDialog';
 import { Client } from '@/lib/mock-data';  // 타입만 가져옵니다
 import Link from 'next/link';
+import { Header } from '@/components/Header';
 
 export default function ClientsPage() {
   const [clients, setClients] = useState<Client[]>([]);
@@ -50,6 +51,7 @@ export default function ClientsPage() {
           usesReservation: client.uses_reservation ?? false,
           phoneNumber: client.phone_number,
           naverPlaceUrl: client.naver_place_url,
+          statusTags: client.status_tags || ['정상'] // 기본 상태 태그 추가
         }));
         
         setClients(enhancedData);
@@ -83,7 +85,7 @@ export default function ClientsPage() {
     // 상태 필터링
     let matchesStatus = true;
     if (statusFilter !== 'all') {
-      matchesStatus = client.statusTags.includes(statusFilter);
+      matchesStatus = client.statusTags?.includes(statusFilter) ?? false;
     }
     
     // 추가 필터링 (쿠폰/소식/예약)
@@ -244,28 +246,24 @@ export default function ClientsPage() {
   
   return (
     <div className="min-h-screen bg-[#F9FAFD] pb-10">
-      {/* 상단 헤더 */}
-      <div className="bg-gradient-to-r from-[#2251D1] to-[#4169E1] text-white">
-        <div className="container mx-auto px-4 py-8">
-          <div className="flex justify-between items-center mb-2">
-            <h1 className="text-2xl font-bold flex items-center">
-              <span className="text-3xl mr-3">👥</span> 광고주 관리
-            </h1>
-            <div className="flex items-center gap-3">
-              <button
-                onClick={() => setRegisterDialogOpen(true)}
-                className="bg-white text-[#2251D1] px-4 py-2 rounded-lg hover:bg-opacity-90 transition-all duration-200 flex items-center text-sm font-medium shadow-sm hover:shadow"
-              >
-                <span className="mr-2">➕</span> 신규 광고주 등록
-              </button>
-              <Link href="/dashboard" className="bg-white text-[#2251D1] px-4 py-2 rounded-lg hover:bg-opacity-90 transition-all duration-200 flex items-center text-sm font-medium shadow-sm hover:shadow">
-                <span className="mr-2">📊</span> 대시보드로 돌아가기
-              </Link>
-            </div>
-          </div>
-          <p className="text-white text-opacity-90">광고주 정보를 확인하고 할 일이나 메모를 관리하세요.</p>
-        </div>
-      </div>
+      <Header
+        title="광고주 관리"
+        description="광고주 정보를 확인하고 할 일이나 메모를 관리하세요."
+        icon="👥"
+        actions={
+          <>
+            <button
+              onClick={() => setRegisterDialogOpen(true)}
+              className="bg-white text-[#2251D1] px-4 py-2 rounded-lg hover:bg-opacity-90 transition-all duration-200 flex items-center text-sm font-medium shadow-sm hover:shadow"
+            >
+              <span className="mr-2">➕</span> 신규 광고주 등록
+            </button>
+            <Link href="/dashboard" className="bg-white text-[#2251D1] px-4 py-2 rounded-lg hover:bg-opacity-90 transition-all duration-200 flex items-center text-sm font-medium shadow-sm hover:shadow">
+              <span className="mr-2">📊</span> 대시보드로 돌아가기
+            </Link>
+          </>
+        }
+      />
       
       <div className="container mx-auto px-4 py-6">
         {/* 팁 메시지 */}

@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { NoticeProvider } from "@/context/NoticeContext";
-import { AuthProvider } from '@/contexts/AuthContext';
+import { ClerkProvider } from '@clerk/nextjs';
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -29,11 +29,29 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <AuthProvider>
+        <ClerkProvider
+          appearance={{
+            elements: {
+              formButtonPrimary: 'bg-slate-500 hover:bg-slate-400',
+              footerActionLink: 'text-slate-500 hover:text-slate-400',
+            },
+            baseTheme: 'light',
+          }}
+          localization={{
+            signIn: {
+              title: '로그인',
+              subtitle: '계정에 로그인하세요',
+            },
+            signUp: {
+              title: '회원가입',
+              subtitle: '새 계정을 만드세요',
+            },
+          }}
+        >
           <NoticeProvider>
             {children}
           </NoticeProvider>
-        </AuthProvider>
+        </ClerkProvider>
       </body>
     </html>
   );

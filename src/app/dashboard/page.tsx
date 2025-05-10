@@ -1,10 +1,19 @@
+'use client';
+
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { useUser, SignInButton, SignUpButton } from '@clerk/nextjs';
 import { DashboardStats } from "@/components/DashboardStats";
 import { NoticeList } from "@/components/NoticeList";
 import { DashboardActions } from "@/components/DashboardActions";
 import { EmailVerification } from "@/components/EmailVerification";
 import { mockDashboardStats, mockNotices } from "@/lib/mock-data";
+import { Header } from '@/components/Header';
 
 export default function Dashboard() {
+  const router = useRouter();
+  const { isSignedIn, isLoaded } = useUser();
+
   // 임의의 재미있는 인사말 목록
   const greetings = [
     "오늘도 위즈하게 시작해볼까요? ✨",
@@ -17,28 +26,85 @@ export default function Dashboard() {
   // 랜덤 인사말 선택
   const randomGreeting = greetings[Math.floor(Math.random() * greetings.length)];
 
-  return (
-    <div className="min-h-screen bg-[#F9FAFD]">
-      {/* 상단 재미있는 웰컴 배너 */}
-      <div className="bg-gradient-to-r from-[#2251D1] to-[#4169E1] text-white py-3 px-4 text-center text-sm">
-        WIZ WORKS에 오신 것을 환영합니다! 새로운 기능들을 확인해보세요 🎉
+  // 로딩 중일 때 표시할 화면
+  if (!isLoaded) {
+    return (
+      <div className="min-h-screen bg-[#F9FAFD] flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-12 h-12 rounded-full border-4 border-[#2251D1] border-t-transparent animate-spin mb-4 mx-auto"></div>
+          <p className="text-lg text-[#2251D1] font-medium">로딩 중...</p>
+        </div>
       </div>
-      
-      <div className="container mx-auto px-4 py-8">
-        <div className="mb-8 flex flex-col md:flex-row md:items-end md:justify-between">
-          <div>
-            <h1 className="text-2xl font-bold mb-2 flex items-center">
-              <span className="mr-2">🌟</span> WIZ WORKS 대시보드
-            </h1>
-            <p className="text-gray-600">{randomGreeting}</p>
-          </div>
-          <div className="mt-4 md:mt-0">
-            <button className="wiz-btn flex items-center">
-              <span className="mr-2">🔄</span> 새로고침
-            </button>
+    );
+  }
+
+  // 로그인되지 않은 사용자를 위한 화면
+  if (!isSignedIn) {
+    return (
+      <div className="min-h-screen bg-[#F9FAFD]">
+        <Header
+          title="WIZ WORKS"
+          description="광고주 관리 시스템"
+          icon="🚀"
+          actions={
+            <div className="flex items-center gap-2">
+              <SignInButton mode="modal">
+                <button className="bg-white text-[#2251D1] px-4 py-2 rounded-lg hover:bg-opacity-90 transition-all duration-200 flex items-center text-sm font-medium shadow-sm hover:shadow">
+                  <span className="mr-2">🔑</span> 로그인
+                </button>
+              </SignInButton>
+              <SignUpButton mode="modal">
+                <button className="bg-[#2251D1] text-white px-4 py-2 rounded-lg hover:bg-[#1A41B6] transition-all duration-200 flex items-center text-sm font-medium shadow-sm hover:shadow">
+                  <span className="mr-2">✨</span> 회원가입
+                </button>
+              </SignUpButton>
+            </div>
+          }
+        />
+
+        <div className="container mx-auto px-4 py-12">
+          <div className="max-w-3xl mx-auto text-center">
+            <h2 className="text-4xl font-bold text-gray-900 mb-6">
+              대시보드에 접근하려면 로그인이 필요합니다
+            </h2>
+            <p className="text-xl text-gray-600 mb-8">
+              WIZ WORKS의 모든 기능을 이용하려면 로그인해주세요.
+              아직 계정이 없다면 지금 바로 회원가입하세요!
+            </p>
+            
+            <div className="flex justify-center gap-4">
+              <SignInButton mode="modal">
+                <button className="bg-[#2251D1] text-white px-8 py-3 rounded-lg hover:bg-[#1A41B6] transition-all duration-200 flex items-center text-lg font-medium shadow-sm hover:shadow">
+                  <span className="mr-2">🔑</span> 로그인하기
+                </button>
+              </SignInButton>
+              <SignUpButton mode="modal">
+                <button className="bg-white text-[#2251D1] px-8 py-3 rounded-lg hover:bg-opacity-90 transition-all duration-200 flex items-center text-lg font-medium shadow-sm hover:shadow border border-[#2251D1]">
+                  <span className="mr-2">✨</span> 회원가입하기
+                </button>
+              </SignUpButton>
+            </div>
           </div>
         </div>
-        
+      </div>
+    );
+  }
+
+  // 로그인된 사용자를 위한 대시보드
+  return (
+    <div className="min-h-screen bg-[#F9FAFD]">
+      <Header
+        title="WIZ WORKS 대시보드"
+        description={randomGreeting}
+        icon="🌟"
+        actions={
+          <button className="bg-white text-[#2251D1] px-4 py-2 rounded-lg hover:bg-opacity-90 transition-all duration-200 flex items-center text-sm font-medium shadow-sm hover:shadow">
+            <span className="mr-2">🔄</span> 새로고침
+          </button>
+        }
+      />
+      
+      <div className="container mx-auto px-4 py-8">
         {/* 이메일 검증 알림 */}
         <EmailVerification />
         

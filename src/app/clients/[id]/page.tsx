@@ -8,6 +8,7 @@ import { ClientInfo } from './ClientInfo';
 import { ClientTabs } from './ClientTabs';
 import { ClientDeleteDialog } from '@/components/ClientDeleteDialog';
 import { ChevronLeft } from 'lucide-react';
+import { Header } from '@/components/Header';
 
 export default function ClientDetailPage() {
   const router = useRouter();
@@ -139,38 +140,19 @@ export default function ClientDetailPage() {
   
   return (
     <div className="min-h-screen bg-[#F9FAFD] pb-10">
-      {/* 상단 헤더 */}
-      <div className="bg-gradient-to-r from-[#2251D1] to-[#4169E1] text-white">
-        <div className="container mx-auto px-4 py-6">
-          <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center">
-              <Link 
-                href="/clients" 
-                className="mr-4 p-2 rounded-full hover:bg-white/10 transition-colors"
-              >
-                <ChevronLeft className="w-5 h-5" />
-              </Link>
-              <div>
-                <div className="flex items-center">
-                  <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center text-2xl shadow-sm mr-3">
-                    <span role="img" aria-label={client.name}>{client.icon}</span>
-                  </div>
-                  <h1 className="text-2xl font-bold">{client.name}</h1>
-                </div>
-                <p className="text-white text-opacity-90 text-sm mt-1">
-                  광고주 상세 정보 및 관리 센터
-                </p>
-              </div>
-            </div>
-            <button
-              onClick={() => setIsDeleteDialogOpen(true)}
-              className="bg-red-600 hover:bg-red-700 text-white py-2 px-4 rounded-lg flex items-center transition-all hover:shadow"
-            >
-              <span className="mr-1">🗑️</span> 광고주 삭제
-            </button>
-          </div>
-        </div>
-      </div>
+      <Header
+        title={client.name}
+        description="광고주 상세 정보 및 관리 센터"
+        icon={client.icon}
+        actions={
+          <button
+            onClick={() => setIsDeleteDialogOpen(true)}
+            className="bg-red-600 hover:bg-red-700 text-white py-2 px-4 rounded-lg flex items-center transition-all hover:shadow"
+          >
+            <span className="mr-1">🗑️</span> 광고주 삭제
+          </button>
+        }
+      />
       
       <div className="container mx-auto px-4 py-6">
         {/* 광고주 정보 */}
