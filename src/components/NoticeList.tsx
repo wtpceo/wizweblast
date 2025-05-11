@@ -65,7 +65,7 @@ export function NoticeList() {
       </div>
       
       <div className="px-6 py-3 border-t border-[#EEF2FB] bg-[#F9FAFD]">
-        <Link href="/notices" className="wiz-btn flex items-center justify-center w-full bg-opacity-10 text-[#2251D1] hover:bg-opacity-20 transition-all">
+        <Link href="/notices" className="wiz-btn flex items-center justify-center w-full bg-white text-[#2251D1] font-medium hover:bg-[#EEF2FB] transition-all py-2 rounded-md border border-[#2251D1]">
           전체보기 <span className="ml-1">→</span>
         </Link>
       </div>

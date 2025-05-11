@@ -3,6 +3,14 @@
 import { useState, useEffect, useRef } from 'react';
 import { Client } from '@/lib/mock-data';
 
+interface User {
+  id: string;
+  name: string;
+  avatar_url?: string;
+  email: string;
+  role: string;
+}
+
 interface ClientTodoDialogProps {
   client: Client | null;
   isOpen: boolean;
@@ -13,9 +21,40 @@ interface ClientTodoDialogProps {
 export function ClientTodoDialog({ client, isOpen, onClose, onSave }: ClientTodoDialogProps) {
   const [content, setContent] = useState('');
   const [assignedTo, setAssignedTo] = useState('');
+  const [teamMembers, setTeamMembers] = useState<User[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   
   // 입력 필드 ref 추가
   const contentInputRef = useRef<HTMLInputElement>(null);
+  
+  // 사용자 목록 가져오기
+  useEffect(() => {
+    if (isOpen) {
+      const fetchUsers = async () => {
+        setIsLoading(true);
+        setError(null);
+        
+        try {
+          const response = await fetch('/api/users');
+          
+          if (!response.ok) {
+            throw new Error('사용자 목록을 가져오는데 실패했습니다.');
+          }
+          
+          const data = await response.json();
+          setTeamMembers(data);
+        } catch (err) {
+          console.error('사용자 목록 로딩 오류:', err);
+          setError('담당자 목록을 불러오는 중 오류가 발생했습니다.');
+        } finally {
+          setIsLoading(false);
+        }
+      };
+      
+      fetchUsers();
+    }
+  }, [isOpen]);
   
   // 다이얼로그가 열릴 때 content 입력 필드에 포커스
   useEffect(() => {
@@ -52,14 +91,6 @@ export function ClientTodoDialog({ client, isOpen, onClose, onSave }: ClientTodo
       window.removeEventListener('keydown', handleKeyDown);
     };
   }, [isOpen, content, assignedTo, onClose]);
-  
-  // 담당자 목록 (실제로는 API에서 가져올 수 있음)
-  const teamMembers = [
-    { id: 'user1', name: '김민수', emoji: '👨‍💼' },
-    { id: 'user2', name: '이지영', emoji: '👩‍💼' },
-    { id: 'user3', name: '박준호', emoji: '👨‍💻' },
-    { id: 'user4', name: '최수진', emoji: '👩‍💻' }
-  ];
   
   if (!isOpen || !client) return null;
   
@@ -100,6 +131,24 @@ export function ClientTodoDialog({ client, isOpen, onClose, onSave }: ClientTodo
   
   // 선택한 담당자 정보 가져오기
   const selectedMember = assignedTo ? teamMembers.find(m => m.id === assignedTo) : null;
+  
+  // 사용자 이모지 매핑
+  const getUserEmoji = (role: string) => {
+    switch (role) {
+      case 'admin':
+        return '👨‍💼';
+      case 'manager':
+        return '👩‍💼';
+      case 'developer':
+        return '👨‍💻';
+      case 'designer':
+        return '👩‍🎨';
+      case 'marketing':
+        return '📊';
+      default:
+        return '👤';
+    }
+  };
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 animate-fade-in">
@@ -154,30 +203,41 @@ export function ClientTodoDialog({ client, isOpen, onClose, onSave }: ClientTodo
               <span className="mr-2">👤</span> 담당자
             </label>
             
-            <div className="grid grid-cols-2 gap-2 mb-2">
-              {teamMembers.map(member => (
-                <button
-                  type="button"
-                  key={member.id}
-                  className={`flex items-center p-2 border rounded-lg transition-all ${
-                    assignedTo === member.id 
-                      ? 'border-[#4CAF50] bg-[#E8F5E9] text-[#4CAF50]'
-                      : 'border-gray-300 hover:border-gray-400'
-                  }`}
-                  onClick={() => setAssignedTo(member.id)}
-                >
-                  <span className="mr-2 text-lg">{member.emoji}</span>
-                  <span className={assignedTo === member.id ? 'font-medium' : ''}>{member.name}</span>
-                </button>
-              ))}
-            </div>
+            {isLoading ? (
+              <div className="text-center py-4">
+                <div className="w-8 h-8 rounded-full border-4 border-[#4CAF50] border-t-transparent animate-spin mx-auto mb-2"></div>
+                <p className="text-sm text-gray-500">담당자 목록을 불러오는 중...</p>
+              </div>
+            ) : error ? (
+              <div className="text-center py-4 text-red-500">
+                <p>{error}</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 gap-2 mb-2">
+                {teamMembers.map(member => (
+                  <button
+                    type="button"
+                    key={member.id}
+                    className={`flex items-center p-2 border rounded-lg transition-all ${
+                      assignedTo === member.id 
+                        ? 'border-[#4CAF50] bg-[#E8F5E9] text-[#4CAF50]'
+                        : 'border-gray-300 hover:border-gray-400'
+                    }`}
+                    onClick={() => setAssignedTo(member.id)}
+                  >
+                    <span className="mr-2 text-lg">{getUserEmoji(member.role)}</span>
+                    <span className={assignedTo === member.id ? 'font-medium' : ''}>{member.name}</span>
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
           
           {/* 선택된 담당자 요약 */}
           {selectedMember && (
             <div className="mb-4 bg-[#F9FAFD] rounded-lg p-3 flex justify-between items-center">
               <div className="flex items-center">
-                <span className="text-xl mr-2">{selectedMember.emoji}</span>
+                <span className="text-xl mr-2">{getUserEmoji(selectedMember.role)}</span>
                 <span className="font-medium">{selectedMember.name}</span>
               </div>
               <span className="text-xs text-[#2251D1]">담당자로 지정됨</span>

@@ -1,16 +1,6 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
-
-// 임시 데이터 저장소 (실제로는 데이터베이스를 사용해야 합니다)
-let notices = [
-  {
-    id: '1',
-    title: '시스템 점검 안내',
-    content: '시스템 점검이 예정되어 있습니다.',
-    isFixed: true,
-    createdAt: new Date().toISOString()
-  }
-];
+import { supabase } from '@/lib/supabase';
 
 // 공지사항 목록 조회 API
 export async function GET(request: Request) {
@@ -20,25 +10,39 @@ export async function GET(request: Request) {
     const isFixed = url.searchParams.get('is_fixed');
     const limit = parseInt(url.searchParams.get('limit') || '10', 10);
     
-    // 데이터 필터링
-    let filteredNotices = [...notices];
+    // Supabase 쿼리 구성
+    let query = supabase
+      .from('notices')
+      .select('*')
+      .order('is_fixed', { ascending: false })
+      .order('created_at', { ascending: false });
     
     // 고정 공지 필터링
     if (isFixed !== null) {
-      filteredNotices = filteredNotices.filter(notice => notice.isFixed === (isFixed === 'true'));
+      query = query.eq('is_fixed', isFixed === 'true');
     }
     
-    // 정렬 및 제한
-    filteredNotices.sort((a, b) => {
-      if (a.isFixed !== b.isFixed) {
-        return a.isFixed ? -1 : 1;
-      }
-      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-    });
+    // 결과 수 제한
+    query = query.limit(limit);
     
-    filteredNotices = filteredNotices.slice(0, limit);
+    // 쿼리 실행
+    const { data, error } = await query;
     
-    return NextResponse.json(filteredNotices);
+    if (error) {
+      console.error('공지사항 목록 조회 오류:', error);
+      return NextResponse.json({ error: '공지사항 목록 조회에 실패했습니다.' }, { status: 500 });
+    }
+    
+    // 응답 데이터 형식 변환
+    const formattedNotices = data.map(notice => ({
+      id: notice.id,
+      title: notice.title,
+      content: notice.content,
+      isFixed: notice.is_fixed,
+      createdAt: notice.created_at
+    }));
+    
+    return NextResponse.json(formattedNotices);
   } catch (error) {
     console.error('공지사항 목록 API 오류:', error);
     return NextResponse.json({ error: '서버 오류가 발생했습니다.' }, { status: 500 });
@@ -65,21 +69,36 @@ export async function POST(request: Request) {
       );
     }
     
-    // 새 공지사항 생성
-    const newNotice = {
-      id: Date.now().toString(),
-      title,
-      content,
-      isFixed,
-      createdAt: new Date().toISOString()
-    };
+    // 공지사항 추가
+    const { data, error } = await supabase
+      .from('notices')
+      .insert([{
+        title,
+        content,
+        is_fixed: isFixed,
+        created_at: new Date().toISOString(),
+        user_id: userId
+      }])
+      .select()
+      .single();
     
-    // 데이터 저장 (실제로는 데이터베이스에 저장해야 합니다)
-    notices.push(newNotice);
+    if (error) {
+      console.error('공지사항 추가 오류:', error);
+      return NextResponse.json({ error: '공지사항 추가에 실패했습니다.' }, { status: 500 });
+    }
+    
+    // 응답 데이터 형식 변환
+    const formattedNotice = {
+      id: data.id,
+      title: data.title,
+      content: data.content,
+      isFixed: data.is_fixed,
+      createdAt: data.created_at
+    };
     
     return NextResponse.json({ 
       success: true, 
-      notice: newNotice
+      notice: formattedNotice
     });
   } catch (error) {
     console.error('공지사항 추가 API 오류:', error);
