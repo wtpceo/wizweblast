@@ -1,10 +1,23 @@
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from './database.types';
 
+// 환경 변수 확인
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+// 환경 변수가 없을 경우 콘솔에 경고 메시지 출력
+if (!supabaseUrl || !supabaseAnonKey) {
+  console.error(
+    '수파베이스 환경 변수가 설정되지 않았습니다. 환경 변수를 확인해주세요:\n' +
+    '- NEXT_PUBLIC_SUPABASE_URL\n' +
+    '- NEXT_PUBLIC_SUPABASE_ANON_KEY'
+  );
+}
+
 // 클라이언트 측 Supabase 인스턴스
 export const supabase = createClient<Database>(
-  process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://your-supabase-url.supabase.co',
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'your-supabase-anon-key',
+  supabaseUrl || '',
+  supabaseAnonKey || '',
   {
     auth: {
       persistSession: true,
