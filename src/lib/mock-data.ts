@@ -27,6 +27,7 @@ export type Client = {
   usesReservation: boolean; // 예약 시스템 사용 여부
   phoneNumber?: string; // 전화번호
   naverPlaceUrl?: string; // 네이버플레이스 링크
+  keywords?: string[]; // 대표 키워드
 };
 
 // 할일 데이터 타입
@@ -121,7 +122,8 @@ export const mockClients: Client[] = [
     publishesNews: true,
     usesReservation: false,
     phoneNumber: '02-1234-5678',
-    naverPlaceUrl: 'https://place.naver.com/12345678'
+    naverPlaceUrl: 'https://place.naver.com/12345678',
+    keywords: ['치킨', '배달', '야식', '맥주', '파티']
   },
   {
     id: '2',
@@ -134,7 +136,8 @@ export const mockClients: Client[] = [
     publishesNews: true,
     usesReservation: true,
     phoneNumber: '02-1234-5678',
-    naverPlaceUrl: 'https://place.naver.com/12345678'
+    naverPlaceUrl: 'https://place.naver.com/12345678',
+    keywords: ['피자', '배달', '파티', '치즈', '페퍼로니']
   },
   {
     id: '3',
@@ -147,7 +150,8 @@ export const mockClients: Client[] = [
     publishesNews: false,
     usesReservation: true,
     phoneNumber: '02-1234-5678',
-    naverPlaceUrl: 'https://place.naver.com/12345678'
+    naverPlaceUrl: 'https://place.naver.com/12345678',
+    keywords: ['회', '해산물', '신선', '모듬회', '소주']
   },
   {
     id: '4',

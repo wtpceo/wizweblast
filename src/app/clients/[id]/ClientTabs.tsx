@@ -46,6 +46,9 @@ export function ClientTabs({ client }: ClientTabsProps) {
   const [isLoadingNotes, setIsLoadingNotes] = useState(false);
   const [notesLoadError, setNotesLoadError] = useState<string | null>(null);
   const [notesSource, setNotesSource] = useState<'api' | 'local'>('api');
+  const [keywords, setKeywords] = useState<string[]>(client.keywords || ['불고기', '한우', '점심특선', '가족모임', '단체예약']);
+  const [keywordInput, setKeywordInput] = useState('');
+  const [isSavingKeywords, setIsSavingKeywords] = useState(false);
   const { user } = useUser();
   
   // 할 일 목업 데이터
@@ -65,7 +68,7 @@ export function ClientTabs({ client }: ClientTabsProps) {
   // 크롤링 정보 목업 데이터
   const crawledInfo = {
     category: '음식점 > 한식',
-    keywords: ['불고기', '한우', '점심특선', '가족모임', '단체예약'],
+    keywords: keywords,
     lastUpdated: '2023-12-01T15:45:00Z'
   };
   
@@ -601,6 +604,109 @@ export function ClientTabs({ client }: ClientTabsProps) {
     }
   };
   
+  // 키워드 추가
+  const handleAddKeyword = async () => {
+    if (!keywordInput.trim()) return;
+    
+    // 중복 키워드 체크
+    if (keywords.includes(keywordInput.trim())) {
+      alert('이미 존재하는 키워드입니다.');
+      return;
+    }
+    
+    setIsSavingKeywords(true);
+    
+    // 새 키워드 배열 생성
+    const newKeywords = [...keywords, keywordInput.trim()];
+    
+    try {
+      // API 호출하여 키워드 업데이트 (실제 구현 시 API 호출)
+      // const response = await fetch(`/api/clients/${client.id}`, {
+      //   method: 'PATCH',
+      //   headers: {
+      //     'Content-Type': 'application/json'
+      //   },
+      //   body: JSON.stringify({
+      //     keywords: newKeywords
+      //   })
+      // });
+      
+      // if (!response.ok) {
+      //   throw new Error('키워드 저장에 실패했습니다.');
+      // }
+      
+      // 성공 시 상태 업데이트 (API 구현 전 임시로 바로 상태 업데이트)
+      setKeywords(newKeywords);
+      setKeywordInput('');
+      
+      // 로컬 스토리지에 저장 (임시)
+      try {
+        localStorage.setItem(`client_${client.id}_keywords`, JSON.stringify(newKeywords));
+      } catch (storageErr) {
+        console.error('키워드 로컬 저장 오류:', storageErr);
+      }
+      
+    } catch (err) {
+      console.error('키워드 저장 오류:', err);
+      alert('키워드 저장 중 오류가 발생했습니다.');
+    } finally {
+      setIsSavingKeywords(false);
+    }
+  };
+  
+  // 키워드 삭제
+  const handleRemoveKeyword = async (keywordToRemove: string) => {
+    setIsSavingKeywords(true);
+    
+    // 키워드 제거
+    const newKeywords = keywords.filter(keyword => keyword !== keywordToRemove);
+    
+    try {
+      // API 호출하여 키워드 업데이트 (실제 구현 시 API 호출)
+      // const response = await fetch(`/api/clients/${client.id}`, {
+      //   method: 'PATCH',
+      //   headers: {
+      //     'Content-Type': 'application/json'
+      //   },
+      //   body: JSON.stringify({
+      //     keywords: newKeywords
+      //   })
+      // });
+      
+      // if (!response.ok) {
+      //   throw new Error('키워드 삭제에 실패했습니다.');
+      // }
+      
+      // 성공 시 상태 업데이트 (API 구현 전 임시로 바로 상태 업데이트)
+      setKeywords(newKeywords);
+      
+      // 로컬 스토리지에 저장 (임시)
+      try {
+        localStorage.setItem(`client_${client.id}_keywords`, JSON.stringify(newKeywords));
+      } catch (storageErr) {
+        console.error('키워드 로컬 저장 오류:', storageErr);
+      }
+      
+    } catch (err) {
+      console.error('키워드 삭제 오류:', err);
+      alert('키워드 삭제 중 오류가 발생했습니다.');
+    } finally {
+      setIsSavingKeywords(false);
+    }
+  };
+  
+  // 로컬 스토리지에서 키워드 불러오기
+  useEffect(() => {
+    try {
+      const savedKeywords = localStorage.getItem(`client_${client.id}_keywords`);
+      if (savedKeywords) {
+        setKeywords(JSON.parse(savedKeywords));
+      }
+    } catch (err) {
+      console.error('키워드 로드 오류:', err);
+    }
+  }, [client.id]);
+  
   return (
     <div className="bg-white rounded-lg shadow-sm overflow-hidden">
       {/* 탭 헤더 */}
@@ -738,15 +844,62 @@ export function ClientTabs({ client }: ClientTabsProps) {
             <div className="mb-6">
               <h4 className="text-sm font-semibold text-gray-500 mb-3">대표 키워드</h4>
               
+              <div className="mb-4 p-4 border border-gray-200 rounded-lg">
+                <div className="flex flex-col space-y-3">
+                  <div className="flex items-center">
+                    <input
+                      type="text"
+                      value={keywordInput}
+                      onChange={(e) => setKeywordInput(e.target.value)}
+                      placeholder="새 키워드 입력..."
+                      className="flex-1 border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#2251D1]"
+                      onKeyPress={(e) => {
+                        if (e.key === 'Enter') {
+                          handleAddKeyword();
+                        }
+                      }}
+                    />
+                    <button
+                      onClick={handleAddKeyword}
+                      disabled={!keywordInput.trim() || isSavingKeywords}
+                      className={`ml-2 px-4 py-2 rounded-lg ${
+                        keywordInput.trim() && !isSavingKeywords
+                          ? 'bg-[#2251D1] text-white hover:bg-[#1A41B6]'
+                          : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                      }`}
+                    >
+                      {isSavingKeywords ? '저장 중...' : '추가'}
+                    </button>
+                  </div>
+                  
+                  <div className="text-xs text-gray-500">
+                    Enter 키를 누르거나 추가 버튼을 클릭하여 키워드를 추가하세요.
+                  </div>
+                </div>
+              </div>
+              
               <div className="flex flex-wrap gap-2">
-                {crawledInfo.keywords.map((keyword, index) => (
-                  <span 
+                {keywords.map((keyword, index) => (
+                  <div 
                     key={index} 
-                    className="px-3 py-1.5 bg-[#EEF2FB] text-[#2251D1] rounded-full text-sm"
+                    className="px-3 py-1.5 bg-[#EEF2FB] text-[#2251D1] rounded-full text-sm flex items-center group"
                   >
                     {keyword}
-                  </span>
+                    <button
+                      onClick={() => handleRemoveKeyword(keyword)}
+                      className="ml-2 text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </div>
                 ))}
+                {keywords.length === 0 && (
+                  <div className="text-gray-500 text-sm italic">
+                    등록된 키워드가 없습니다. 위 입력창에서 키워드를 추가해보세요.
+                  </div>
+                )}
               </div>
             </div>
             
