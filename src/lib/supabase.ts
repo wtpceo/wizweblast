@@ -1,10 +1,15 @@
 import { createClient } from '@supabase/supabase-js';
-import { Database } from './database.types';
+import type { Database } from './database.types';
+
+// 클라이언트 측 Supabase 인스턴스
+export const supabase = createClient<Database>(
+  process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://your-supabase-url.supabase.co',
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'your-supabase-anon-key'
+);
 
 /**
- * Supabase 클라이언트 생성 (서버 컴포넌트용)
- * - 서버 컴포넌트 또는 API 라우트에서 사용
- * - 모든 데이터베이스 접근 권한 보유
+ * 서버 컴포넌트를 위한 Supabase 클라이언트 생성 함수
+ * Next.js 서버 컴포넌트 또는 API 라우트에서 사용
  */
 export function createServerClient() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;

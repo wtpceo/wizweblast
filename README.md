@@ -7,7 +7,7 @@
 - **Frontend**: Next.js, React, TailwindCSS
 - **Backend**: Next.js API Routes
 - **Database**: Supabase
-- **Authentication**: Supabase Auth
+- **Authentication**: Clerk
 
 ## 설치 및 실행
 
@@ -28,9 +28,14 @@ npm install
 # Supabase 설정
 NEXT_PUBLIC_SUPABASE_URL=https://your-supabase-project.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
 
-# 사이트 URL (이메일 검증 및 비밀번호 재설정에 사용)
-NEXT_PUBLIC_SITE_URL=http://localhost:3000
+# Clerk 인증
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=your-clerk-publishable-key
+CLERK_SECRET_KEY=your-clerk-secret-key
+
+# Database URL
+DATABASE_URL=postgresql://postgres:password@your-supabase-project.supabase.co:5432/postgres
 ```
 
 4. 개발 서버 실행
@@ -38,23 +43,45 @@ NEXT_PUBLIC_SITE_URL=http://localhost:3000
 npm run dev
 ```
 
-## 테스트 계정 생성
+## 배포 가이드
 
-1. ts-node 설치 (글로벌)
+### Vercel 배포 (권장)
+
+1. GitHub에 프로젝트 푸시
 ```bash
-npm install -g ts-node
+git add .
+git commit -m "Ready for deployment"
+git push
 ```
 
-2. 테스트 계정 생성 스크립트 실행
+2. [Vercel](https://vercel.com)에 가입하고 새 프로젝트 생성
+
+3. GitHub 저장소 연결하고 다음 환경 변수 설정:
+   - `NEXT_PUBLIC_SUPABASE_URL`
+   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+   - `SUPABASE_SERVICE_ROLE_KEY`
+   - `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`
+   - `CLERK_SECRET_KEY`
+   - `DATABASE_URL`
+
+4. 배포 설정:
+   - Framework: Next.js
+   - Root Directory: ./
+   - Node.js Version: 18.x (또는 최신 LTS)
+
+5. "Deploy" 버튼 클릭
+
+### Docker 배포 (선택 사항)
+
+1. Docker 이미지 빌드
 ```bash
-ts-node src/scripts/create-test-accounts.ts
+docker build -t wizweblast:latest .
 ```
 
-생성되는 테스트 계정:
-- 관리자: admin@wizwebblast.com / admin123456
-- 일반 사용자 1: user1@wizwebblast.com / user123456
-- 일반 사용자 2: user2@wizwebblast.com / user123456
-- 승인 대기 사용자: pending@wizwebblast.com / pending123456
+2. 컨테이너 실행
+```bash
+docker run -p 3000:3000 --env-file .env.local wizweblast:latest
+```
 
 ## 주요 기능
 
@@ -74,6 +101,7 @@ ts-node src/scripts/create-test-accounts.ts
 ### 할 일/메모 관리
 - 광고주별 할 일 관리
 - 광고주별 메모 관리
+- 내 할 일 모아보기
 
 ### 공지사항
 - 공지사항 목록 조회
@@ -90,8 +118,8 @@ ts-node src/scripts/create-test-accounts.ts
 ## 기술 스택
 
 - **Frontend**
-  - Next.js 14 (App Router)
-  - React 18
+  - Next.js 15
+  - React 19
   - TailwindCSS
   - TypeScript
 
@@ -103,7 +131,7 @@ ts-node src/scripts/create-test-accounts.ts
   - Supabase (PostgreSQL)
 
 - **인증**
-  - Supabase Auth
+  - Clerk Authentication
 
 - **배포**
   - Vercel

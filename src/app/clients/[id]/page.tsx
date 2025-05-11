@@ -181,12 +181,20 @@ export default function ClientDetailPage() {
         description="광고주 상세 정보 및 관리 센터"
         icon={client.icon}
         actions={
-          <button
-            onClick={() => setIsDeleteDialogOpen(true)}
-            className="bg-red-600 hover:bg-red-700 text-white py-2 px-4 rounded-lg flex items-center transition-all hover:shadow"
-          >
-            <span className="mr-1">🗑️</span> 광고주 삭제
-          </button>
+          <div className="flex items-center gap-2">
+            <Link 
+              href="/my-todos"
+              className="bg-[#4CAF50] hover:bg-[#3d8b40] text-white py-2 px-4 rounded-lg flex items-center transition-all hover:shadow"
+            >
+              <span className="mr-1">✅</span> 나의 할 일 모아보기
+            </Link>
+            <button
+              onClick={() => setIsDeleteDialogOpen(true)}
+              className="bg-red-600 hover:bg-red-700 text-white py-2 px-4 rounded-lg flex items-center transition-all hover:shadow"
+            >
+              <span className="mr-1">🗑️</span> 광고주 삭제
+            </button>
+          </div>
         }
       />
       

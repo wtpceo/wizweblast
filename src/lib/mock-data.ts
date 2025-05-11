@@ -33,9 +33,13 @@ export type Client = {
 export type ClientTodo = {
   id: string;
   clientId: string;
+  clientName?: string; // 클라이언트 이름 (선택적)
+  clientIcon?: string; // 클라이언트 아이콘 (선택적)
   content: string;
   assignedTo: string;
+  completed: boolean; // 완료 여부 추가
   createdAt: string;
+  completedAt?: string; // 완료 날짜 (선택적)
 };
 
 // 메모 데이터 타입
@@ -233,4 +237,81 @@ export const mockAdminStats: AdminStats = {
     { userId: 'user9', name: '임주임', department: '고객관리', totalTodos: 26, completedTodos: 23 },
     { userId: 'user10', name: '차대리', department: '콘텐츠', totalTodos: 38, completedTodos: 24 }
   ]
-}; 
+};
+
+// 할 일 목업 데이터
+export const mockTodos: ClientTodo[] = [
+  {
+    id: '1',
+    clientId: '1',
+    clientName: '대한치킨',
+    clientIcon: '🍗',
+    content: '메뉴 사진 업데이트 요청하기',
+    assignedTo: 'user1',
+    completed: false,
+    createdAt: '2023-11-15T10:30:00Z'
+  },
+  {
+    id: '2',
+    clientId: '2',
+    clientName: '서울피자',
+    clientIcon: '🍕',
+    content: '할인 쿠폰 등록 및 활성화',
+    assignedTo: 'user1',
+    completed: true,
+    createdAt: '2023-11-10T14:20:00Z',
+    completedAt: '2023-11-12T09:15:00Z'
+  },
+  {
+    id: '3',
+    clientId: '3',
+    clientName: '바다횟집',
+    clientIcon: '🐟',
+    content: '영업시간 수정 반영하기',
+    assignedTo: 'user2',
+    completed: false,
+    createdAt: '2023-11-08T11:45:00Z'
+  },
+  {
+    id: '4',
+    clientId: '4',
+    clientName: '행복떡볶이',
+    clientIcon: '🧂',
+    content: '민원 관련 전화 연락하기',
+    assignedTo: 'user1',
+    completed: false,
+    createdAt: '2023-11-05T16:30:00Z'
+  },
+  {
+    id: '5',
+    clientId: '5',
+    clientName: '도시락카페',
+    clientIcon: '🍱',
+    content: '계약 연장 상담 진행',
+    assignedTo: 'user3',
+    completed: true,
+    createdAt: '2023-11-01T13:20:00Z',
+    completedAt: '2023-11-03T10:45:00Z'
+  },
+  {
+    id: '6',
+    clientId: '6',
+    clientName: '커피나무',
+    clientIcon: '☕',
+    content: '신메뉴 소식 등록하기',
+    assignedTo: 'user1',
+    completed: false,
+    createdAt: '2023-11-12T09:50:00Z'
+  },
+  {
+    id: '7',
+    clientId: '7',
+    clientName: '웰빙마트',
+    clientIcon: '🛒',
+    content: '민원 처리 결과 공유하기',
+    assignedTo: 'user2',
+    completed: true,
+    createdAt: '2023-11-09T14:10:00Z',
+    completedAt: '2023-11-10T17:30:00Z'
+  }
+]; 

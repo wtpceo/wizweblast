@@ -1,7 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Client } from '@/lib/mock-data';
+import { useUser } from '@clerk/nextjs';
+import { TodoSection } from './TodoSection';
 
 interface ClientTabsProps {
   client: Client;
@@ -40,6 +42,7 @@ export function ClientTabs({ client }: ClientTabsProps) {
   const [todoInput, setTodoInput] = useState('');
   const [selectedDepartment, setSelectedDepartment] = useState<string>('media');
   const [noteInput, setNoteInput] = useState('');
+  const { user } = useUser();
   
   // 할 일 목업 데이터
   const [todos, setTodos] = useState<Todo[]>([
@@ -80,9 +83,13 @@ export function ClientTabs({ client }: ClientTabsProps) {
   };
   
   // 할 일 추가
-  const handleAddTodo = () => {
+  const handleAddTodo = async () => {
     if (!todoInput.trim()) return;
     
+    // 현재 로그인한 사용자의 ID를 담당자로 설정
+    const currentUserId = user?.id || 'user1'; // 기본값은 모의 데이터 사용
+    
+    // 새 할 일 데이터 생성
     const newTodo: Todo = {
       id: Date.now(),
       content: todoInput,
@@ -92,8 +99,65 @@ export function ClientTabs({ client }: ClientTabsProps) {
       department: selectedDepartment as any
     };
     
+    // 화면에 먼저 표시 (낙관적 UI 업데이트)
     setTodos([newTodo, ...todos]);
     setTodoInput('');
+    
+    try {
+      // API 호출하여 할 일 등록
+      const response = await fetch(`/api/clients/${client.id}/todos`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          content: todoInput,
+          assignedTo: currentUserId // 현재 사용자 ID 전달
+        })
+      });
+      
+      if (!response.ok) {
+        throw new Error('할 일 등록에 실패했습니다.');
+      }
+      
+      // 성공 시 로컬 스토리지 업데이트
+      try {
+        // 로컬 스토리지에서 기존 할 일 목록 가져오기
+        const storedTodos = localStorage.getItem('wizweblast_todos');
+        let todosList = [];
+        
+        if (storedTodos) {
+          todosList = JSON.parse(storedTodos);
+        }
+        
+        // 새 할 일 추가
+        const todoData = {
+          id: `temp-${Date.now()}`,
+          clientId: client.id,
+          clientName: client.name,
+          clientIcon: client.icon,
+          content: todoInput,
+          assignedTo: currentUserId,
+          completed: false,
+          createdAt: new Date().toISOString()
+        };
+        
+        // 목록 업데이트 후 저장
+        todosList.unshift(todoData);
+        localStorage.setItem('wizweblast_todos', JSON.stringify(todosList));
+        
+        console.log('할 일이 로컬 스토리지에 저장되었습니다.');
+      } catch (storageErr) {
+        console.error('로컬 스토리지 저장 오류:', storageErr);
+      }
+      
+      alert(`'${todoInput}' 할 일이 등록되었습니다! 👍`);
+    } catch (err) {
+      console.error('할 일 등록 오류:', err);
+      // 에러 발생 시 UI 원상복구
+      setTodos(todos.filter(todo => todo.id !== newTodo.id));
+      alert('할 일 등록 중 오류가 발생했습니다.');
+    }
   };
   
   // 할 일 완료 토글
@@ -405,137 +469,10 @@ export function ClientTabs({ client }: ClientTabsProps) {
           </div>
         )}
         
-        {/* 할 일 탭 */}
         {activeTab === 'todos' && (
-          <div>
-            <div className="mb-6">
-              <h3 className="font-medium text-lg mb-4">할 일 관리</h3>
-              
-              <div className="mb-4 p-4 border border-gray-200 rounded-lg">
-                <div className="flex flex-col space-y-3">
-                  <input
-                    type="text"
-                    value={todoInput}
-                    onChange={(e) => setTodoInput(e.target.value)}
-                    placeholder="새 할 일을 입력하세요..."
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#2251D1]"
-                  />
-                  
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-2">
-                      <span className="text-sm text-gray-500">담당 부서:</span>
-                      <div className="flex space-x-1">
-                        {departments.map(dept => (
-                          <button
-                            key={dept.id}
-                            onClick={() => setSelectedDepartment(dept.id)}
-                            className={`p-1.5 rounded-full transition-colors ${
-                              selectedDepartment === dept.id
-                                ? `bg-[${dept.color}] text-white`
-                                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                            }`}
-                            title={dept.name}
-                          >
-                            {dept.icon}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                    
-                    <button
-                      onClick={handleAddTodo}
-                      disabled={!todoInput.trim()}
-                      className={`px-4 py-2 rounded-lg ${
-                        todoInput.trim()
-                          ? 'bg-[#4CAF50] text-white hover:bg-[#3d8b40]'
-                          : 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                      }`}
-                    >
-                      추가
-                    </button>
-                  </div>
-                </div>
-              </div>
-              
-              <div className="space-y-3">
-                {todos.length > 0 ? (
-                  todos.map(todo => {
-                    // 부서 정보 찾기
-                    const department = departments.find(d => d.id === todo.department);
-                    
-                    return (
-                      <div
-                        key={todo.id}
-                        className={`p-4 border rounded-lg transition-colors ${
-                          todo.completed ? 'bg-gray-50 border-gray-200' : 'bg-white border-gray-200'
-                        }`}
-                      >
-                        <div className="flex items-start">
-                          <button
-                            onClick={() => toggleTodoComplete(todo.id)}
-                            className={`w-5 h-5 rounded-full flex-shrink-0 mt-1 ${
-                              todo.completed
-                                ? 'bg-[#4CAF50] text-white flex items-center justify-center'
-                                : 'border-2 border-gray-300'
-                            }`}
-                          >
-                            {todo.completed && (
-                              <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
-                                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                              </svg>
-                            )}
-                          </button>
-                          
-                          <div className="ml-3 flex-grow">
-                            <div className="flex justify-between items-start">
-                              <div>
-                                <p className={`${todo.completed ? 'line-through text-gray-500' : 'text-gray-800'}`}>
-                                  {todo.content}
-                                </p>
-                                <div className="flex items-center mt-1">
-                                  <span className="text-xs text-gray-500 mr-2">{formatDate(todo.date)}</span>
-                                  <span className="text-xs text-gray-500">{todo.user}</span>
-                                </div>
-                              </div>
-                              
-                              <div className="flex space-x-2">
-                                <span 
-                                  className="px-2 py-1 text-xs rounded-full" 
-                                  style={{ 
-                                    backgroundColor: department ? `${department.color}20` : '#f0f0f0',
-                                    color: department?.color || '#666'
-                                  }}
-                                >
-                                  {department?.icon} {department?.name}
-                                </span>
-                                
-                                <button
-                                  onClick={() => deleteTodo(todo.id)}
-                                  className="text-gray-400 hover:text-red-500"
-                                >
-                                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                  </svg>
-                                </button>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })
-                ) : (
-                  <div className="text-center py-8">
-                    <div className="text-3xl mb-2">📋</div>
-                    <p className="text-gray-500">등록된 할 일이 없습니다.</p>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
+          <TodoSection client={client} />
         )}
         
-        {/* 메모 탭 */}
         {activeTab === 'notes' && (
           <div>
             <div className="mb-6">
@@ -606,7 +543,6 @@ export function ClientTabs({ client }: ClientTabsProps) {
           </div>
         )}
         
-        {/* 분석 탭 */}
         {activeTab === 'analytics' && (
           <div>
             <div className="mb-6">

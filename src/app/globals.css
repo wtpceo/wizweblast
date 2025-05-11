@@ -155,15 +155,15 @@
   }
   
   .animate-fade-in {
-    animation: fadeIn 0.3s ease-in-out;
+    animation: fade-in 0.3s ease-in-out;
   }
   
   .animate-scale-up {
-    animation: scaleUp 0.3s ease-in-out;
+    animation: scale-up 0.3s ease-out;
   }
 }
 
-@keyframes fadeIn {
+@keyframes fade-in {
   from {
     opacity: 0;
   }
@@ -172,7 +172,7 @@
   }
 }
 
-@keyframes scaleUp {
+@keyframes scale-up {
   from {
     transform: scale(0.95);
     opacity: 0;
@@ -181,4 +181,147 @@
     transform: scale(1);
     opacity: 1;
   }
+}
+
+@keyframes slide-in-right {
+  from {
+    transform: translateX(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slide-in-bottom {
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes bounce-in {
+  0% {
+    transform: scale(0.9);
+    opacity: 0;
+  }
+  70% {
+    transform: scale(1.05);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes rotate-in {
+  from {
+    transform: rotate(-90deg);
+    opacity: 0;
+  }
+  to {
+    transform: rotate(0);
+    opacity: 1;
+  }
+}
+
+@keyframes fade-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+.animate-slide-in-right {
+  animation: slide-in-right 0.3s ease-out;
+}
+
+.animate-slide-in-bottom {
+  animation: slide-in-bottom 0.3s ease-out;
+}
+
+.animate-bounce-in {
+  animation: bounce-in 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+.animate-rotate-in {
+  animation: rotate-in 0.3s ease-out;
+}
+
+.animate-fade-out {
+  animation: fade-out 0.3s ease-in-out;
+}
+
+.focus-visible:focus {
+  outline: 2px solid #2251D1;
+  outline-offset: 2px;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+.todo-completed {
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.todo-completed.fade-out {
+  opacity: 0.6;
+  transform: translateY(10px);
+}
+
+.assignee-change-enter {
+  opacity: 0;
+  transform: translateY(-10px);
+}
+
+.assignee-change-enter-active {
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.assignee-change-exit {
+  opacity: 1;
+}
+
+.assignee-change-exit-active {
+  opacity: 0;
+  transform: translateY(-10px);
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.todo-add-button {
+  transition: transform 0.2s ease, background-color 0.2s ease;
+}
+
+.todo-add-button:active {
+  transform: scale(0.95);
+}
+
+.todo-checkbox {
+  transition: background-color 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+}
+
+.todo-checkbox:active {
+  transform: scale(0.9);
+}
+
+.todo-checkbox-checked {
+  animation: bounce-in 0.4s;
 }
