@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Plus, PlusCircle } from 'lucide-react';
+import { Plus, PlusCircle, X, User } from 'lucide-react';
 import { useUser } from '@clerk/nextjs';
 import { Client } from '@/lib/mock-data';
 import { TodoCard, Todo } from '@/components/TodoCard';
@@ -19,6 +19,10 @@ export function TodoSection({ client }: TodoSectionProps) {
   const [showDebug, setShowDebug] = useState(false);
   const [debugLog, setDebugLog] = useState<string>('');
   const [showTodoModal, setShowTodoModal] = useState(false);
+  const [showAssignModal, setShowAssignModal] = useState(false);
+  const [selectedTodoId, setSelectedTodoId] = useState<string | null>(null);
+  const [users, setUsers] = useState<any[]>([]);
+  const [isLoadingUsers, setIsLoadingUsers] = useState(false);
   const { user } = useUser();
   
   // 디버그 로그 추가 함수
@@ -462,10 +466,190 @@ export function TodoSection({ client }: TodoSectionProps) {
     }
   };
   
+  // 사용자 목록 가져오기
+  const fetchUsers = useCallback(async () => {
+    try {
+      setIsLoadingUsers(true);
+      addDebugLog('사용자 목록 가져오기 시작');
+      
+      const response = await fetch('/api/users');
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: '알 수 없는 오류' }));
+        throw new Error(`사용자 목록 조회 실패: ${response.status} - ${errorData.error || response.statusText}`);
+      }
+      
+      const data = await response.json();
+      addDebugLog(`${data.length}명의 사용자 정보 로드 성공`);
+      setUsers(data);
+      return data;
+    } catch (err) {
+      console.error('사용자 목록 로딩 오류:', err);
+      addDebugLog(`사용자 목록 로딩 오류: ${err instanceof Error ? err.message : '알 수 없는 오류'}`);
+      return [];
+    } finally {
+      setIsLoadingUsers(false);
+    }
+  }, [addDebugLog]);
+  
   // 담당자 변경
-  const handleAssigneeChange = (todoId: string) => {
-    // 담당자 변경 로직 구현
-    alert('담당자 변경 기능은 준비 중입니다.');
+  const handleAssigneeChange = async (todoId: string) => {
+    try {
+      setSelectedTodoId(todoId);
+      
+      // 사용자 목록 가져오기
+      const usersList = await fetchUsers();
+      
+      if (usersList.length === 0) {
+        addDebugLog('사용자 목록을 가져올 수 없어 담당자 변경 불가');
+        alert('사용자 목록을 가져올 수 없습니다. 다시 시도해주세요.');
+        return;
+      }
+      
+      // 담당자 변경 모달 표시
+      setShowAssignModal(true);
+    } catch (err) {
+      console.error('담당자 변경 준비 오류:', err);
+      addDebugLog(`담당자 변경 준비 오류: ${err instanceof Error ? err.message : '알 수 없는 오류'}`);
+      alert('담당자 변경 준비 중 오류가 발생했습니다.');
+    }
+  };
+  
+  // 담당자 변경 처리
+  const handleAssignTodo = async (todoId: string, newAssigneeId: string) => {
+    try {
+      addDebugLog(`할 일 ID ${todoId}의 담당자를 ${newAssigneeId}로 변경 시작`);
+      
+      // 옵티미스틱 UI 업데이트
+      const updatedTodos = todos.map(todo => 
+        todo.id === todoId 
+          ? { ...todo, assignedTo: newAssigneeId } 
+          : todo
+      );
+      
+      setTodos(updatedTodos);
+      addDebugLog('UI 옵티미스틱 업데이트 완료');
+      
+      // 임시 ID(temp-)로 시작하는 할 일은 로컬에서만 처리
+      if (todoId.startsWith('temp-')) {
+        addDebugLog('임시 할 일(temp-)이므로 로컬에서만 상태 변경 처리');
+        
+        // 로컬 스토리지 업데이트
+        try {
+          // 전체 할 일 목록 업데이트
+          const storedTodos = localStorage.getItem('wizweblast_todos');
+          if (storedTodos) {
+            const parsedTodos = JSON.parse(storedTodos);
+            const updatedStoredTodos = parsedTodos.map((todo: any) => 
+              todo.id === todoId 
+                ? { ...todo, assignedTo: newAssigneeId } 
+                : todo
+            );
+            localStorage.setItem('wizweblast_todos', JSON.stringify(updatedStoredTodos));
+            addDebugLog('전체 할 일 로컬 스토리지 업데이트 완료');
+          }
+          
+          // 클라이언트별 캐시도 업데이트
+          const clientTodos = localStorage.getItem(`wizweblast_todos_client_${client.id}`);
+          if (clientTodos) {
+            const parsedClientTodos = JSON.parse(clientTodos);
+            const updatedClientTodos = parsedClientTodos.map((todo: any) => 
+              todo.id === todoId 
+                ? { ...todo, assignedTo: newAssigneeId } 
+                : todo
+            );
+            localStorage.setItem(`wizweblast_todos_client_${client.id}`, JSON.stringify(updatedClientTodos));
+            addDebugLog('클라이언트별 할 일 로컬 스토리지 업데이트 완료');
+          }
+          
+          addDebugLog('임시 할 일 담당자 변경 완료');
+          return; // API 호출 없이 함수 종료
+        } catch (storageErr) {
+          console.error('로컬 스토리지 업데이트 오류:', storageErr);
+          addDebugLog(`로컬 스토리지 업데이트 오류: ${storageErr instanceof Error ? storageErr.message : '알 수 없는 오류'}`);
+        }
+      }
+      
+      // API 호출
+      addDebugLog(`API 호출: PATCH /api/todos/${todoId}/assign`);
+      const response = await fetch(`/api/todos/${todoId}/assign`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ newAssigneeId }),
+      });
+      
+      if (!response.ok) {
+        // API 실패 시 롤백
+        setTodos(todos);
+        const errorData = await response.json().catch(() => ({ error: '알 수 없는 오류' }));
+        addDebugLog(`API 오류 (${response.status}): ${errorData.error || response.statusText}`);
+        throw new Error(`담당자 변경에 실패했습니다. (${response.status}: ${errorData.error || response.statusText})`);
+      }
+      
+      // API 응답 처리
+      const data = await response.json();
+      addDebugLog(`API 응답: ${data.success ? '성공' : '실패'}`);
+      
+      if (data.success && data.todo) {
+        // API 응답의 todo 데이터로 상태 업데이트
+        const updatedTodo = {
+          ...data.todo,
+          clientId: data.todo.clientId || data.todo.client_id || todoId,
+          clientName: data.todo.clientName || client.name || '광고주',
+          clientIcon: data.todo.clientIcon || client.icon || '🏢',
+          content: data.todo.content || '할 일',
+          assignedTo: data.todo.assignedTo || data.todo.assigned_to,
+          completed: data.todo.completed,
+          createdAt: data.todo.createdAt || data.todo.created_at || new Date().toISOString(),
+          completedAt: data.todo.completedAt || data.todo.completed_at || undefined
+        };
+        
+        addDebugLog(`업데이트된 할 일 데이터: 담당자=${updatedTodo.assignedTo}`);
+        
+        // 상태 업데이트
+        setTodos(prevTodos => prevTodos.map(todo => 
+          todo.id === todoId ? updatedTodo : todo
+        ));
+        
+        // 로컬 스토리지 업데이트
+        try {
+          // 전체 할 일 목록 업데이트
+          const storedTodos = localStorage.getItem('wizweblast_todos');
+          if (storedTodos) {
+            const parsedTodos = JSON.parse(storedTodos);
+            const updatedStoredTodos = parsedTodos.map((todo: any) => 
+              todo.id === todoId ? updatedTodo : todo
+            );
+            localStorage.setItem('wizweblast_todos', JSON.stringify(updatedStoredTodos));
+            addDebugLog('전체 할 일 로컬 스토리지 업데이트 완료');
+          }
+          
+          // 클라이언트별 캐시도 업데이트
+          const clientTodos = localStorage.getItem(`wizweblast_todos_client_${client.id}`);
+          if (clientTodos) {
+            const parsedClientTodos = JSON.parse(clientTodos);
+            const updatedClientTodos = parsedClientTodos.map((todo: any) => 
+              todo.id === todoId ? updatedTodo : todo
+            );
+            localStorage.setItem(`wizweblast_todos_client_${client.id}`, JSON.stringify(updatedClientTodos));
+            addDebugLog('클라이언트별 할 일 로컬 스토리지 업데이트 완료');
+          }
+        } catch (storageErr) {
+          console.error('로컬 스토리지 업데이트 오류:', storageErr);
+          addDebugLog(`로컬 스토리지 업데이트 오류: ${storageErr instanceof Error ? storageErr.message : '알 수 없는 오류'}`);
+        }
+      }
+      
+      // 모달 닫기
+      setShowAssignModal(false);
+      setSelectedTodoId(null);
+    } catch (err) {
+      console.error('담당자 변경 오류:', err);
+      addDebugLog(`담당자 변경 오류: ${err instanceof Error ? err.message : '알 수 없는 오류'}`);
+      alert('담당자 변경 중 오류가 발생했습니다.');
+    }
   };
   
   return (
@@ -546,6 +730,79 @@ export function TodoSection({ client }: TodoSectionProps) {
           onClose={() => setShowTodoModal(false)}
           onSave={handleAddTodo}
         />
+      )}
+      
+      {/* 담당자 변경 모달 */}
+      {showAssignModal && selectedTodoId && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 animate-fade-in">
+          <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-md transform transition-all animate-scale-up">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-bold">담당자 변경</h3>
+              <button 
+                onClick={() => {
+                  setShowAssignModal(false);
+                  setSelectedTodoId(null);
+                }}
+                className="bg-gray-100 hover:bg-gray-200 rounded-full w-8 h-8 flex items-center justify-center"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            
+            {isLoadingUsers ? (
+              <div className="flex justify-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-2 border-blue-500 border-t-transparent"></div>
+              </div>
+            ) : (
+              <>
+                <p className="text-sm text-gray-500 mb-4">
+                  이 할 일을 담당할 사용자를 선택하세요.
+                </p>
+                
+                <div className="grid grid-cols-1 gap-2 max-h-64 overflow-y-auto mb-4">
+                  {users.map(user => {
+                    const todo = todos.find(t => t.id === selectedTodoId);
+                    const isCurrentAssignee = todo && todo.assignedTo === user.id;
+                    
+                    return (
+                      <button
+                        key={user.id}
+                        className={`flex items-center p-3 border rounded-lg transition-all ${
+                          isCurrentAssignee 
+                            ? 'border-blue-500 bg-blue-50 text-blue-700'
+                            : 'border-gray-200 hover:border-blue-300'
+                        }`}
+                        onClick={() => handleAssignTodo(selectedTodoId, user.id)}
+                        disabled={isCurrentAssignee}
+                      >
+                        {user.imageUrl ? (
+                          <img 
+                            src={user.imageUrl} 
+                            alt={user.name} 
+                            className="w-10 h-10 rounded-full mr-3"
+                          />
+                        ) : (
+                          <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center mr-3">
+                            <User className="h-5 w-5 text-gray-500" />
+                          </div>
+                        )}
+                        <div className="text-left">
+                          <div className={isCurrentAssignee ? 'font-medium' : ''}>
+                            {user.name}
+                            {isCurrentAssignee && <span className="ml-2 text-xs">(현재 담당자)</span>}
+                          </div>
+                          {user.department && (
+                            <div className="text-xs text-gray-500">{user.department}</div>
+                          )}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </>
+            )}
+          </div>
+        </div>
       )}
     </div>
   );

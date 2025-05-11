@@ -146,37 +146,44 @@ export function TodoCard({ todo, onComplete, onAssigneeChange, onDelete }: TodoC
           </div>
           
           {/* 담당자 정보 및 액션 버튼 */}
-          <div className="flex justify-between items-center mt-2">
-            <div className="flex items-center text-xs text-gray-600">
-              <User className="h-3 w-3 mr-1" />
-              <span>{todo.assigneeName || '담당자 없음'}</span>
-            </div>
-            
-            {/* 마우스 오버 시 나타나는 액션 버튼 */}
-            {showActions && (
-              <div className="flex space-x-1 transition-opacity duration-200 ease-in-out">
+          <div className="flex justify-between items-center mt-3">
+            <div className="flex items-center">
+              {todo.assigneeAvatar ? (
+                <img 
+                  src={todo.assigneeAvatar} 
+                  alt={todo.assigneeName || '담당자'} 
+                  className="w-6 h-6 rounded-full mr-2 border border-gray-200"
+                />
+              ) : (
+                <div className="w-6 h-6 rounded-full bg-gray-200 flex items-center justify-center mr-2">
+                  <User className="h-3 w-3 text-gray-500" />
+                </div>
+              )}
+              <div className="text-xs text-gray-600">
+                <span className="font-medium">{todo.assigneeName || '담당자 미지정'}</span>
                 {onAssigneeChange && (
                   <button
                     onClick={() => onAssigneeChange(todo.id)}
                     disabled={isDeleting}
-                    className="text-xs px-2 py-1 bg-blue-50 text-blue-500 rounded hover:bg-blue-100"
+                    className="ml-2 text-blue-500 hover:text-blue-700 hover:underline"
                   >
-                    담당자 변경
-                  </button>
-                )}
-                
-                {onDelete && (
-                  <button
-                    onClick={handleDelete}
-                    disabled={isDeleting}
-                    className="text-xs px-2 py-1 bg-red-50 text-red-500 rounded hover:bg-red-100 flex items-center"
-                    aria-label="할 일 삭제"
-                  >
-                    <Trash2 className="h-3 w-3 mr-1" />
-                    삭제
+                    변경
                   </button>
                 )}
               </div>
+            </div>
+            
+            {/* 마우스 오버 시 나타나는 액션 버튼 */}
+            {showActions && onDelete && (
+              <button
+                onClick={handleDelete}
+                disabled={isDeleting}
+                className="text-xs px-2 py-1 bg-red-50 text-red-500 rounded hover:bg-red-100 flex items-center"
+                aria-label="할 일 삭제"
+              >
+                <Trash2 className="h-3 w-3 mr-1" />
+                삭제
+              </button>
             )}
           </div>
         </div>

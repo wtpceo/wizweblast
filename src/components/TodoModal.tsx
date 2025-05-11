@@ -19,6 +19,7 @@ type TeamMember = {
   name: string;
   emoji: string;
   department?: string;
+  imageUrl?: string;
 };
 
 export function TodoModal({ client, isOpen, onClose, onSave }: TodoModalProps) {
@@ -27,8 +28,49 @@ export function TodoModal({ client, isOpen, onClose, onSave }: TodoModalProps) {
   const [dueDate, setDueDate] = useState<string | null>(null);
   const [showCalendar, setShowCalendar] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
+  const [isLoadingUsers, setIsLoadingUsers] = useState(false);
   const contentInputRef = useRef<HTMLInputElement>(null);
   const { user } = useUser();
+  
+  // 사용자 목록 가져오기
+  useEffect(() => {
+    const fetchUsers = async () => {
+      try {
+        setIsLoadingUsers(true);
+        const response = await fetch('/api/users');
+        
+        if (!response.ok) {
+          throw new Error('사용자 목록을 가져오는데 실패했습니다.');
+        }
+        
+        const users = await response.json();
+        
+        // 팀원 데이터 형식으로 변환
+        const formattedTeamMembers: TeamMember[] = users.map((user: any) => ({
+          id: user.id,
+          name: user.name,
+          emoji: '👤', // 기본 이모지
+          department: user.department,
+          imageUrl: user.imageUrl
+        }));
+        
+        setTeamMembers(formattedTeamMembers);
+      } catch (error) {
+        console.error('사용자 목록 로딩 오류:', error);
+        // 오류 시 기본 사용자만 표시
+        setTeamMembers([
+          { id: user?.id || 'current-user', name: user?.firstName || '현재 사용자', emoji: '👨‍💼' }
+        ]);
+      } finally {
+        setIsLoadingUsers(false);
+      }
+    };
+    
+    if (isOpen) {
+      fetchUsers();
+    }
+  }, [isOpen, user]);
   
   // 모달이 열릴 때 필드 초기화
   useEffect(() => {
@@ -69,19 +111,6 @@ export function TodoModal({ client, isOpen, onClose, onSave }: TodoModalProps) {
       window.removeEventListener('keydown', handleKeyDown);
     };
   }, [isOpen, content, assignedTo, onClose]);
-  
-  // 임시 팀원 데이터 (실제로는 API에서 가져옴)
-  const teamMembers: TeamMember[] = [
-    { id: user?.id || 'user1', name: user?.firstName || '현재 사용자', emoji: '👨‍💼' },
-    { id: 'user2', name: '이지영', emoji: '👩‍💼', department: '디자인' },
-    { id: 'user3', name: '박준호', emoji: '👨‍💻', department: '개발' },
-    { id: 'user4', name: '최수진', emoji: '👩‍💻', department: '마케팅' }
-  ];
-  
-  if (!isOpen) return null;
-  
-  // 선택된 담당자 정보
-  const selectedMember = assignedTo ? teamMembers.find(m => m.id === assignedTo) : null;
   
   // 달력에 표시할 월 관리
   const currentDate = new Date();
@@ -193,6 +222,9 @@ export function TodoModal({ client, isOpen, onClose, onSave }: TodoModalProps) {
     }
   };
   
+  // 선택된 담당자 정보
+  const selectedMember = assignedTo ? teamMembers.find(m => m.id === assignedTo) : null;
+  
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 animate-fade-in">
       <div 
@@ -241,28 +273,42 @@ export function TodoModal({ client, isOpen, onClose, onSave }: TodoModalProps) {
             <label className="block text-sm font-medium text-gray-700 mb-1">
               담당자
             </label>
-            <div className="grid grid-cols-2 gap-2">
-              {teamMembers.map(member => (
-                <button
-                  type="button"
-                  key={member.id}
-                  className={`flex items-center p-2 border rounded-lg transition-all ${
-                    assignedTo === member.id 
-                      ? 'border-blue-500 bg-blue-50 text-blue-700'
-                      : 'border-gray-300 hover:border-blue-300'
-                  }`}
-                  onClick={() => setAssignedTo(member.id)}
-                >
-                  <span className="mr-2 text-lg">{member.emoji}</span>
-                  <div className="text-left">
-                    <div className={assignedTo === member.id ? 'font-medium' : ''}>{member.name}</div>
-                    {member.department && (
-                      <div className="text-xs text-gray-500">{member.department}</div>
+            {isLoadingUsers ? (
+              <div className="flex justify-center py-4">
+                <div className="animate-spin rounded-full h-6 w-6 border-2 border-blue-500 border-t-transparent"></div>
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto">
+                {teamMembers.map(member => (
+                  <button
+                    type="button"
+                    key={member.id}
+                    className={`flex items-center p-2 border rounded-lg transition-all ${
+                      assignedTo === member.id 
+                        ? 'border-blue-500 bg-blue-50 text-blue-700'
+                        : 'border-gray-300 hover:border-blue-300'
+                    }`}
+                    onClick={() => setAssignedTo(member.id)}
+                  >
+                    {member.imageUrl ? (
+                      <img 
+                        src={member.imageUrl} 
+                        alt={member.name} 
+                        className="w-8 h-8 rounded-full mr-2"
+                      />
+                    ) : (
+                      <span className="mr-2 text-lg">{member.emoji}</span>
                     )}
-                  </div>
-                </button>
-              ))}
-            </div>
+                    <div className="text-left">
+                      <div className={assignedTo === member.id ? 'font-medium' : ''}>{member.name}</div>
+                      {member.department && (
+                        <div className="text-xs text-gray-500">{member.department}</div>
+                      )}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
           
           {/* 마감일 선택 */}
