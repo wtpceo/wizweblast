@@ -1,0 +1,68 @@
+// 데이터베이스 연결 설정
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// 광고주 모델
+model Client {
+  id             String      @id @default(uuid())
+  name           String
+  icon           String?
+  contractStart  DateTime
+  contractEnd    DateTime
+  statusTags     String[]
+  usesCoupon     Boolean     @default(false)
+  publishesNews  Boolean     @default(false)
+  usesReservation Boolean     @default(false)
+  phoneNumber    String?
+  naverPlaceUrl  String?
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+
+  // 관계
+  notes          ClientNote[]
+  todos          ClientTodo[]
+
+  @@map("clients")
+}
+
+// 광고주 메모 모델
+model ClientNote {
+  id          String    @id @default(uuid())
+  client_id   String
+  note        String?
+  photo       String?
+  created_by  String?
+  created_at  DateTime  @default(now())
+  
+  // 관계
+  client      Client?   @relation(fields: [client_id], references: [id])
+
+  @@map("client_notes")
+  @@index([client_id])
+}
+
+// 광고주 할일 모델
+model ClientTodo {
+  id            String    @id @default(uuid())
+  client_id     String
+  content       String
+  title         String?
+  assigned_to   String?
+  completed     Boolean   @default(false)
+  created_at    DateTime  @default(now())
+  created_by    String?
+  completed_at  DateTime?
+  completed_by  String?
+
+  // 관계
+  client        Client?   @relation(fields: [client_id], references: [id])
+
+  @@map("client_todos")
+  @@index([client_id])
+} 

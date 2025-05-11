@@ -1,25 +1,76 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
 
-// 메모 삭제 API
-export async function DELETE(
-  request: Request, 
+// UUID 패턴을 확인하는 함수
+const isValidUUID = (str: string) => {
+  const regexExp = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+  return regexExp.test(str);
+};
+
+// ID를 UUID 형식으로 변환하는 함수
+const formatToUUID = (id: string) => {
+  if (isValidUUID(id)) return id;
+  
+  try {
+    // 숫자 또는 문자열에서 UUID v4 형식으로 변환 시도
+    const uuid = `00000000-0000-4000-8000-${id.padStart(12, '0')}`;
+    console.log(`ID를 UUID 형식으로 변환: ${id} -> ${uuid}`);
+    return uuid;
+  } catch (error) {
+    console.error('UUID 변환 실패:', error);
+    return id; // 변환 실패 시 원래 값 반환
+  }
+};
+
+// 특정 메모 조회 API
+export async function GET(
+  request: Request,
   { params }: { params: { id: string; noteId: string } }
 ) {
   try {
-    const clientId = params.id;
-    const noteId = params.noteId;
+    const clientId = formatToUUID(params.id);
+    const noteId = formatToUUID(params.noteId);
     
-    if (!clientId || !noteId) {
+    console.log(`특정 메모 조회: clientId=${clientId}, noteId=${noteId}`);
+    
+    // 메모 조회
+    const { data, error } = await supabase
+      .from('client_notes')
+      .select('*')
+      .eq('id', noteId)
+      .eq('client_id', clientId)
+      .single();
+    
+    if (error) {
+      console.error('메모 조회 오류:', error);
       return NextResponse.json(
-        { error: '유효하지 않은 요청입니다.' },
-        { status: 400 }
+        { error: '메모를 찾을 수 없습니다.' },
+        { status: 404 }
       );
     }
     
-    console.log(`메모 삭제 요청: 광고주 ID ${clientId}, 메모 ID ${noteId}`);
+    return NextResponse.json(data);
+  } catch (error) {
+    console.error('메모 조회 API 오류:', error);
+    return NextResponse.json(
+      { error: '서버 오류가 발생했습니다.' },
+      { status: 500 }
+    );
+  }
+}
+
+// 메모 삭제 API
+export async function DELETE(
+  request: Request,
+  { params }: { params: { id: string; noteId: string } }
+) {
+  try {
+    const clientId = formatToUUID(params.id);
+    const noteId = formatToUUID(params.noteId);
     
-    // Supabase에서 메모 삭제
+    console.log(`메모 삭제: clientId=${clientId}, noteId=${noteId}`);
+    
+    // 메모 삭제
     const { error } = await supabase
       .from('client_notes')
       .delete()
@@ -28,19 +79,6 @@ export async function DELETE(
     
     if (error) {
       console.error('메모 삭제 오류:', error);
-      
-      // relation does not exist 오류 처리
-      if (error.message.includes('relation') && error.message.includes('does not exist')) {
-        return NextResponse.json(
-          { 
-            error: '메모 테이블이 존재하지 않습니다.',
-            details: 'Supabase 스키마 설정을 먼저 실행해주세요.',
-            code: 'RELATION_NOT_EXIST'
-          },
-          { status: 500 }
-        );
-      }
-      
       return NextResponse.json(
         { error: '메모 삭제에 실패했습니다.' },
         { status: 500 }
@@ -50,6 +88,52 @@ export async function DELETE(
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('메모 삭제 API 오류:', error);
+    return NextResponse.json(
+      { error: '서버 오류가 발생했습니다.' },
+      { status: 500 }
+    );
+  }
+}
+
+// 메모 업데이트 API
+export async function PATCH(
+  request: Request,
+  { params }: { params: { id: string; noteId: string } }
+) {
+  try {
+    const clientId = formatToUUID(params.id);
+    const noteId = formatToUUID(params.noteId);
+    const body = await request.json();
+    const { note } = body;
+    
+    if (!note || note.trim() === '') {
+      return NextResponse.json(
+        { error: '메모 내용은 필수 입력 항목입니다.' },
+        { status: 400 }
+      );
+    }
+    
+    console.log(`메모 업데이트: clientId=${clientId}, noteId=${noteId}, note=${note.substring(0, 30)}...`);
+    
+    // 메모 업데이트
+    const { data, error } = await supabase
+      .from('client_notes')
+      .update({ note })
+      .eq('id', noteId)
+      .eq('client_id', clientId)
+      .select();
+    
+    if (error) {
+      console.error('메모 업데이트 오류:', error);
+      return NextResponse.json(
+        { error: '메모 업데이트에 실패했습니다.' },
+        { status: 500 }
+      );
+    }
+    
+    return NextResponse.json({ success: true, note: data[0] });
+  } catch (error) {
+    console.error('메모 업데이트 API 오류:', error);
     return NextResponse.json(
       { error: '서버 오류가 발생했습니다.' },
       { status: 500 }

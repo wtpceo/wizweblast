@@ -9,6 +9,10 @@ export default function SupabaseAdminPage() {
   const [loading, setLoading] = useState<boolean>(true);
   const [setupResults, setSetupResults] = useState<any>(null);
   const [isSetupRunning, setIsSetupRunning] = useState<boolean>(false);
+  const [isFunctionSetupRunning, setIsFunctionSetupRunning] = useState<boolean>(false);
+  const [functionSetupResults, setFunctionSetupResults] = useState<any>(null);
+  const [isRecreatingNotesTable, setIsRecreatingNotesTable] = useState<boolean>(false);
+  const [recreateNotesResult, setRecreateNotesResult] = useState<any>(null);
 
   useEffect(() => {
     const testSupabase = async () => {
@@ -51,6 +55,56 @@ export default function SupabaseAdminPage() {
     }
   };
 
+  const handleSetupFunctions = async () => {
+    try {
+      setIsFunctionSetupRunning(true);
+      const response = await fetch('/api/setup-functions', {
+        method: 'POST'
+      });
+      const data = await response.json();
+      setFunctionSetupResults(data);
+      
+      if (data.success) {
+        alert('Supabase 함수 설정이 완료되었습니다. 이제 스키마 설정을 진행하세요.');
+      }
+    } catch (error) {
+      console.error('Supabase 함수 설정 오류:', error);
+      setFunctionSetupResults({ 
+        success: false, 
+        error: error instanceof Error ? error.message : String(error)
+      });
+    } finally {
+      setIsFunctionSetupRunning(false);
+    }
+  };
+
+  const handleRecreateNotesTable = async () => {
+    if (!confirm('client_notes 테이블을 재생성하시겠습니까? 이 작업은 기존 테이블 구조를 변경할 수 있습니다.')) {
+      return;
+    }
+    
+    try {
+      setIsRecreatingNotesTable(true);
+      const response = await fetch('/api/recreate-notes-table', {
+        method: 'POST'
+      });
+      const data = await response.json();
+      setRecreateNotesResult(data);
+      
+      if (data.success) {
+        alert('client_notes 테이블이 성공적으로 재생성되었습니다. 이제 메모 기능을 사용할 수 있습니다.');
+      }
+    } catch (error) {
+      console.error('테이블 재생성 오류:', error);
+      setRecreateNotesResult({ 
+        success: false, 
+        error: error instanceof Error ? error.message : String(error)
+      });
+    } finally {
+      setIsRecreatingNotesTable(false);
+    }
+  };
+
   const handleClearLocalStorage = () => {
     if (confirm('로컬 스토리지의 모든 데이터를 삭제하시겠습니까?')) {
       localStorage.clear();
@@ -78,11 +132,25 @@ export default function SupabaseAdminPage() {
                 로컬스토리지 초기화
               </button>
               <button
+                onClick={handleRecreateNotesTable}
+                disabled={isRecreatingNotesTable}
+                className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors disabled:bg-green-300 disabled:cursor-not-allowed"
+              >
+                {isRecreatingNotesTable ? '테이블 재생성 중...' : '메모 테이블 재생성'}
+              </button>
+              <button
+                onClick={handleSetupFunctions}
+                disabled={isFunctionSetupRunning}
+                className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 transition-colors disabled:bg-purple-300 disabled:cursor-not-allowed"
+              >
+                {isFunctionSetupRunning ? '함수 설정 중...' : 'SQL 함수 설정'}
+              </button>
+              <button
                 onClick={handleSetupSupabase}
                 disabled={isSetupRunning}
                 className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors disabled:bg-blue-300 disabled:cursor-not-allowed"
               >
-                {isSetupRunning ? '설정 중...' : 'Supabase 스키마 설정'}
+                {isSetupRunning ? '설정 중...' : '테이블 스키마 설정'}
               </button>
             </div>
           </div>
@@ -186,6 +254,67 @@ export default function SupabaseAdminPage() {
               </div>
             )}
           </div>
+        </div>
+
+        <div className="mt-8 bg-white p-6 rounded-lg shadow-md">
+          <h2 className="text-xl font-semibold mb-4">SQL 함수 설정 결과</h2>
+          
+          {functionSetupResults ? (
+            <div>
+              <div className={`mb-4 p-3 rounded-md ${functionSetupResults.success ? 'bg-green-50 text-green-800' : 'bg-yellow-50 text-yellow-800'}`}>
+                <div className="font-medium">
+                  {functionSetupResults.success ? '✅ 함수 설정 성공' : '⚠️ 함수 설정 실패'}
+                </div>
+                {functionSetupResults.error && (
+                  <p className="mt-1 text-sm">{functionSetupResults.error}</p>
+                )}
+              </div>
+              
+              {functionSetupResults.message && (
+                <p className="text-sm mb-4">{functionSetupResults.message}</p>
+              )}
+              
+              {functionSetupResults.instructions && (
+                <div className="p-4 bg-gray-50 rounded-md">
+                  <h3 className="font-medium mb-2">수동 설정 안내</h3>
+                  <pre className="text-xs overflow-auto p-2 bg-gray-100 rounded-md">
+                    {functionSetupResults.instructions}
+                  </pre>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="text-center py-8 text-gray-500">
+              <p>아직 SQL 함수 설정을 실행하지 않았습니다.</p>
+              <p className="mt-2 text-sm">상단의 &apos;SQL 함수 설정&apos; 버튼을 클릭하여 필요한 함수를 설정하세요.</p>
+            </div>
+          )}
+        </div>
+
+        <div className="mt-8 bg-white p-6 rounded-lg shadow-md">
+          <h2 className="text-xl font-semibold mb-4">메모 테이블 재생성 결과</h2>
+          
+          {recreateNotesResult ? (
+            <div>
+              <div className={`mb-4 p-3 rounded-md ${recreateNotesResult.success ? 'bg-green-50 text-green-800' : 'bg-yellow-50 text-yellow-800'}`}>
+                <div className="font-medium">
+                  {recreateNotesResult.success ? '✅ 테이블 재생성 성공' : '⚠️ 테이블 재생성 실패'}
+                </div>
+                {recreateNotesResult.error && (
+                  <p className="mt-1 text-sm">{recreateNotesResult.error}</p>
+                )}
+              </div>
+              
+              {recreateNotesResult.message && (
+                <p className="text-sm mb-4">{recreateNotesResult.message}</p>
+              )}
+            </div>
+          ) : (
+            <div className="text-center py-8 text-gray-500">
+              <p>아직 메모 테이블 재생성을 실행하지 않았습니다.</p>
+              <p className="mt-2 text-sm">'메모 테이블 재생성' 버튼을 클릭하여 메모 테이블 문제를 해결하세요.</p>
+            </div>
+          )}
         </div>
 
         <div className="mt-8 bg-white p-6 rounded-lg shadow-md">

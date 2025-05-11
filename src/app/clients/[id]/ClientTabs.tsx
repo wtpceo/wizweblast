@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Client } from '@/lib/mock-data';
 import { useUser } from '@clerk/nextjs';
 import { TodoSection } from './TodoSection';
@@ -21,7 +21,7 @@ interface Todo {
 
 // 메모 타입 정의
 interface Note {
-  id: number;
+  id: number | string;
   content: string;
   date: string;
   user: string;
@@ -42,6 +42,10 @@ export function ClientTabs({ client }: ClientTabsProps) {
   const [todoInput, setTodoInput] = useState('');
   const [selectedDepartment, setSelectedDepartment] = useState<string>('media');
   const [noteInput, setNoteInput] = useState('');
+  const [isSavingNote, setIsSavingNote] = useState(false);
+  const [isLoadingNotes, setIsLoadingNotes] = useState(false);
+  const [notesLoadError, setNotesLoadError] = useState<string | null>(null);
+  const [notesSource, setNotesSource] = useState<'api' | 'local'>('api');
   const { user } = useUser();
   
   // 할 일 목업 데이터
@@ -65,44 +69,169 @@ export function ClientTabs({ client }: ClientTabsProps) {
     lastUpdated: '2023-12-01T15:45:00Z'
   };
   
-  // 메모 불러오기
-  useEffect(() => {
-    const fetchNotes = async () => {
-      if (!client.id) return;
-      
+  // useEffect 밖으로 함수 이동
+  const fetchNotes = useCallback(async () => {
+    if (!client.id) return;
+    
+    setIsLoadingNotes(true);
+    setNotesLoadError(null);
+    
+    const MAX_RETRIES = 2;
+    let retryCount = 0;
+    
+    const attemptFetch = async (): Promise<boolean> => {
       try {
-        console.log(`메모 불러오기 시작, 광고주 ID: ${client.id}`);
-        const response = await fetch(`/api/clients/${client.id}/notes`);
+        console.log(`메모 불러오기 시도 ${retryCount + 1}/${MAX_RETRIES + 1}, 광고주 ID: ${client.id}`);
         
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}));
-          console.error("메모 API 응답 오류:", response.status, errorData);
-          throw new Error(errorData.error || '메모를 불러오는 데 실패했습니다.');
-        }
+        // 광고주 ID 형식 확인 및 변환
+        const clientIdValue = typeof client.id === 'string' ? client.id : String(client.id);
         
-        const data = await response.json();
-        console.log("메모 데이터 로드 완료:", data);
+        // 타임아웃 설정 (5초)
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 5000);
         
-        if (Array.isArray(data) && data.length > 0) {
+        try {
+          const response = await fetch(`/api/clients/${clientIdValue}/notes`, {
+            signal: controller.signal,
+            headers: {
+              'Content-Type': 'application/json',
+              'Cache-Control': 'no-cache, no-store, must-revalidate',
+              'Pragma': 'no-cache',
+              'Expires': '0'
+            }
+          });
+          
+          clearTimeout(timeoutId);
+          console.log('메모 API 응답 상태:', response.status);
+          
+          // 응답 타입 확인 (Content-Type 헤더)
+          const contentType = response.headers.get('content-type');
+          if (!contentType || !contentType.includes('application/json')) {
+            console.error('JSON이 아닌 응답 타입 감지:', contentType);
+            return false;
+          }
+          
+          if (!response.ok) {
+            console.error("메모 API 응답 오류:", response.status);
+            return false;
+          }
+          
+          // 응답 본문 읽기
+          const data = await response.json();
+          console.log('메모 API 응답 데이터:', typeof data, Array.isArray(data) ? `배열 (${data.length}개)` : '객체');
+          
+          // 빈 응답 처리
+          if (!data || (Array.isArray(data) && data.length === 0)) {
+            console.log('메모가 없습니다.');
+            setNotes([]);
+            setIsLoadingNotes(false);
+            setNotesSource('api');
+            return true;
+          }
+          
+          // 데이터 형식 검증
+          if (!Array.isArray(data)) {
+            console.error('응답이 배열 형식이 아닙니다:', typeof data);
+            return false;
+          }
+          
           // API 응답을 Note 타입에 맞게 변환
-          const notesData: Note[] = data.map(item => ({
-            id: item.id,
-            content: item.note,
-            date: item.created_at,
-            user: item.created_by || '알 수 없음'
-          }));
+          const notesData: Note[] = data.map((item: any) => {
+            return {
+              id: item.id || item.note_id || Date.now(),
+              content: item.note || item.content || '',
+              date: item.created_at || item.date || new Date().toISOString(),
+              user: item.created_by || item.user || '알 수 없음'
+            };
+          });
+          
+          console.log('변환된 메모 데이터:', notesData.length, '개');
           
           // 기존 메모 데이터 대체
           setNotes(notesData);
+          setNotesSource('api');
+          setIsLoadingNotes(false);
+          return true;
+        } catch (fetchErr: unknown) {
+          clearTimeout(timeoutId);
+          
+          if (fetchErr instanceof Error && fetchErr.name === 'AbortError') {
+            console.error('메모 API 요청 타임아웃');
+          } else if (fetchErr instanceof SyntaxError) {
+            console.error('JSON 파싱 오류:', fetchErr);
+          } else {
+            console.error('메모 API 요청 오류:', fetchErr);
+          }
+          
+          return false;
         }
       } catch (err) {
         console.error('메모 데이터 로딩 오류:', err);
-        // 에러 발생 시 기본 데이터 유지
+        return false;
       }
     };
     
-    fetchNotes();
+    // 최대 3번까지 시도 (초기 시도 + 최대 2번 재시도)
+    while (retryCount <= MAX_RETRIES) {
+      const success = await attemptFetch();
+      
+      if (success) {
+        console.log(`메모 불러오기 성공 (시도 ${retryCount + 1}/${MAX_RETRIES + 1})`);
+        return;
+      }
+      
+      retryCount++;
+      
+      if (retryCount <= MAX_RETRIES) {
+        // 재시도 전 잠시 대기 (지수 백오프: 500ms, 1000ms, ...)
+        const delay = 500 * Math.pow(2, retryCount - 1);
+        console.log(`메모 불러오기 실패, ${delay}ms 후 재시도 (${retryCount}/${MAX_RETRIES})...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+      }
+    }
+    
+    // 모든 시도 실패 시 로컬 스토리지에서 복구
+    console.error(`메모 불러오기 ${MAX_RETRIES + 1}회 시도 모두 실패, 로컬 스토리지에서 복구 시도`);
+    setNotesLoadError('서버에서 메모를 불러오지 못했습니다. 로컬에 저장된 메모를 표시합니다.');
+    loadNotesFromLocalStorage();
+    setIsLoadingNotes(false);
   }, [client.id]);
+
+  // 로컬 스토리지에서 메모 로드 함수 (중복 코드 제거)
+  const loadNotesFromLocalStorage = useCallback(() => {
+    try {
+      const localNotes = localStorage.getItem('client_notes');
+      if (localNotes) {
+        const parsedNotes = JSON.parse(localNotes);
+        const clientNotes = parsedNotes.filter((note: any) => note.clientId === client.id);
+        
+        if (clientNotes.length > 0) {
+          const notesData: Note[] = clientNotes.map((item: any) => ({
+            id: item.id,
+            content: item.note,
+            date: item.createdAt,
+            user: item.createdBy || '로컬 저장'
+          }));
+          
+          setNotes(notesData);
+          setNotesSource('local');
+          console.log('로컬 스토리지에서 메모 데이터 복구:', notesData);
+        } else {
+          setNotes([]);
+        }
+      } else {
+        setNotes([]);
+      }
+    } catch (localErr) {
+      console.error('로컬 스토리지 메모 복구 오류:', localErr);
+      setNotes([]);
+    }
+  }, [client.id]);
+
+  // useEffect에서 호출
+  useEffect(() => {
+    fetchNotes();
+  }, [fetchNotes]);
   
   // 날짜 포맷팅
   const formatDate = (dateString: string) => {
@@ -215,12 +344,15 @@ export function ClientTabs({ client }: ClientTabsProps) {
   const handleAddNote = async () => {
     if (!noteInput.trim()) return;
     
+    // 저장 중 상태 설정
+    setIsSavingNote(true);
+    
     // 현재 사용자 정보
     const currentUser = user?.fullName || 'Unknown User';
     
     // 새 메모 데이터 생성 (UI용)
     const newNote: Note = {
-      id: Date.now(),
+      id: `temp-${Date.now()}`,
       content: noteInput,
       date: new Date().toISOString(),
       user: currentUser,
@@ -231,31 +363,87 @@ export function ClientTabs({ client }: ClientTabsProps) {
     setNoteInput('');
     
     try {
-      // API 호출하여 메모 등록
-      const response = await fetch(`/api/clients/${client.id}/notes`, {
+      console.log(`메모 저장 시도: 광고주 ID=${client.id}, 내용="${noteInput.substring(0, 30)}..."`);
+      
+      // 로컬 스토리지에 메모 저장 (백업)
+      try {
+        const localNotes = JSON.parse(localStorage.getItem('client_notes') || '[]');
+        const noteData = {
+          id: `local-${Date.now()}`,
+          clientId: client.id,
+          note: noteInput,
+          createdAt: new Date().toISOString(),
+          createdBy: currentUser
+        };
+        
+        localNotes.push(noteData);
+        localStorage.setItem('client_notes', JSON.stringify(localNotes));
+        console.log('메모가 로컬 스토리지에 백업되었습니다.');
+      } catch (localError) {
+        console.error('로컬 스토리지 저장 오류:', localError);
+      }
+      
+      // 광고주 ID가 숫자 또는 문자열인지 확인하고 적절히 처리
+      const clientIdValue = typeof client.id === 'string' ? client.id : String(client.id);
+      
+      const response = await fetch(`/api/clients/${clientIdValue}/notes`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache'
         },
         body: JSON.stringify({
           note: noteInput
         })
       });
       
+      // 응답 데이터 확인
+      const responseData = await response.json();
+      
       if (!response.ok) {
-        throw new Error('메모 등록에 실패했습니다.');
+        const errorMsg = responseData?.error || '메모 등록에 실패했습니다.';
+        const errorDetails = responseData?.details || '';
+        const errorCode = responseData?.code || '';
+        
+        console.error('메모 저장 실패:', errorMsg, errorDetails, errorCode);
+        
+        // 특정 오류에 대한 안내
+        if (errorCode === 'CLIENT_NOT_FOUND') {
+          alert(`존재하지 않는 광고주입니다. 페이지를 새로고침하거나 관리자에게 문의하세요.
+          
+※ 메모는 로컬에 저장되었습니다.`);
+          return;
+        }
+        
+        alert(`메모 등록 중 오류가 발생했습니다: ${errorMsg}${errorDetails ? ` (${errorDetails})` : ''}
+
+※ 메모는 로컬에 저장되었습니다. 페이지를 새로고침해도 확인할 수 있습니다.`);
+        
+        // 오류가 발생해도 로컬에 저장되었으므로 UI는 유지
+        return;
       }
       
-      const data = await response.json();
-      console.log('메모 저장 성공:', data);
+      console.log('메모 저장 성공:', responseData);
+      
+      // 저장 성공 후 메모 목록 새로고침
+      fetchNotes();
       
       // 성공 메시지
       alert(`메모가 성공적으로 저장되었습니다! 👍`);
     } catch (err) {
       console.error('메모 등록 오류:', err);
-      // 에러 발생 시 UI 원상복구
-      setNotes(notes.filter(note => note.id !== newNote.id));
-      alert('메모 등록 중 오류가 발생했습니다.');
+      
+      // 이미 로컬에 저장되었으므로, UI는 유지
+      
+      // 오류 메시지 표시
+      const errorMessage = err instanceof Error ? err.message : '알 수 없는 오류';
+      alert(`메모 등록 중 오류가 발생했습니다: ${errorMessage}
+
+※ 메모는 로컬에 저장되었습니다. 페이지를 새로고침하면 확인할 수 있습니다.`);
+    } finally {
+      // 저장 상태 해제
+      setIsSavingNote(false);
     }
   };
   
@@ -612,25 +800,59 @@ export function ClientTabs({ client }: ClientTabsProps) {
                   <div className="flex justify-end">
                     <button
                       onClick={handleAddNote}
-                      disabled={!noteInput.trim()}
+                      disabled={!noteInput.trim() || isSavingNote}
                       className={`px-4 py-2 rounded-lg ${
-                        noteInput.trim()
+                        noteInput.trim() && !isSavingNote
                           ? 'bg-[#FFC107] text-white hover:bg-[#e6ac00]'
                           : 'bg-gray-100 text-gray-400 cursor-not-allowed'
                       }`}
                     >
-                      메모 저장
+                      {isSavingNote ? (
+                        <>
+                          <span className="inline-block animate-spin mr-2">⏳</span>
+                          저장 중...
+                        </>
+                      ) : (
+                        '메모 저장'
+                      )}
                     </button>
                   </div>
                 </div>
               </div>
               
+              {notesLoadError && (
+                <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg text-yellow-800 text-sm">
+                  <div className="flex items-center">
+                    <span className="mr-2">⚠️</span>
+                    <span>{notesLoadError}</span>
+                  </div>
+                </div>
+              )}
+              
+              {notesSource === 'local' && (
+                <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg text-blue-800 text-sm">
+                  <div className="flex items-center">
+                    <span className="mr-2">💾</span>
+                    <span>로컬 스토리지에서 불러온 메모를 표시하고 있습니다.</span>
+                  </div>
+                </div>
+              )}
+              
               <div className="space-y-4">
-                {notes.length > 0 ? (
+                {isLoadingNotes ? (
+                  <div className="text-center py-8">
+                    <div className="inline-block animate-spin text-3xl mb-2">⏳</div>
+                    <p className="text-gray-500">메모를 불러오는 중입니다...</p>
+                  </div>
+                ) : notes.length > 0 ? (
                   notes.map(note => (
                     <div
                       key={note.id}
-                      className="p-4 bg-[#FFF8E1] rounded-lg relative"
+                      className={`p-4 rounded-lg relative ${
+                        typeof note.id === 'string' && note.id.toString().startsWith('local-')
+                          ? 'bg-[#E3F2FD]' // 로컬 저장 메모는 파란색 배경
+                          : 'bg-[#FFF8E1]'  // API에서 불러온 메모는 노란색 배경
+                      }`}
                     >
                       <div className="flex justify-between mb-2">
                         <div className="flex items-center">

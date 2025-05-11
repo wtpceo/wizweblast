@@ -3,6 +3,7 @@
 import { Notice } from "@/lib/mock-data";
 import Link from "next/link";
 import { useNoticeContext } from "@/context/NoticeContext";
+import { useEffect } from "react";
 
 export function NoticeList() {
   const { notices } = useNoticeContext();

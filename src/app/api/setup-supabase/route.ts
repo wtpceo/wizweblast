@@ -115,14 +115,62 @@ CREATE INDEX IF NOT EXISTS idx_client_todos_completed_at ON public.client_todos(
 
 // 메모 테이블 설정 SQL
 const SETUP_NOTES_SQL = `
+-- UUID 확장 활성화
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
+-- 기존 테이블의 외래 키 제약 조건 제거 시도
+ALTER TABLE IF EXISTS client_notes
+DROP CONSTRAINT IF EXISTS client_notes_client_id_fkey;
+
 -- client_notes 테이블이 있는지 확인하고 없으면 생성
 CREATE TABLE IF NOT EXISTS client_notes (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   client_id UUID NOT NULL,
   note TEXT NOT NULL,
+  photo TEXT,
   created_by TEXT,
   created_at TIMESTAMPTZ DEFAULT now()
 );
+
+-- photo 컬럼이 없는 경우 추가
+DO $$
+DECLARE
+  column_exists BOOLEAN;
+BEGIN
+  SELECT EXISTS (
+    SELECT FROM information_schema.columns 
+    WHERE table_schema = 'public' 
+    AND table_name = 'client_notes' 
+    AND column_name = 'photo'
+  ) INTO column_exists;
+  
+  IF NOT column_exists THEN
+    ALTER TABLE client_notes ADD COLUMN photo TEXT;
+    RAISE NOTICE 'photo 컬럼이 추가되었습니다.';
+  ELSE
+    RAISE NOTICE 'photo 컬럼이 이미 존재합니다.';
+  END IF;
+END $$;
+
+-- created_by 컬럼이 없는 경우 추가
+DO $$
+DECLARE
+  column_exists BOOLEAN;
+BEGIN
+  SELECT EXISTS (
+    SELECT FROM information_schema.columns 
+    WHERE table_schema = 'public' 
+    AND table_name = 'client_notes' 
+    AND column_name = 'created_by'
+  ) INTO column_exists;
+  
+  IF NOT column_exists THEN
+    ALTER TABLE client_notes ADD COLUMN created_by TEXT;
+    RAISE NOTICE 'created_by 컬럼이 추가되었습니다.';
+  ELSE
+    RAISE NOTICE 'created_by 컬럼이 이미 존재합니다.';
+  END IF;
+END $$;
 
 -- 인덱스 추가
 CREATE INDEX IF NOT EXISTS idx_client_notes_client_id ON client_notes(client_id);
@@ -291,4 +339,10 @@ export async function GET(request: Request) {
       error: error instanceof Error ? error.message : '서버 오류가 발생했습니다.' 
     }, { status: 500 });
   }
+}
+
+// GET 핸들러와 동일한 작업을 수행하는 POST 핸들러
+export async function POST(request: Request) {
+  // GET 메서드와 동일한 코드 재사용
+  return GET(request);
 } 
