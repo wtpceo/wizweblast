@@ -4,9 +4,5 @@
   "devCommand": "npm run dev",
   "installCommand": "npm install",
   "framework": "nextjs",
-  "regions": ["icn1"],
-  "environment": {
-    "NEXT_PUBLIC_SUPABASE_URL": "https://fqzqmnmyffaibkpnytii.supabase.co",
-    "NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY": "pk_test_d29ya2luZy1mYWxjb24tNDAuY2xlcmsuYWNjb3VudHMuZGV2JA"
-  }
+  "regions": ["icn1"]
 } 
