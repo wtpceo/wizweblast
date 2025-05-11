@@ -65,6 +65,45 @@ export function ClientTabs({ client }: ClientTabsProps) {
     lastUpdated: '2023-12-01T15:45:00Z'
   };
   
+  // 메모 불러오기
+  useEffect(() => {
+    const fetchNotes = async () => {
+      if (!client.id) return;
+      
+      try {
+        console.log(`메모 불러오기 시작, 광고주 ID: ${client.id}`);
+        const response = await fetch(`/api/clients/${client.id}/notes`);
+        
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          console.error("메모 API 응답 오류:", response.status, errorData);
+          throw new Error(errorData.error || '메모를 불러오는 데 실패했습니다.');
+        }
+        
+        const data = await response.json();
+        console.log("메모 데이터 로드 완료:", data);
+        
+        if (Array.isArray(data) && data.length > 0) {
+          // API 응답을 Note 타입에 맞게 변환
+          const notesData: Note[] = data.map(item => ({
+            id: item.id,
+            content: item.note,
+            date: item.created_at,
+            user: item.created_by || '알 수 없음'
+          }));
+          
+          // 기존 메모 데이터 대체
+          setNotes(notesData);
+        }
+      } catch (err) {
+        console.error('메모 데이터 로딩 오류:', err);
+        // 에러 발생 시 기본 데이터 유지
+      }
+    };
+    
+    fetchNotes();
+  }, [client.id]);
+  
   // 날짜 포맷팅
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -173,23 +212,106 @@ export function ClientTabs({ client }: ClientTabsProps) {
   };
   
   // 메모 추가
-  const handleAddNote = () => {
+  const handleAddNote = async () => {
     if (!noteInput.trim()) return;
     
+    // 현재 사용자 정보
+    const currentUser = user?.fullName || 'Unknown User';
+    
+    // 새 메모 데이터 생성 (UI용)
     const newNote: Note = {
       id: Date.now(),
       content: noteInput,
       date: new Date().toISOString(),
-      user: '현재 사용자', // 실제 구현 시 로그인 사용자 정보 사용
+      user: currentUser,
     };
     
+    // 화면에 먼저 표시 (낙관적 UI 업데이트)
     setNotes([newNote, ...notes]);
     setNoteInput('');
+    
+    try {
+      // API 호출하여 메모 등록
+      const response = await fetch(`/api/clients/${client.id}/notes`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          note: noteInput
+        })
+      });
+      
+      if (!response.ok) {
+        throw new Error('메모 등록에 실패했습니다.');
+      }
+      
+      const data = await response.json();
+      console.log('메모 저장 성공:', data);
+      
+      // 성공 메시지
+      alert(`메모가 성공적으로 저장되었습니다! 👍`);
+    } catch (err) {
+      console.error('메모 등록 오류:', err);
+      // 에러 발생 시 UI 원상복구
+      setNotes(notes.filter(note => note.id !== newNote.id));
+      alert('메모 등록 중 오류가 발생했습니다.');
+    }
   };
   
   // 메모 삭제
-  const deleteNote = (id: number) => {
-    setNotes(notes.filter(note => note.id !== id));
+  const deleteNote = async (id: number | string) => {
+    try {
+      // 삭제 전 사용자 확인
+      if (!confirm('정말 이 메모를 삭제하시겠습니까?')) {
+        return;
+      }
+      
+      // UI에서 먼저 삭제 (낙관적 UI 업데이트)
+      setNotes(notes.filter(note => note.id !== id));
+      
+      // 임시 ID(로컬에서만 생성된 메모)는 API 호출 필요 없음
+      if (typeof id === 'number') {
+        console.log('로컬 메모 삭제:', id);
+        return;
+      }
+      
+      // API 호출하여 메모 삭제
+      const response = await fetch(`/api/clients/${client.id}/notes/${id}`, {
+        method: 'DELETE'
+      });
+      
+      if (!response.ok) {
+        throw new Error('메모 삭제에 실패했습니다.');
+      }
+      
+      console.log('메모 삭제 성공:', id);
+    } catch (err) {
+      console.error('메모 삭제 오류:', err);
+      // 에러 발생 시 다시 목록 불러오기
+      const fetchNotes = async () => {
+        try {
+          const response = await fetch(`/api/clients/${client.id}/notes`);
+          if (response.ok) {
+            const data = await response.json();
+            if (Array.isArray(data)) {
+              const notesData = data.map(item => ({
+                id: item.id,
+                content: item.note,
+                date: item.created_at,
+                user: item.created_by || '알 수 없음'
+              }));
+              setNotes(notesData);
+            }
+          }
+        } catch (fetchErr) {
+          console.error('메모 새로고침 오류:', fetchErr);
+        }
+      };
+      
+      fetchNotes();
+      alert('메모 삭제 중 오류가 발생했습니다.');
+    }
   };
   
   // 민원 토글 처리

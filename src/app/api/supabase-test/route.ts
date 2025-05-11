@@ -6,75 +6,55 @@ import path from 'path';
 // Supabase 테스트 API
 export async function GET() {
   try {
+    // Supabase 클라이언트 생성
     const supabase = createServerClient();
     
-    // Supabase에서 현재 날짜/시간 가져오기 (연결 테스트)
-    const { data, error } = await supabase.from('_test').select('*').limit(1);
+    // 간단한 쿼리 실행
+    const { data: clientsData, error: clientsError } = await supabase
+      .from('clients')
+      .select('id, name, created_at')
+      .limit(5);
     
-    if (error) {
-      // 테이블이 없는 경우 raw query로 현재 시간만 가져오기
-      const { data: timeData, error: timeError } = await supabase.rpc('get_current_timestamp');
-      
-      if (timeError) {
-        // RPC 함수가 없는 경우, 직접 SQL 실행
-        const { data: rawData, error: rawError } = await supabase
-          .from('_dummy_query')
-          .select('now()')
-          .limit(1);
-        
-        if (rawError) {
-          // 마지막 방법: 시스템 상태 확인
-          const { data: systemData, error: systemError } = await supabase
-            .from('pg_stat_activity')
-            .select('datname')
-            .limit(1);
-          
-          if (systemError) {
-            return NextResponse.json({ 
-              success: false, 
-              error: systemError.message,
-              message: '연결 실패: 데이터베이스에 접근할 수 없습니다.' 
-            }, { status: 500 });
-          }
-          
-          return NextResponse.json({ 
-            success: true, 
-            connection: 'system_tables_only',
-            data: systemData,
-            message: '제한된 연결 성공: 시스템 테이블만 접근 가능합니다.' 
-          });
-        }
-        
-        return NextResponse.json({ 
-          success: true, 
-          connection: 'raw_query',
-          message: '기본 SQL 쿼리 가능' 
-        });
-      }
-      
-      return NextResponse.json({ 
-        success: true, 
-        connection: 'rpc',
-        timestamp: timeData,
-        message: 'RPC 함수 호출 가능' 
-      });
+    if (clientsError) {
+      console.error('Supabase 연결 테스트 오류:', clientsError);
+      return NextResponse.json(
+        { 
+          success: false, 
+          message: '데이터베이스 연결 실패', 
+          error: clientsError.message 
+        }, 
+        { status: 500 }
+      );
     }
     
-    // 정상 연결
-    return NextResponse.json({ 
-      success: true, 
-      connection: 'full',
-      data,
-      message: '정상 연결됨: 테이블 쿼리 가능' 
-    });
+    // 현재 시간 쿼리
+    const { data: timeData, error: timeError } = await supabase
+      .from('clients')
+      .select('id')
+      .limit(1)
+      .single();
     
+    return NextResponse.json({
+      success: true,
+      connection: 'OK',
+      serverTime: new Date().toISOString(), // 클라이언트 시간
+      dataCount: clientsData?.length || 0,
+      sampleData: clientsData?.map(client => ({
+        id: client.id,
+        name: client.name,
+        created_at: client.created_at
+      }))
+    });
   } catch (error) {
-    console.error('Supabase 연결 오류:', error);
-    return NextResponse.json({ 
-      success: false, 
-      error: error instanceof Error ? error.message : '알 수 없는 오류',
-      message: '서버 오류: Supabase 클라이언트 생성 실패' 
-    }, { status: 500 });
+    console.error('Supabase 테스트 중 예외 발생:', error);
+    return NextResponse.json(
+      { 
+        success: false, 
+        message: 'Supabase 클라이언트 생성 실패', 
+        error: error instanceof Error ? error.message : '알 수 없는 오류' 
+      }, 
+      { status: 500 }
+    );
   }
 }
 

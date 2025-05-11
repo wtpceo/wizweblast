@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { format, isPast } from 'date-fns';
 import { ko } from 'date-fns/locale';
-import { Check, Clock, AlertTriangle, User, Calendar, MoreHorizontal } from 'lucide-react';
+import { Check, Clock, AlertTriangle, User, Calendar, MoreHorizontal, Trash2 } from 'lucide-react';
 
 // 할 일 타입 정의
 export interface Todo {
@@ -25,10 +25,12 @@ interface TodoCardProps {
   todo: Todo;
   onComplete: (id: string, currentStatus: boolean) => void;
   onAssigneeChange?: (id: string) => void;
+  onDelete?: (id: string) => void;
 }
 
-export function TodoCard({ todo, onComplete, onAssigneeChange }: TodoCardProps) {
+export function TodoCard({ todo, onComplete, onAssigneeChange, onDelete }: TodoCardProps) {
   const [showActions, setShowActions] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   
   // 상태 계산: 완료, 지연, 진행 중
   const getStatus = () => {
@@ -64,6 +66,16 @@ export function TodoCard({ todo, onComplete, onAssigneeChange }: TodoCardProps) 
     }
   };
   
+  // 할 일 삭제 처리
+  const handleDelete = () => {
+    if (isDeleting || !onDelete) return;
+    
+    if (confirm('이 할 일을 정말 삭제하시겠습니까?')) {
+      setIsDeleting(true);
+      onDelete(todo.id);
+    }
+  };
+  
   return (
     <div 
       className={`p-4 border rounded-lg transition-colors mb-3 
@@ -71,6 +83,7 @@ export function TodoCard({ todo, onComplete, onAssigneeChange }: TodoCardProps) 
         ${statusConfig[status].borderColor}
         ${statusConfig[status].bgColor}
         hover:shadow-sm
+        ${isDeleting ? 'opacity-50' : ''}
       `}
       onMouseEnter={() => setShowActions(true)}
       onMouseLeave={() => setShowActions(false)}
@@ -78,6 +91,7 @@ export function TodoCard({ todo, onComplete, onAssigneeChange }: TodoCardProps) 
       <div className="flex items-start">
         <button
           onClick={() => onComplete(todo.id, todo.completed)}
+          disabled={isDeleting}
           className={`w-5 h-5 rounded-full flex-shrink-0 mt-1 ${
             todo.completed 
               ? 'bg-[#4CAF50] text-white flex items-center justify-center'
@@ -144,9 +158,22 @@ export function TodoCard({ todo, onComplete, onAssigneeChange }: TodoCardProps) 
                 {onAssigneeChange && (
                   <button
                     onClick={() => onAssigneeChange(todo.id)}
+                    disabled={isDeleting}
                     className="text-xs px-2 py-1 bg-blue-50 text-blue-500 rounded hover:bg-blue-100"
                   >
                     담당자 변경
+                  </button>
+                )}
+                
+                {onDelete && (
+                  <button
+                    onClick={handleDelete}
+                    disabled={isDeleting}
+                    className="text-xs px-2 py-1 bg-red-50 text-red-500 rounded hover:bg-red-100 flex items-center"
+                    aria-label="할 일 삭제"
+                  >
+                    <Trash2 className="h-3 w-3 mr-1" />
+                    삭제
                   </button>
                 )}
               </div>

@@ -27,6 +27,11 @@ export default function ClientDetailPage() {
       setLoading(true);
       
       try {
+        console.log("광고주 정보 가져오기 시작, ID:", clientId);
+        
+        // UUID 형식 확인 (Supabase ID는 보통 UUID 형식)
+        const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(clientId);
+        
         // 로컬 스토리지에서 클라이언트 데이터 확인
         const localClientData = localStorage.getItem(`wizweblast_client_${clientId}`);
         if (localClientData) {
@@ -39,40 +44,107 @@ export default function ClientDetailPage() {
         }
         
         // 로컬 스토리지에 없으면 API 호출
+        console.log(`API 호출: /api/clients/${clientId}`);
         const response = await fetch(`/api/clients/${clientId}`);
         
         if (!response.ok) {
-          throw new Error('광고주 정보를 가져오는 데 실패했습니다.');
+          const errorData = await response.json().catch(() => ({}));
+          console.error("API 응답 오류:", response.status, errorData);
+          
+          // 상세 에러 정보 로깅
+          if (response.status === 404) {
+            console.log("광고주 ID를 찾을 수 없습니다:", clientId);
+          } else if (response.status === 500) {
+            console.log("서버 내부 오류 발생");
+          }
+          
+          throw new Error(errorData.error || '광고주를 찾을 수 없습니다.');
         }
         
         const data = await response.json();
+        console.log("API에서 받은 광고주 데이터:", data);
+        
+        // API 응답 확인
+        if (!data || !data.id) {
+          console.error("API 응답에 유효한 데이터가 없습니다:", data);
+          throw new Error('유효하지 않은 광고주 데이터입니다.');
+        }
         
         // API 응답을 Client 타입에 맞게 변환
         const clientData: Client = {
           id: data.id,
           name: data.name,
           icon: data.icon || '🏢', // 기본 아이콘
-          contractStart: data.contractStart,
-          contractEnd: data.contractEnd,
-          statusTags: data.statusTags || [],
-          usesCoupon: data.usesCoupon || false,
-          publishesNews: data.publishesNews || false,
-          usesReservation: data.usesReservation || false,
-          phoneNumber: data.phoneNumber,
-          naverPlaceUrl: data.naverPlaceUrl
+          contractStart: data.contractStart || data.contract_start || '',
+          contractEnd: data.contractEnd || data.contract_end || '',
+          statusTags: data.statusTags || data.status_tags || [],
+          usesCoupon: data.usesCoupon ?? data.uses_coupon ?? false,
+          publishesNews: data.publishesNews ?? data.publishes_news ?? false,
+          usesReservation: data.usesReservation ?? data.uses_reservation ?? false,
+          phoneNumber: data.phoneNumber || data.phone_number || '',
+          naverPlaceUrl: data.naverPlaceUrl || data.naver_place_url || ''
         };
+        
+        // 로컬 스토리지에 저장
+        try {
+          localStorage.setItem(`wizweblast_client_${clientId}`, JSON.stringify(clientData));
+        } catch (storageErr) {
+          console.warn("로컬 스토리지 저장 실패:", storageErr);
+        }
         
         setClient(clientData);
         setError(null);
       } catch (err) {
         console.error('광고주 데이터 로딩 오류:', err);
-        setError('광고주 정보를 불러오는 중 오류가 발생했습니다.');
+        setError(err instanceof Error ? err.message : '광고주 정보를 불러오는 중 오류가 발생했습니다.');
         
-        // 개발 편의를 위해 목업 데이터로 폴백
-        const fallbackClient = mockClients.find(c => c.id === clientId);
-        if (fallbackClient) {
-          setClient(fallbackClient);
-          setError(null);
+        // API 호출 실패 시 최신 목업 데이터로 폴백
+        try {
+          console.log("API 호출 실패, 목업 데이터 사용 시도");
+          
+          // 먼저 localStorage에서 클라이언트 목록 확인
+          const clientsFromStorage = localStorage.getItem('wizweblast_clients');
+          if (clientsFromStorage) {
+            const parsedClients = JSON.parse(clientsFromStorage);
+            const clientFromStorage = parsedClients.find((c: any) => c.id === clientId);
+            if (clientFromStorage) {
+              console.log("로컬 스토리지의 목록에서 클라이언트 찾음:", clientFromStorage);
+              setClient(clientFromStorage);
+              setError(null);
+              return;
+            }
+          }
+          
+          // 또는 목업 데이터에서 찾기
+          const fallbackClient = mockClients.find(c => c.id === clientId);
+          if (fallbackClient) {
+            console.log("목업 데이터로 폴백:", fallbackClient);
+            setClient(fallbackClient);
+            setError(null);
+          } else {
+            console.log("목업 데이터에서도 클라이언트를 찾을 수 없음");
+            // 개발 환경에서는 샘플 데이터 제공
+            if (process.env.NODE_ENV === 'development') {
+              console.log("개발 환경에서 샘플 데이터 생성");
+              const sampleClient: Client = {
+                id: clientId,
+                name: '샘플 광고주',
+                icon: '🏢',
+                contractStart: '2024-01-01',
+                contractEnd: '2024-12-31',
+                statusTags: ['개발용'],
+                usesCoupon: false,
+                publishesNews: false,
+                usesReservation: false,
+                phoneNumber: '010-0000-0000',
+                naverPlaceUrl: ''
+              };
+              setClient(sampleClient);
+              setError(null);
+            }
+          }
+        } catch (fallbackErr) {
+          console.error("폴백 처리 중 오류:", fallbackErr);
         }
       } finally {
         setLoading(false);
@@ -166,9 +238,16 @@ export default function ClientDetailPage() {
           <p className="text-gray-600 mb-6">
             요청하신 광고주 정보를 찾을 수 없습니다. 광고주 목록으로 돌아가 다시 시도해주세요.
           </p>
-          <Link href="/clients" className="wiz-btn inline-block">
-            광고주 목록으로 돌아가기
-          </Link>
+          <div className="space-y-3">
+            <Link href="/clients" className="wiz-btn inline-block">
+              광고주 목록으로 돌아가기
+            </Link>
+            <div>
+              <Link href="/admin/supabase" className="text-blue-600 hover:text-blue-800 text-sm inline-block mt-4">
+                Supabase 연결 상태 확인 및 문제 해결
+              </Link>
+            </div>
+          </div>
         </div>
       </div>
     );

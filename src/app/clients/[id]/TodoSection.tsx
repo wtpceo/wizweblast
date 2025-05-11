@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { Plus } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
+import { Plus, PlusCircle } from 'lucide-react';
 import { useUser } from '@clerk/nextjs';
 import { Client } from '@/lib/mock-data';
 import { TodoCard, Todo } from '@/components/TodoCard';
@@ -15,45 +15,89 @@ interface TodoSectionProps {
 export function TodoSection({ client }: TodoSectionProps) {
   const [todos, setTodos] = useState<Todo[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [showDebug, setShowDebug] = useState(false);
+  const [debugLog, setDebugLog] = useState<string>('');
   const [showTodoModal, setShowTodoModal] = useState(false);
   const { user } = useUser();
   
+  // 디버그 로그 추가 함수
+  const addDebugLog = useCallback((message: string) => {
+    setDebugLog(prev => `${new Date().toLocaleTimeString()}: ${message}\n${prev}`);
+  }, []);
+  
+  // 캐시 삭제 함수
+  const clearTodoCache = () => {
+    try {
+      const keys = Object.keys(localStorage);
+      let count = 0;
+      
+      keys.forEach(key => {
+        if (key.startsWith('wizweblast_todos') || key.includes('todos_client_')) {
+          localStorage.removeItem(key);
+          count++;
+        }
+      });
+      
+      addDebugLog(`${count}개의 할 일 관련 캐시가 삭제되었습니다.`);
+      
+      // 데이터 새로고침
+      fetchTodos();
+    } catch (err) {
+      addDebugLog(`캐시 삭제 중 오류 발생: ${err instanceof Error ? err.message : '알 수 없는 오류'}`);
+    }
+  };
+  
   // 할 일 목록 가져오기
-  const fetchTodos = async () => {
+  const fetchTodos = useCallback(async () => {
     try {
       setIsLoading(true);
+      addDebugLog(`광고주 ID ${client.id}의 할 일 목록 가져오기 시작`);
       
       // API에서 할 일 목록 조회
       const userId = user?.id;
-      if (!userId) return;
+      if (!userId) {
+        addDebugLog('사용자 ID를 찾을 수 없음. 로그인 확인 필요');
+        return;
+      }
       
+      addDebugLog(`API 호출: /api/todos?clientId=${client.id}`);
       const response = await fetch(`/api/todos?clientId=${client.id}`);
       
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ error: '알 수 없는 오류' }));
         console.error('API 응답 상태:', response.status, response.statusText);
         console.error('오류 상세 정보:', errorData);
-        throw new Error(`할 일 목록을 가져오는 데 실패했습니다. (${response.status}: ${errorData.error || response.statusText})`);
+        const errorMessage = `할 일 목록을 가져오는 데 실패했습니다. (${response.status}: ${errorData.error || response.statusText})`;
+        addDebugLog(`API 오류: ${errorMessage}`);
+        throw new Error(errorMessage);
       }
       
       const data = await response.json();
+      addDebugLog(`${data.length || 0}개의 할 일 데이터 로드 성공`);
       setTodos(data);
       
       // 로컬 스토리지에 캐싱
       try {
         localStorage.setItem(`wizweblast_todos_client_${client.id}`, JSON.stringify(data));
+        addDebugLog('할 일 데이터 로컬 스토리지에 캐싱 완료');
       } catch (storageErr) {
         console.error('로컬 스토리지 저장 오류:', storageErr);
+        addDebugLog(`로컬 스토리지 저장 실패: ${storageErr instanceof Error ? storageErr.message : '알 수 없는 오류'}`);
       }
     } catch (err) {
       console.error('할 일 목록 로딩 오류:', err);
+      addDebugLog(`할 일 목록 로딩 오류: ${err instanceof Error ? err.message : '알 수 없는 오류'}`);
       
       // 로컬 스토리지에서 복구 시도
       try {
+        addDebugLog('로컬 스토리지에서 할 일 목록 복구 시도');
+        
         // 클라이언트별 캐시 확인
         const clientSpecificTodos = localStorage.getItem(`wizweblast_todos_client_${client.id}`);
         if (clientSpecificTodos) {
           const parsedTodos = JSON.parse(clientSpecificTodos);
+          addDebugLog(`로컬 스토리지에서 ${parsedTodos.length || 0}개의 할 일 복구 성공`);
           setTodos(parsedTodos);
           return;
         }
@@ -64,26 +108,33 @@ export function TodoSection({ client }: TodoSectionProps) {
           const parsedTodos = JSON.parse(storedTodos);
           // 현재 광고주의 할 일만 필터링
           const clientTodos = parsedTodos.filter((todo: any) => todo.clientId === client.id);
+          addDebugLog(`전체 캐시에서 클라이언트 ID ${client.id}로 필터링: ${clientTodos.length || 0}개 발견`);
           setTodos(clientTodos);
+        } else {
+          addDebugLog('사용 가능한 캐시 데이터가 없습니다');
         }
       } catch (parseErr) {
         console.error('로컬 스토리지 데이터 파싱 오류:', parseErr);
+        addDebugLog(`캐시 데이터 파싱 오류: ${parseErr instanceof Error ? parseErr.message : '알 수 없는 오류'}`);
+        setTodos([]);
       }
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [client.id, user?.id, addDebugLog]);
   
-  // 초기 로딩
+  // 초기 로딩 - 의존성 배열에 fetchTodos 추가
   useEffect(() => {
     if (user?.id) {
       fetchTodos();
     }
-  }, [user?.id, client.id]);
+  }, [fetchTodos]); // fetchTodos가 useCallback으로 메모이제이션되어 있으므로 안전하게 의존성 배열에 추가 가능
   
   // 할 일 완료 처리
   const handleToggleComplete = async (todoId: string, currentStatus: boolean) => {
     try {
+      addDebugLog(`할 일 ID ${todoId} 완료 상태 변경 시작 (${currentStatus} → ${!currentStatus})`);
+      
       // 옵티미스틱 UI 업데이트
       const updatedTodos = todos.map(todo => 
         todo.id === todoId 
@@ -96,61 +147,253 @@ export function TodoSection({ client }: TodoSectionProps) {
       );
       
       setTodos(updatedTodos);
+      addDebugLog('UI 옵티미스틱 업데이트 완료');
       
-      // 로컬 스토리지 업데이트
-      try {
-        const storedTodos = localStorage.getItem('wizweblast_todos');
-        if (storedTodos) {
-          const parsedTodos = JSON.parse(storedTodos);
-          const updatedStoredTodos = parsedTodos.map((todo: any) => 
-            todo.id === todoId 
-              ? { 
-                  ...todo, 
-                  completed: !currentStatus,
-                  completedAt: !currentStatus ? new Date().toISOString() : undefined
-                } 
-              : todo
-          );
-          localStorage.setItem('wizweblast_todos', JSON.stringify(updatedStoredTodos));
+      // 임시 ID(temp-)로 시작하는 할 일은 로컬에서만 처리
+      if (todoId.startsWith('temp-')) {
+        addDebugLog('임시 할 일(temp-)이므로 로컬에서만 상태 변경 처리');
+        
+        // 로컬 스토리지 업데이트
+        try {
+          // 전체 할 일 목록 업데이트
+          const storedTodos = localStorage.getItem('wizweblast_todos');
+          if (storedTodos) {
+            const parsedTodos = JSON.parse(storedTodos);
+            const updatedStoredTodos = parsedTodos.map((todo: any) => 
+              todo.id === todoId 
+                ? { 
+                    ...todo, 
+                    completed: !currentStatus,
+                    completedAt: !currentStatus ? new Date().toISOString() : undefined
+                  } 
+                : todo
+            );
+            localStorage.setItem('wizweblast_todos', JSON.stringify(updatedStoredTodos));
+            addDebugLog('전체 할 일 로컬 스토리지 업데이트 완료');
+          }
+          
+          // 클라이언트별 캐시도 업데이트
+          const clientTodos = localStorage.getItem(`wizweblast_todos_client_${client.id}`);
+          if (clientTodos) {
+            const parsedClientTodos = JSON.parse(clientTodos);
+            const updatedClientTodos = parsedClientTodos.map((todo: any) => 
+              todo.id === todoId 
+                ? { 
+                    ...todo, 
+                    completed: !currentStatus,
+                    completedAt: !currentStatus ? new Date().toISOString() : undefined
+                  } 
+                : todo
+            );
+            localStorage.setItem(`wizweblast_todos_client_${client.id}`, JSON.stringify(updatedClientTodos));
+            addDebugLog('클라이언트별 할 일 로컬 스토리지 업데이트 완료');
+          }
+          
+          addDebugLog('임시 할 일 상태 변경 완료');
+          return; // API 호출 없이 함수 종료
+        } catch (storageErr) {
+          console.error('로컬 스토리지 업데이트 오류:', storageErr);
+          addDebugLog(`로컬 스토리지 업데이트 오류: ${storageErr instanceof Error ? storageErr.message : '알 수 없는 오류'}`);
         }
-      } catch (storageErr) {
-        console.error('로컬 스토리지 업데이트 오류:', storageErr);
       }
       
-      // API 호출
-      const response = await fetch(`/api/todos/${todoId}/complete`, {
+      // 새로운 API 엔드포인트 사용
+      addDebugLog('새 API 엔드포인트 호출 시작: /api/todos/' + todoId + '/toggle');
+      const response = await fetch(`/api/todos/${todoId}/toggle`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          completed: !currentStatus
-        }),
+        }
+      });
+      
+      // 오류 응답 처리
+      if (!response.ok) {
+        // API 실패 시 롤백
+        setTodos(todos);
+        const errorData = await response.json().catch(() => ({ error: '알 수 없는 오류' }));
+        addDebugLog(`API 오류 (${response.status}): ${errorData.error || response.statusText}`);
+        
+        // 스키마 오류인 경우, 스키마 업데이트 시도
+        if (errorData.suggestion && errorData.suggestion.includes('/api/update-todos-schema')) {
+          addDebugLog('스키마 업데이트 필요: ' + errorData.message);
+          
+          // 스키마 업데이트 API 호출
+          const schemaUpdateResponse = await fetch('/api/update-todos-schema', {
+            method: 'POST'
+          });
+          
+          if (schemaUpdateResponse.ok) {
+            addDebugLog('스키마 업데이트 성공, 다시 시도합니다.');
+            // 다시 API 호출
+            return handleToggleComplete(todoId, currentStatus);
+          } else {
+            addDebugLog('스키마 업데이트 실패');
+          }
+        }
+        
+        throw new Error(`상태 변경에 실패했습니다. (${response.status}: ${errorData.error || response.statusText})`);
+      }
+
+      // API 응답 처리
+      const data = await response.json();
+      console.log('todo 완료 상태 변경 응답:', data);
+      addDebugLog(`API 응답 성공: ${data.success ? '성공' : '실패'}`);
+      
+      if (data.success && data.todo) {
+        // API 응답의 todo 데이터로 상태 업데이트
+        const updatedTodo = {
+          ...data.todo,
+          clientId: data.todo.clientId || data.todo.client_id || todoId,
+          clientName: data.todo.clientName || client.name || '광고주',
+          clientIcon: data.todo.clientIcon || client.icon || '🏢',
+          content: data.todo.content || '할 일',
+          assignedTo: data.todo.assignedTo || data.todo.assigned_to || user?.id,
+          completed: data.todo.completed,
+          createdAt: data.todo.createdAt || data.todo.created_at || new Date().toISOString(),
+          completedAt: data.todo.completedAt || data.todo.completed_at || undefined
+        };
+        
+        addDebugLog(`업데이트된 할 일 데이터: 완료=${updatedTodo.completed}, 완료일=${updatedTodo.completedAt || '없음'}`);
+        
+        // 상태 업데이트
+        setTodos(prevTodos => prevTodos.map(todo => 
+          todo.id === todoId ? updatedTodo : todo
+        ));
+        
+        // 로컬 스토리지 업데이트
+        try {
+          // 전체 할 일 목록 업데이트
+          const storedTodos = localStorage.getItem('wizweblast_todos');
+          if (storedTodos) {
+            const parsedTodos = JSON.parse(storedTodos);
+            const updatedStoredTodos = parsedTodos.map((todo: any) => 
+              todo.id === todoId ? updatedTodo : todo
+            );
+            localStorage.setItem('wizweblast_todos', JSON.stringify(updatedStoredTodos));
+            addDebugLog('전체 할 일 로컬 스토리지 업데이트 완료');
+          }
+          
+          // 클라이언트별 캐시도 업데이트
+          const clientTodos = localStorage.getItem(`wizweblast_todos_client_${client.id}`);
+          if (clientTodos) {
+            const parsedClientTodos = JSON.parse(clientTodos);
+            const updatedClientTodos = parsedClientTodos.map((todo: any) => 
+              todo.id === todoId ? updatedTodo : todo
+            );
+            localStorage.setItem(`wizweblast_todos_client_${client.id}`, JSON.stringify(updatedClientTodos));
+            addDebugLog('클라이언트별 할 일 로컬 스토리지 업데이트 완료');
+          }
+        } catch (storageErr) {
+          console.error('로컬 스토리지 업데이트 오류:', storageErr);
+          addDebugLog(`로컬 스토리지 업데이트 오류: ${storageErr instanceof Error ? storageErr.message : '알 수 없는 오류'}`);
+        }
+      } else if (data._dev) {
+        // 개발 환경에서 응답된 임시 데이터 처리
+        addDebugLog(`개발 환경 응답: ${data.message || '상태 변경이 처리되었습니다.'}`);
+      } else {
+        // 응답은 성공했지만 todo 데이터가 없는 경우 - 경고 표시
+        addDebugLog('API 응답이 올바르지 않음: todo 데이터 없음');
+        console.warn('API 응답에 todo 데이터가 없습니다:', data);
+      }
+    } catch (err) {
+      console.error('할 일 상태 변경 오류:', err);
+      addDebugLog(`할 일 상태 변경 오류: ${err instanceof Error ? err.message : '알 수 없는 오류'}`);
+      // 롤백
+      setTodos(todos);
+      alert('상태 변경 중 오류가 발생했습니다.');
+    }
+  };
+  
+  // 할 일 삭제 처리
+  const handleDeleteTodo = async (todoId: string) => {
+    try {
+      addDebugLog(`할 일 ID ${todoId} 삭제 시작`);
+      
+      // 옵티미스틱 UI 업데이트
+      const updatedTodos = todos.filter(todo => todo.id !== todoId);
+      setTodos(updatedTodos);
+      addDebugLog('UI에서 할 일 항목 제거 완료');
+      
+      // 로컬 스토리지 업데이트
+      try {
+        // 전체 할 일 목록 업데이트
+        const storedTodos = localStorage.getItem('wizweblast_todos');
+        if (storedTodos) {
+          const parsedTodos = JSON.parse(storedTodos);
+          const filteredTodos = parsedTodos.filter((todo: any) => todo.id !== todoId);
+          localStorage.setItem('wizweblast_todos', JSON.stringify(filteredTodos));
+          addDebugLog('전체 할 일 캐시에서 항목 제거 완료');
+        }
+        
+        // 클라이언트별 캐시도 업데이트
+        const clientTodos = localStorage.getItem(`wizweblast_todos_client_${client.id}`);
+        if (clientTodos) {
+          const parsedClientTodos = JSON.parse(clientTodos);
+          const filteredClientTodos = parsedClientTodos.filter((todo: any) => todo.id !== todoId);
+          localStorage.setItem(`wizweblast_todos_client_${client.id}`, JSON.stringify(filteredClientTodos));
+          addDebugLog('클라이언트별 캐시에서 항목 제거 완료');
+        }
+      } catch (storageErr) {
+        console.error('로컬 스토리지 업데이트 오류:', storageErr);
+        addDebugLog(`로컬 스토리지 업데이트 오류: ${storageErr instanceof Error ? storageErr.message : '알 수 없는 오류'}`);
+      }
+      
+      // 임시 ID(temp-)로 시작하는 할 일은 로컬에서만 처리
+      if (todoId.startsWith('temp-')) {
+        addDebugLog('임시 할 일(temp-)이므로 API 호출 없이 로컬에서만 삭제 처리 완료');
+        return; // API 호출 없이 함수 종료
+      }
+      
+      // API 호출
+      addDebugLog(`API 호출: DELETE /api/todos?todoId=${todoId}`);
+      const response = await fetch(`/api/todos?todoId=${todoId}`, {
+        method: 'DELETE',
       });
       
       if (!response.ok) {
         // API 실패 시 롤백
         setTodos(todos);
-        throw new Error('상태 변경에 실패했습니다.');
+        const errorData = await response.json().catch(() => ({ error: '알 수 없는 오류' }));
+        addDebugLog(`API 오류 (${response.status}): ${errorData.error || response.statusText}`);
+        throw new Error(`할 일 삭제에 실패했습니다. (${response.status}: ${errorData.error || response.statusText})`);
       }
+      
+      // API 응답 처리
+      const data = await response.json();
+      addDebugLog(`API 응답: ${data.success ? '성공' : '실패'}`);
+      
+      if (data.success) {
+        addDebugLog(`할 일 ID ${todoId} 삭제 성공`);
+      } else if (data._dev) {
+        // 개발 환경에서 응답된 임시 데이터 처리
+        addDebugLog(`개발 환경 응답: ${data.message || '삭제가 처리되었습니다.'}`);
+      }
+      
+      // 성공적으로 삭제되면 데이터 재조회
+      fetchTodos();
     } catch (err) {
-      console.error('할 일 상태 변경 오류:', err);
+      console.error('할 일 삭제 오류:', err);
+      addDebugLog(`할 일 삭제 오류: ${err instanceof Error ? err.message : '알 수 없는 오류'}`);
       // 롤백
       setTodos(todos);
+      alert('할 일 삭제 중 오류가 발생했습니다.');
     }
   };
   
   // 할 일 추가
   const handleAddTodo = async (clientId: string, content: string, assignedTo: string, dueDate?: string) => {
     try {
+      addDebugLog(`새 할 일 추가 시작: 클라이언트 ID ${clientId}`);
+      
       // API 호출
+      addDebugLog('API 호출: POST /api/todos');
       const response = await fetch('/api/todos', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          clientId,
+          clientId,  // 원래 클라이언트 ID 전달 (route.ts에서 UUID 변환)
           content,
           assignedTo,
           dueDate
@@ -161,14 +404,22 @@ export function TodoSection({ client }: TodoSectionProps) {
         const errorData = await response.json().catch(() => ({ error: '알 수 없는 오류' }));
         console.error('API 응답 상태:', response.status, response.statusText);
         console.error('오류 상세 정보:', errorData);
-        throw new Error(`할 일 등록에 실패했습니다. (${response.status}: ${errorData.error || response.statusText})`);
+        const errorMessage = `할 일 등록에 실패했습니다. (${response.status}: ${errorData.error || response.statusText})`;
+        addDebugLog(`API 오류: ${errorMessage}`);
+        throw new Error(errorMessage);
       }
       
       const data = await response.json();
+      addDebugLog(`API 응답: ${data.success ? '성공' : '실패'}`);
       
       if (data.success) {
         // 새 할 일 추가
         const newTodo: Todo = data.todo;
+        addDebugLog(`할 일 등록 성공: ID ${newTodo.id}`);
+        
+        if (data.message) {
+          addDebugLog(`메시지: ${data.message}`);
+        }
         
         // UI 업데이트
         setTodos(prev => [newTodo, ...prev]);
@@ -181,6 +432,7 @@ export function TodoSection({ client }: TodoSectionProps) {
             const parsedTodos = JSON.parse(clientSpecificTodos);
             const updatedTodos = [newTodo, ...parsedTodos];
             localStorage.setItem(`wizweblast_todos_client_${client.id}`, JSON.stringify(updatedTodos));
+            addDebugLog('클라이언트별 캐시 업데이트 완료');
           }
           
           // 전체 할 일 목록 업데이트
@@ -193,14 +445,19 @@ export function TodoSection({ client }: TodoSectionProps) {
           
           todosList.unshift(newTodo);
           localStorage.setItem('wizweblast_todos', JSON.stringify(todosList));
+          addDebugLog('전체 할 일 캐시 업데이트 완료');
         } catch (storageErr) {
           console.error('로컬 스토리지 저장 오류:', storageErr);
+          addDebugLog(`로컬 스토리지 업데이트 오류: ${storageErr instanceof Error ? storageErr.message : '알 수 없는 오류'}`);
         }
       } else {
-        throw new Error(data.error || '할 일 등록 중 알 수 없는 오류가 발생했습니다');
+        const errorMessage = data.error || '할 일 등록 중 알 수 없는 오류가 발생했습니다';
+        addDebugLog(`할 일 등록 실패: ${errorMessage}`);
+        throw new Error(errorMessage);
       }
     } catch (err) {
       console.error('할 일 등록 오류:', err);
+      addDebugLog(`할 일 등록 중 오류 발생: ${err instanceof Error ? err.message : '알 수 없는 오류'}`);
       alert(err instanceof Error ? err.message : '할 일 등록 중 오류가 발생했습니다.');
     }
   };
@@ -212,55 +469,74 @@ export function TodoSection({ client }: TodoSectionProps) {
   };
   
   return (
-    <div className="mb-8">
-      <div className="flex justify-between items-center mb-4">
-        <h2 className="text-xl font-bold">할 일 목록</h2>
-        <div className="flex items-center space-x-2">
-          <Link href="/my-todos" className="text-sm text-[#2251D1] hover:underline">
-            나의 할 일 모아보기
-          </Link>
+    <div className="bg-white rounded-lg shadow-sm">
+      <div className="p-6 border-b border-gray-100">
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-lg font-semibold">할 일 관리</h2>
+          <div className="flex space-x-2">
+            <button
+              onClick={() => setShowDebug(!showDebug)}
+              className="text-xs px-2 py-1 rounded bg-gray-200 hover:bg-gray-300"
+            >
+              {showDebug ? '디버그 숨기기' : '디버그 보기'}
+            </button>
+            <button
+              onClick={clearTodoCache}
+              className="text-xs px-2 py-1 rounded bg-red-100 hover:bg-red-200 text-red-700"
+            >
+              캐시 삭제
+            </button>
+            <button
+              onClick={fetchTodos}
+              className="text-xs px-2 py-1 rounded bg-blue-100 hover:bg-blue-200 text-blue-700"
+            >
+              새로고침
+            </button>
+          </div>
+        </div>
+        
+        {/* 디버그 패널 */}
+        {showDebug && (
+          <div className="bg-gray-800 text-green-400 p-3 mb-4 rounded text-xs overflow-auto" style={{ maxHeight: '200px' }}>
+            <pre className="font-mono whitespace-pre-wrap">{debugLog || '로그가 없습니다.'}</pre>
+          </div>
+        )}
+        
+        {/* 할 일 추가 */}
+        <div className="mb-4">
           <button
             onClick={() => setShowTodoModal(true)}
-            className="bg-[#2251D1] text-white px-3 py-2 rounded-lg flex items-center text-sm"
+            className="wiz-btn-small w-full py-2 flex justify-center items-center"
           >
-            <Plus className="w-4 h-4 mr-1" />
-            새 할 일 등록
+            <PlusCircle size={16} className="mr-1" /> 새 할 일 추가
           </button>
         </div>
       </div>
       
-      {isLoading ? (
-        <div className="bg-white rounded-lg p-6 text-center">
-          <div className="w-8 h-8 rounded-full border-2 border-blue-500 border-t-transparent animate-spin mb-2 mx-auto"></div>
-          <p className="text-gray-500">할 일 목록을 가져오는 중...</p>
-        </div>
-      ) : todos.length === 0 ? (
-        <div className="bg-white rounded-lg border border-gray-200 p-6 text-center">
-          <div className="text-4xl mb-3">📝</div>
-          <h3 className="text-lg font-medium mb-2">등록된 할 일이 없습니다</h3>
-          <p className="text-gray-500 mb-4">
-            이 광고주에 필요한 할 일을 등록하고 관리해보세요
-          </p>
-          <button
-            onClick={() => setShowTodoModal(true)}
-            className="bg-[#2251D1] text-white px-4 py-2 rounded-lg inline-flex items-center text-sm"
-          >
-            <Plus className="w-4 h-4 mr-1" />
-            새 할 일 등록하기
-          </button>
-        </div>
-      ) : (
-        <div className="space-y-3">
-          {todos.map(todo => (
-            <TodoCard
-              key={todo.id}
-              todo={todo}
-              onComplete={handleToggleComplete}
-              onAssigneeChange={handleAssigneeChange}
-            />
-          ))}
-        </div>
-      )}
+      <div className="p-6">
+        {isLoading ? (
+          <div className="flex justify-center items-center h-32">
+            <div className="animate-spin rounded-full h-8 w-8 border-2 border-[#2251D1] border-t-transparent"></div>
+          </div>
+        ) : todos.length === 0 ? (
+          <div className="text-center py-10 text-gray-500">
+            <p>이 광고주에 등록된 할 일이 없습니다.</p>
+            <p className="text-sm mt-1">위 폼을 통해 새로운 할 일을 추가해보세요!</p>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {todos.map(todo => (
+              <TodoCard
+                key={todo.id}
+                todo={todo}
+                onComplete={handleToggleComplete}
+                onDelete={handleDeleteTodo}
+                onAssigneeChange={handleAssigneeChange}
+              />
+            ))}
+          </div>
+        )}
+      </div>
       
       {/* 할 일 등록 모달 */}
       {showTodoModal && (

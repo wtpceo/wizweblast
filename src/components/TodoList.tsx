@@ -7,6 +7,7 @@ interface TodoListProps {
   todos: Todo[];
   onComplete: (id: string, currentStatus: boolean) => void;
   onAssigneeChange?: (id: string) => void;
+  onDelete?: (id: string) => void;
   groupByClient?: boolean;
   showEmpty?: boolean;
   emptyMessage?: string;
@@ -15,7 +16,8 @@ interface TodoListProps {
 export function TodoList({ 
   todos, 
   onComplete, 
-  onAssigneeChange, 
+  onAssigneeChange,
+  onDelete,
   groupByClient = false,
   showEmpty = true,
   emptyMessage = '등록된 할 일이 없습니다'
@@ -150,6 +152,7 @@ export function TodoList({
               todo={todo}
               onComplete={onComplete}
               onAssigneeChange={onAssigneeChange}
+              onDelete={onDelete}
             />
           ))}
         </div>
@@ -189,6 +192,7 @@ export function TodoList({
                   todo={todo}
                   onComplete={onComplete}
                   onAssigneeChange={onAssigneeChange}
+                  onDelete={onDelete}
                 />
               ))}
             </div>

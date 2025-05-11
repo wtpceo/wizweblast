@@ -4,7 +4,22 @@ import type { Database } from './database.types';
 // 클라이언트 측 Supabase 인스턴스
 export const supabase = createClient<Database>(
   process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://your-supabase-url.supabase.co',
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'your-supabase-anon-key'
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'your-supabase-anon-key',
+  {
+    auth: {
+      persistSession: true,
+      autoRefreshToken: true,
+      detectSessionInUrl: true,
+    },
+    global: {
+      headers: {
+        'x-application-name': 'wizweblast',
+      },
+    },
+    db: {
+      schema: 'public',
+    },
+  }
 );
 
 /**

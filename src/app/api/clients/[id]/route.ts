@@ -89,68 +89,130 @@ export async function GET(request: Request, { params }: { params: { id: string }
       );
     }
 
+    // UUID 형식 확인 (Supabase ID는 보통 UUID 형식)
+    const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(clientId);
+    console.log("ID가 UUID 형식인가요?", isUUID);
+
     // Supabase 클라이언트 생성
-    const supabase = createServerClient();
-    
-    // Supabase에서 광고주 조회
-    const { data: client, error } = await supabase
-      .from('clients')
-      .select('*')
-      .eq('id', clientId)
-      .single();
-    
-    if (error) {
-      console.error('광고주 조회 Supabase 오류:', error);
+    try {
+      const supabase = createServerClient();
       
-      // 초기 데이터에서 찾기 (폴백)
-      const mockClient = initialClients.find(c => c.id === clientId);
-      if (mockClient) {
-        console.log('초기 데이터에서 클라이언트 찾음:', mockClient);
-        return NextResponse.json(mockClient);
+      // Supabase에서 광고주 조회
+      const { data: client, error } = await supabase
+        .from('clients')
+        .select('*')
+        .eq('id', clientId)
+        .single();
+      
+      // Supabase 오류가 있거나 클라이언트를 찾지 못한 경우
+      if (error || !client) {
+        console.error('Supabase에서 광고주 조회 실패:', error);
+        
+        // 로컬 데이터에서 찾기 시도 (폴백)
+        const mockClient = initialClients.find(c => c.id === clientId);
+        if (mockClient) {
+          console.log('초기 데이터에서 클라이언트 찾음:', mockClient);
+          return NextResponse.json(mockClient);
+        }
+        
+        // 개발 환경에서만 테스트 데이터 반환
+        if (process.env.NODE_ENV === 'development') {
+          console.log('개발 환경에서 샘플 데이터 반환');
+          const sampleClient = {
+            id: clientId,
+            name: '샘플 광고주',
+            icon: '🏢',
+            contractStart: '2024-01-01',
+            contractEnd: '2024-12-31',
+            statusTags: ['개발용'],
+            usesCoupon: false,
+            publishesNews: false,
+            usesReservation: false,
+            phoneNumber: '010-0000-0000',
+            naverPlaceUrl: ''
+          };
+          return NextResponse.json(sampleClient);
+        }
+        
+        return NextResponse.json(
+          { error: '광고주를 찾을 수 없습니다.' },
+          { status: 404 }
+        );
+      }
+      
+      console.log("찾은 클라이언트:", client);
+
+      // API 응답 데이터 포맷팅 (camelCase로 통일)
+      const clientResponse = {
+        id: String(client.id),
+        name: client.name,
+        icon: client.icon || '🏢',
+        contractStart: client.contract_start || '',
+        contractEnd: client.contract_end || '',
+        statusTags: client.status_tags || ['정상'],
+        usesCoupon: client.uses_coupon || false,
+        publishesNews: client.publishes_news || false,
+        usesReservation: client.uses_reservation || false,
+        phoneNumber: client.phone_number || '',
+        naverPlaceUrl: client.naver_place_url || '',
+      };
+
+      // camelCase 형식으로 일관되게 반환
+      return NextResponse.json(clientResponse);
+    } catch (supabaseError) {
+      console.error('Supabase 클라이언트 생성 또는 조회 오류:', supabaseError);
+      
+      // 개발 환경에서만 테스트 데이터 반환
+      if (process.env.NODE_ENV === 'development') {
+        console.log('개발 환경에서 샘플 데이터 반환');
+        const sampleClient = {
+          id: clientId,
+          name: '샘플 광고주',
+          icon: '🏢',
+          contractStart: '2024-01-01',
+          contractEnd: '2024-12-31',
+          statusTags: ['개발용'],
+          usesCoupon: false,
+          publishesNews: false,
+          usesReservation: false,
+          phoneNumber: '010-0000-0000',
+          naverPlaceUrl: ''
+        };
+        return NextResponse.json(sampleClient);
       }
       
       return NextResponse.json(
-        { error: '광고주를 찾을 수 없습니다.' },
-        { status: 404 }
+        { error: '서버 오류가 발생했습니다.' },
+        { status: 500 }
       );
     }
-    
-    console.log("찾은 클라이언트:", client);
-    
-    if (!client) {
-      console.log("클라이언트를 찾을 수 없음");
-      return NextResponse.json(
-        { error: '광고주를 찾을 수 없습니다.' },
-        { status: 404 }
-      );
-    }
-
-    // API 응답 데이터 포맷팅 (camelCase로 통일)
-    const clientResponse = {
-      id: String(client.id),
-      name: client.name,
-      icon: client.icon || '🏢',
-      contractStart: client.contract_start || '',
-      contractEnd: client.contract_end || '',
-      statusTags: client.status_tags || ['정상'],
-      usesCoupon: client.uses_coupon || false,
-      publishesNews: client.publishes_news || false,
-      usesReservation: client.uses_reservation || false,
-      phoneNumber: client.phone_number || '',
-      naverPlaceUrl: client.naver_place_url || '',
-    };
-
-    // camelCase 형식으로 일관되게 반환
-    return NextResponse.json(clientResponse);
   } catch (error) {
     console.error('광고주 조회 오류:', error);
     
-    // 오류가 발생해도 더미 데이터 반환
-    const mockClient = initialClients[0];
-    return NextResponse.json({
-      ...mockClient,
-      _error: '광고주 정보를 가져오는 중 오류가 발생했습니다. 임시 데이터를 표시합니다.'
-    });
+    // 개발 환경에서만 테스트 데이터 반환
+    if (process.env.NODE_ENV === 'development') {
+      const clientId = params.id;
+      console.log('개발 환경에서 샘플 데이터 반환');
+      const sampleClient = {
+        id: clientId,
+        name: '샘플 광고주',
+        icon: '🏢',
+        contractStart: '2024-01-01',
+        contractEnd: '2024-12-31',
+        statusTags: ['개발용'],
+        usesCoupon: false,
+        publishesNews: false,
+        usesReservation: false,
+        phoneNumber: '010-0000-0000',
+        naverPlaceUrl: ''
+      };
+      return NextResponse.json(sampleClient);
+    }
+    
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : '광고주 정보를 가져오는 중 오류가 발생했습니다.' },
+      { status: 404 }
+    );
   }
 }
 
