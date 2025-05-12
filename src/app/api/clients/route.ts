@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
+import { createClient } from '@supabase/supabase-js';
+import { Database } from '@/lib/database.types';
 import { createServerClient } from '../../../lib/supabase';
 
 // 초기 데이터 (실제로는 데이터베이스를 사용해야 합니다)
@@ -18,6 +20,32 @@ const initialClients = [
     naverPlaceUrl: 'https://place.naver.com/restaurant/12345678'
   }
 ];
+
+// RLS 정책을 우회하는 안전한 서버 클라이언트 생성 함수
+function createSafeServerClient() {
+  try {
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    let supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    
+    // URL 인코딩된 문자가 있는지 확인하고 디코딩
+    if (supabaseKey && supabaseKey.includes('%')) {
+      supabaseKey = decodeURIComponent(supabaseKey);
+    }
+    
+    if (!supabaseUrl || !supabaseKey) {
+      throw new Error('Supabase URL 또는 API 키가 설정되지 않았습니다.');
+    }
+    
+    return createClient<Database>(supabaseUrl, supabaseKey, {
+      auth: {
+        persistSession: false,
+      }
+    });
+  } catch (err) {
+    console.error('[API] Supabase 클라이언트 생성 오류:', err);
+    throw err;
+  }
+}
 
 // 광고주 목록 조회 API
 export async function GET(request: Request) {
@@ -43,108 +71,124 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const status = searchParams.get('status');
     const search = searchParams.get('search');
-    console.log('[광고주 목록 API] 쿼리 파라미터:', { status, search });
+    const id = searchParams.get('id');
+    console.log('[광고주 목록 API] 쿼리 파라미터:', { status, search, id });
 
-    // Supabase 클라이언트 생성
-    const supabase = createServerClient();
+    // Supabase 클라이언트 생성 (RLS 정책 우회를 위해 서비스 롤 키 사용)
+    const supabase = createSafeServerClient();
+    console.log('[광고주 목록 API] Supabase 클라이언트 생성 성공');
     
-    // Supabase에서 광고주 목록 가져오기
-    console.log('[광고주 목록 API] Supabase 쿼리 시작');
-    
-    let clientList = [];
-    
-    try {
-      // Supabase 쿼리
+    // 특정 ID의 광고주만 요청한 경우
+    if (id) {
+      console.log(`[광고주 목록 API] ID: ${id} 조회 중...`);
       const { data, error } = await supabase
         .from('clients')
         .select('*')
-        .order('created_at', { ascending: false });
+        .eq('id', id);
       
       if (error) {
-        console.error('[광고주 목록 API] Supabase 쿼리 오류:', error);
-        throw error;
-      }
-      
-      clientList = data || [];
-      console.log('[광고주 목록 API] Supabase 쿼리 성공:', clientList.length + '개 항목');
-
-      // 상태별 필터링
-      if (status && status !== 'all') {
-        clientList = clientList.filter((client: any) => 
-          client.status_tags && Array.isArray(client.status_tags) && client.status_tags.includes(status)
+        console.error(`[광고주 목록 API] ID: ${id} 조회 오류:`, error);
+        return NextResponse.json(
+          { error: `광고주 데이터 조회 실패: ${error.message}` },
+          { status: 500 }
         );
       }
-
-      // 검색어 필터링
-      if (search) {
-        const searchLower = search.toLowerCase();
-        clientList = clientList.filter((client: any) => {
-          // 방어적 코딩: client.name이 undefined인 경우 처리
-          if (!client.name) return false;
-          
-          try {
-            return client.name.toLowerCase().includes(searchLower);
-          } catch (e) {
-            console.error('[광고주 목록 API] 검색 필터링 오류:', e, client);
-            return false;
-          }
-        });
+      
+      if (!data || data.length === 0) {
+        console.log(`[광고주 목록 API] ID: ${id} 데이터 없음`);
+        return NextResponse.json([]);
       }
+      
+      // 데이터 포맷팅
+      const formattedClients = data.map(formatClientData);
+      console.log(`[광고주 목록 API] ID: ${id} 데이터 로드 성공`);
+      return NextResponse.json(formattedClients);
+    }
+    
+    // 전체 데이터 조회시 페이지네이션 적용
+    console.log('[광고주 목록 API] 전체 데이터 조회 중 (페이지네이션 적용)...');
+    
+    // 전체 레코드 수 먼저 확인
+    const { count, error: countError } = await supabase
+      .from('clients')
+      .select('*', { count: 'exact', head: true });
+      
+    if (countError) {
+      console.error('[광고주 목록 API] 전체 레코드 수 조회 오류:', countError);
+      return NextResponse.json(
+        { error: `광고주 레코드 수 조회 실패: ${countError.message}` },
+        { status: 500 }
+      );
+    }
+    
+    console.log(`[광고주 목록 API] 전체 광고주 수: ${count || 0}`);
+    
+    // 페이지네이션 설정
+    const pageSize = 1000; // 한 번에 가져올 최대 레코드 수
+    const totalPages = Math.ceil((count || 0) / pageSize);
+    let allData: any[] = [];
+    
+    // 모든 페이지 데이터 가져오기
+    for (let page = 0; page < totalPages; page++) {
+      const from = page * pageSize;
+      const to = from + pageSize - 1;
+      
+      console.log(`[광고주 목록 API] 페이지 ${page + 1}/${totalPages} 로드 중 (${from}-${to})...`);
+      
+      const { data: pageData, error: pageError } = await supabase
+        .from('clients')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .range(from, to);
+        
+      if (pageError) {
+        console.error(`[광고주 목록 API] 페이지 ${page + 1} 로드 오류:`, pageError);
+        continue; // 페이지 오류가 있어도 계속 진행
+      }
+      
+      if (pageData && pageData.length > 0) {
+        allData = [...allData, ...pageData];
+        console.log(`[광고주 목록 API] 페이지 ${page + 1} 데이터 ${pageData.length}개 로드 완료`);
+      } else {
+        console.log(`[광고주 목록 API] 페이지 ${page + 1}에 데이터가 없습니다.`);
+        break; // 더 이상 데이터가 없으면 중단
+      }
+    }
+    
+    console.log(`[광고주 목록 API] 전체 데이터 ${allData.length || 0}개 로드 완료`);
+    
+    let clientList = allData;
+    
+    // 상태별 필터링
+    if (status && status !== 'all') {
+      clientList = clientList.filter((client: any) => 
+        client.status_tags && Array.isArray(client.status_tags) && client.status_tags.includes(status)
+      );
+      console.log(`[광고주 목록 API] 상태 필터링 후 ${clientList.length}개 항목`);
+    }
 
-      // API 응답 데이터 포맷팅 (camelCase로 통일)
-      const formattedClients = clientList.map((client: any) => {
+    // 검색어 필터링
+    if (search) {
+      const searchLower = search.toLowerCase();
+      clientList = clientList.filter((client: any) => {
+        // 방어적 코딩: client.name이 undefined인 경우 처리
+        if (!client.name) return false;
+        
         try {
-          // 타입 안전을 위한 데이터 처리
-          const startDate = client.contract_start || '';
-          const endDate = client.contract_end || '';
-          
-          // 컬럼명 변환 - DB에서 snake_case, 클라이언트에서 camelCase 처리
-          return {
-            id: String(client.id),
-            name: client.name || '',
-            icon: client.icon || '🏢',
-            contractStart: startDate,
-            contractEnd: endDate,
-            statusTags: client.status_tags || ['정상'],
-            usesCoupon: client.uses_coupon || false,
-            publishesNews: client.publishes_news || false,
-            usesReservation: client.uses_reservation || false,
-            phoneNumber: client.phone_number || '',
-            naverPlaceUrl: client.naver_place_url || '',
-          };
-        } catch (error) {
-          console.error('[광고주 목록 API] 클라이언트 포맷팅 오류:', error, client);
-          return {
-            id: String(client.id || 0),
-            name: client.name || '오류 발생 데이터',
-            icon: '⚠️',
-            contractStart: '',
-            contractEnd: '',
-            statusTags: ['오류'],
-            usesCoupon: false,
-            publishesNews: false,
-            usesReservation: false,
-            phoneNumber: '',
-            naverPlaceUrl: '',
-          };
+          return client.name.toLowerCase().includes(searchLower);
+        } catch (e) {
+          console.error('[광고주 목록 API] 검색 필터링 오류:', e, client);
+          return false;
         }
       });
-
-      console.log('[광고주 목록 API] 응답 생성:', formattedClients.length + '개 항목');
-      return NextResponse.json(formattedClients);
-    } catch (dbError) {
-      console.error('[광고주 목록 API] 🔥 DB 쿼리 실패:', dbError);
-      console.error('[광고주 목록 API] 오류 상세 정보:', {
-        message: dbError instanceof Error ? dbError.message : String(dbError),
-        stack: dbError instanceof Error ? dbError.stack : undefined,
-        name: dbError instanceof Error ? dbError.name : undefined
-      });
-      
-      // 임시 대응으로 샘플 데이터 반환
-      console.log('[광고주 목록 API] ⚠️ 샘플 데이터 사용');
-      
-      return NextResponse.json(initialClients);
+      console.log(`[광고주 목록 API] 검색어 필터링 후 ${clientList.length}개 항목`);
     }
+
+    // API 응답 데이터 포맷팅 (camelCase로 통일)
+    const formattedClients = clientList.map(formatClientData);
+
+    console.log('[광고주 목록 API] 응답 생성:', formattedClients.length + '개 항목');
+    return NextResponse.json(formattedClients);
   } catch (error) {
     console.error('[광고주 목록 API] 🔥 처리 오류:', error);
     console.error('[광고주 목록 API] 오류 상세 정보:', {
@@ -154,8 +198,47 @@ export async function GET(request: Request) {
       code: error instanceof Error ? (error as any).code : undefined
     });
     
-    // 오류가 발생해도 빈 배열 반환하여 클라이언트 측에서 오류 처리 가능하게 함
+    // 오류가 발생해도 초기 데이터 반환하여 클라이언트 측에서 최소한의 데이터를 보여줄 수 있게 함
     return NextResponse.json(initialClients);
+  }
+}
+
+// 클라이언트 데이터 포맷팅 함수
+function formatClientData(client: any) {
+  try {
+    // 타입 안전을 위한 데이터 처리
+    const startDate = client.contract_start || '';
+    const endDate = client.contract_end || '';
+    
+    // 컬럼명 변환 - DB에서 snake_case, 클라이언트에서 camelCase 처리
+    return {
+      id: String(client.id),
+      name: client.name || '',
+      icon: client.icon || '🏢',
+      contractStart: startDate,
+      contractEnd: endDate,
+      statusTags: client.status_tags || ['정상'],
+      usesCoupon: client.uses_coupon || false,
+      publishesNews: client.publishes_news || false,
+      usesReservation: client.uses_reservation || false,
+      phoneNumber: client.phone_number || '',
+      naverPlaceUrl: client.naver_place_url || '',
+    };
+  } catch (error) {
+    console.error('[광고주 목록 API] 클라이언트 포맷팅 오류:', error, client);
+    return {
+      id: String(client.id || 0),
+      name: client.name || '오류 발생 데이터',
+      icon: '⚠️',
+      contractStart: '',
+      contractEnd: '',
+      statusTags: ['오류'],
+      usesCoupon: false,
+      publishesNews: false,
+      usesReservation: false,
+      phoneNumber: '',
+      naverPlaceUrl: '',
+    };
   }
 }
 

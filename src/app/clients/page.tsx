@@ -13,6 +13,7 @@ export default function ClientsPage() {
   const [clients, setClients] = useState<Client[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const [memoDialogOpen, setMemoDialogOpen] = useState(false);
   const [todoDialogOpen, setTodoDialogOpen] = useState(false);
@@ -71,36 +72,24 @@ export default function ClientsPage() {
         setIsLoading(true);
         console.log('[클라이언트] 광고주 목록 로드 시작');
         
-        // 먼저 로컬 스토리지에서 데이터 확인
-        try {
-          const storedClients = localStorage.getItem('wizweblast_clients');
-          if (storedClients) {
-            try {
-              const parsedClients = JSON.parse(storedClients);
-              if (Array.isArray(parsedClients) && parsedClients.length > 0) {
-                console.log('[클라이언트] 로컬 스토리지에서 광고주 데이터를 불러왔습니다:', parsedClients.length + '개');
-                setClients(parsedClients);
-                setError(null);
-                setIsLoading(false);
-                return; // 로컬 스토리지에서 데이터를 찾았으므로 API 호출 스킵
-              }
-            } catch (parseErr) {
-              console.error('[클라이언트] 로컬 스토리지 데이터 파싱 오류:', parseErr);
-            }
-          }
-        } catch (storageErr) {
-          console.error('[클라이언트] 로컬 스토리지 접근 오류:', storageErr);
-        }
+        // 방금 업로드된 데이터가 반영될 수 있도록 캐시를 무시하는 옵션 추가
+        const options = {
+          method: 'GET',
+          headers: {
+            'Cache-Control': 'no-cache',
+            'Pragma': 'no-cache',
+          },
+          // 캐시를 무시하기 위한 타임스탬프 쿼리 파라미터 추가
+          cache: 'no-store' as RequestCache
+        };
         
-        // 환경 정보 로깅 (개발 환경에서만)
-        if (process.env.NODE_ENV !== 'production') {
-          console.log('[클라이언트] 환경 정보:', { 
-            env: process.env.NODE_ENV,
-            baseUrl: window.location.origin
-          });
-        }
+        // API 호출 시 타임스탬프를 쿼리 파라미터로 추가하여 캐시 우회
+        const timestamp = new Date().getTime();
+        const url = `/api/clients?t=${timestamp}`;
         
-        const response = await fetch('/api/clients');
+        console.log('[클라이언트] API 요청 시작:', url);
+        const response = await fetch(url, options);
+        
         console.log('[클라이언트] API 응답 상태:', response.status, response.statusText);
         
         if (!response.ok) {
@@ -156,7 +145,7 @@ export default function ClientsPage() {
         let data: any;
         try {
           data = await response.json();
-          console.log('[클라이언트] 광고주 목록 API 응답:', data);
+          console.log('[클라이언트] 광고주 목록 API 응답 데이터 개수:', Array.isArray(data) ? data.length : 'N/A');
         } catch (jsonError) {
           console.error('[클라이언트] API 응답 JSON 파싱 오류:', jsonError);
           throw new Error('서버 응답을 파싱하는 중 오류가 발생했습니다.');
@@ -550,6 +539,114 @@ export default function ClientsPage() {
     }
   };
   
+  // 새로고침 기능 구현
+  const handleRefresh = async () => {
+    console.log('[클라이언트] 데이터 수동 새로고침 요청');
+    setIsLoading(true);
+    
+    try {
+      // 로컬 스토리지 캐시 삭제
+      localStorage.removeItem('wizweblast_clients');
+      
+      // API 호출 시 캐시를 무시하는 타임스탬프 추가
+      const timestamp = new Date().getTime();
+      const options = {
+        method: 'GET',
+        headers: {
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache',
+        },
+        cache: 'no-store' as RequestCache
+      };
+      
+      const response = await fetch(`/api/clients?refresh=true&t=${timestamp}`, options);
+      
+      if (!response.ok) {
+        throw new Error(`API 오류: ${response.status} ${response.statusText}`);
+      }
+      
+      const data = await response.json();
+      
+      if (!Array.isArray(data)) {
+        throw new Error('서버에서 유효하지 않은 데이터 형식을 받았습니다.');
+      }
+      
+      // API 응답에 필요한 필드가 없는 경우, 기본값 추가
+      const enhancedData = data.map((client: any, index: number) => {
+        // client가 객체가 아닌 경우 처리
+        if (!client || typeof client !== 'object') {
+          return {
+            id: `refresh-${Date.now()}-${index}`,
+            name: '유효하지 않은 데이터',
+            icon: '⚠️',
+            contractStart: new Date().toISOString(),
+            contractEnd: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString(),
+            statusTags: ['오류'],
+            usesCoupon: false,
+            publishesNews: false,
+            usesReservation: false,
+            phoneNumber: '',
+            naverPlaceUrl: ''
+          };
+        }
+        
+        // snake_case와 camelCase 모두 지원
+        const name = client.name || '';
+        const icon = client.icon || '🏢';
+        const contractStart = client.contractStart || client.contract_start || new Date().toISOString();
+        const contractEnd = client.contractEnd || client.contract_end || new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString();
+        const statusTags = Array.isArray(client.statusTags) ? client.statusTags : 
+                            (Array.isArray(client.status_tags) ? client.status_tags : ['정상']);
+        
+        const usesCoupon = client.usesCoupon !== undefined ? client.usesCoupon : 
+                            (client.uses_coupon !== undefined ? client.uses_coupon : false);
+                            
+        const publishesNews = client.publishesNews !== undefined ? client.publishesNews : 
+                              (client.publishes_news !== undefined ? client.publishes_news : false);
+                              
+        const usesReservation = client.usesReservation !== undefined ? client.usesReservation : 
+                                (client.uses_reservation !== undefined ? client.uses_reservation : false);
+                                
+        const phoneNumber = client.phoneNumber || client.phone_number || '';
+        const naverPlaceUrl = client.naverPlaceUrl || client.naver_place_url || '';
+        
+        return {
+          id: client.id ? String(client.id) : `id-${Date.now()}-${index}`,
+          name,
+          icon,
+          contractStart,
+          contractEnd,
+          statusTags,
+          usesCoupon,
+          publishesNews,
+          usesReservation,
+          phoneNumber,
+          naverPlaceUrl
+        };
+      });
+      
+      console.log('[클라이언트] 새로고침 완료, 광고주 데이터:', enhancedData.length + '개');
+      setClients(enhancedData);
+      setError(null);
+      
+      // 로컬 스토리지에 저장
+      try {
+        localStorage.setItem('wizweblast_clients', JSON.stringify(enhancedData));
+      } catch (storageErr) {
+        console.error('[클라이언트] 로컬 스토리지 저장 오류:', storageErr);
+      }
+      
+      // 성공 메시지 표시 후 자동으로 사라지게 함
+      setSuccess(`성공적으로 ${enhancedData.length}개의 광고주 데이터를 새로고침했습니다.`);
+      setTimeout(() => setSuccess(null), 3000);
+    } catch (err) {
+      console.error('[클라이언트] 데이터 새로고침 오류:', err);
+      setError(`데이터 새로고침 실패: ${err instanceof Error ? err.message : String(err)}`);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
   return (
     <div className="min-h-screen bg-[#F9FAFD] pb-10">
       <Header
@@ -558,14 +655,34 @@ export default function ClientsPage() {
         icon="👥"
         actions={
           <>
-            <button
-              onClick={() => setRegisterDialogOpen(true)}
-              className="wiz-btn py-2 px-4 rounded-md shadow-sm flex items-center"
-              aria-label="새 광고주 등록"
-              title="새 광고주 등록 (Alt+N)"
-            >
-              <span className="mr-1">✨</span> 새 광고주 등록
-            </button>
+            <div className="flex items-center justify-between mb-4">
+              <h1 className="text-2xl font-bold">광고주 관리</h1>
+              <div className="flex gap-2">
+                <button
+                  onClick={handleRefresh}
+                  disabled={isLoading}
+                  className={`px-3 py-1 rounded text-white ${isLoading ? 'bg-gray-400' : 'bg-blue-500 hover:bg-blue-600'} transition-colors flex items-center space-x-1`}
+                  title="최신 데이터로 새로고침"
+                >
+                  <svg 
+                    xmlns="http://www.w3.org/2000/svg" 
+                    className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} 
+                    fill="none" 
+                    viewBox="0 0 24 24" 
+                    stroke="currentColor"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  </svg>
+                  <span>새로고침</span>
+                </button>
+                <button
+                  onClick={() => setRegisterDialogOpen(true)}
+                  className="px-3 py-1 bg-green-500 hover:bg-green-600 text-white rounded transition-colors"
+                >
+                  + 광고주 등록
+                </button>
+              </div>
+            </div>
             <Link href="/dashboard" className="bg-white text-[#2251D1] px-4 py-2 rounded-lg hover:bg-opacity-90 transition-all duration-200 flex items-center text-sm font-medium shadow-sm hover:shadow">
               <span className="mr-2">📊</span> 대시보드로 돌아가기
             </Link>
@@ -597,17 +714,15 @@ export default function ClientsPage() {
         
         {/* 오류 메시지 */}
         {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 rounded-lg p-4 mb-6">
-            <h3 className="font-medium flex items-center mb-1">
-              <span className="mr-2">⚠️</span> 오류 발생
-            </h3>
-            <p className="text-sm">{error}</p>
-            <button 
-              onClick={() => window.location.reload()} 
-              className="mt-2 text-red-700 bg-white border border-red-300 px-3 py-1 rounded-md text-sm hover:bg-red-50"
-            >
-              새로고침
-            </button>
+          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4 relative">
+            <span className="block sm:inline">{error}</span>
+          </div>
+        )}
+        
+        {/* 성공 메시지 */}
+        {success && (
+          <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4 relative">
+            <span className="block sm:inline">{success}</span>
           </div>
         )}
       
