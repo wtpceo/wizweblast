@@ -506,11 +506,110 @@ export function ClientTabs({ client }: ClientTabsProps) {
   };
   
   // 민원 토글 처리
-  const toggleComplaint = () => {
-    setHasComplaint(!hasComplaint);
-    
-    // 실제 구현 시 API 호출하여 상태 업데이트
-    alert(`민원 상태가 ${!hasComplaint ? '활성화' : '비활성화'}되었습니다.`);
+  const toggleComplaint = async () => {
+    try {
+      // 서버에 보낼 새로운 상태 설정
+      const newHasComplaint = !hasComplaint;
+      setHasComplaint(newHasComplaint);
+      
+      // 현재 상태 태그 복사
+      let updatedStatusTags = [...client.statusTags];
+      
+      // 상태 토글에 따라 '민원 중' 태그 추가 또는 제거
+      if (newHasComplaint && !updatedStatusTags.includes('민원 중')) {
+        updatedStatusTags.push('민원 중');
+      } else if (!newHasComplaint) {
+        updatedStatusTags = updatedStatusTags.filter(tag => tag !== '민원 중');
+        // '정상' 태그가 없으면 추가
+        if (!updatedStatusTags.includes('정상')) {
+          updatedStatusTags.push('정상');
+        }
+      }
+      
+      console.log(`민원 상태 변경: ${hasComplaint ? '비활성화' : '활성화'}`);
+      console.log('클라이언트 ID:', client.id, '타입:', typeof client.id);
+      console.log('업데이트할 상태 태그:', updatedStatusTags);
+      
+      // API 요청 데이터
+      const requestData = {
+        // 필수 필드
+        name: client.name,
+        contractStart: client.contractStart,
+        contractEnd: client.contractEnd,
+        // 업데이트 필드
+        statusTags: updatedStatusTags
+      };
+      
+      console.log('API 요청 데이터:', requestData);
+      
+      // API 요청 송신
+      const response = await fetch(`/api/clients/${client.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(requestData)
+      });
+      
+      console.log('API 응답 상태:', response.status, response.statusText);
+      
+      // 응답 본문을 텍스트로 먼저 읽어서 디버깅
+      const responseText = await response.text();
+      console.log('API 응답 텍스트:', responseText);
+      
+      // 텍스트를 다시 JSON으로 파싱
+      let responseData;
+      try {
+        responseData = JSON.parse(responseText);
+      } catch (parseError) {
+        console.error('응답 JSON 파싱 오류:', parseError);
+        throw new Error(`응답을 파싱할 수 없습니다: ${responseText}`);
+      }
+      
+      if (!response.ok) {
+        console.error('API 응답 오류:', responseData);
+        throw new Error(responseData?.error || '민원 상태 업데이트에 실패했습니다.');
+      }
+      
+      console.log('민원 상태 업데이트 성공:', responseData);
+      
+      // 로컬 스토리지 업데이트
+      try {
+        // 단일 클라이언트 데이터에 상태 업데이트
+        const clientData = localStorage.getItem(`wizweblast_client_${client.id}`);
+        if (clientData) {
+          const parsedClient = JSON.parse(clientData);
+          parsedClient.statusTags = updatedStatusTags;
+          localStorage.setItem(`wizweblast_client_${client.id}`, JSON.stringify(parsedClient));
+        }
+        
+        // 목록에 있는 경우 해당 데이터도 업데이트
+        const storedClientsJSON = localStorage.getItem('wizweblast_clients');
+        if (storedClientsJSON) {
+          const storedClients = JSON.parse(storedClientsJSON);
+          if (Array.isArray(storedClients)) {
+            const updatedClients = storedClients.map(c => 
+              c.id === client.id ? {...c, statusTags: updatedStatusTags} : c
+            );
+            localStorage.setItem('wizweblast_clients', JSON.stringify(updatedClients));
+          }
+        }
+      } catch (storageErr) {
+        console.error("로컬 스토리지 저장 실패:", storageErr);
+      }
+      
+      alert(`민원 상태가 ${newHasComplaint ? '활성화' : '비활성화'}되었습니다.`);
+    } catch (error) {
+      console.error('민원 상태 변경 오류:', error);
+      // 오류 정보 자세히 로깅
+      if (error instanceof Error) {
+        console.error('오류 메시지:', error.message);
+        console.error('오류 스택:', error.stack);
+      }
+      // 오류 발생 시 이전 상태로 복원
+      setHasComplaint(hasComplaint);
+      alert(`민원 상태 변경 중 오류가 발생했습니다: ${error instanceof Error ? error.message : '알 수 없는 오류'}`);
+    }
   };
   
   // 정보 자동 갱신 처리

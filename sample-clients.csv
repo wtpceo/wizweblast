@@ -1,0 +1,11 @@
+name,icon,contract_start,contract_end,status_tags,uses_coupon,publishes_news,uses_reservation,phone_number,naver_place_url
+카페브라우니,☕,2024-06-01,2025-06-01,"{정상}",true,true,true,02-1234-5678,https://place.naver.com/restaurant/sample1
+맛있는치킨,🍗,2024-05-15,2025-05-15,"{정상}",true,false,true,02-2345-6789,https://place.naver.com/restaurant/sample2
+피자하우스,🍕,2024-01-01,2024-07-01,"{종료 임박}",false,true,true,02-3456-7890,https://place.naver.com/restaurant/sample3
+스시명가,🍣,2024-03-15,2024-08-15,"{관리 소홀}",true,false,false,02-4567-8901,https://place.naver.com/restaurant/sample4
+꽃집플라워,🌸,2024-04-01,2025-04-01,"{정상}",false,true,false,02-5678-9012,https://place.naver.com/restaurant/sample5
+베이커리카페,🥐,2024-05-01,2024-09-01,"{정상,민원 중}",true,true,true,02-6789-0123,https://place.naver.com/restaurant/sample6
+헤어살롱,💇,2024-02-15,2024-08-15,"{종료 임박}",false,false,true,02-7890-1234,https://place.naver.com/restaurant/sample7
+네일아트,💅,2024-01-10,2024-07-10,"{종료 임박,관리 소홀}",true,false,false,02-8901-2345,https://place.naver.com/restaurant/sample8
+피트니스클럽,🏋️,2024-03-01,2025-03-01,"{정상}",true,true,false,02-9012-3456,https://place.naver.com/restaurant/sample9
+동물병원,🐾,2024-04-15,2025-04-15,"{정상}",false,true,true,02-0123-4567,https://place.naver.com/restaurant/sample10 

@@ -26,12 +26,32 @@ export default function ClientsPage() {
   const [filterNoCoupon, setFilterNoCoupon] = useState<boolean>(false);
   const [filterNoNews, setFilterNoNews] = useState<boolean>(false);
   const [filterNoReservation, setFilterNoReservation] = useState<boolean>(false);
+  const [showExpired, setShowExpired] = useState<boolean>(false);
+  
+  // 관리 소홀 광고주 ID 목록 상태 추가
+  const [poorManagedClientIds, setPoorManagedClientIds] = useState<string[]>([]);
   
   // 상태 추가
   const [tipMessage, setTipMessage] = useState<string>('광고주 관리 시스템을 활용해 업무 효율을 높여보세요!');
   
   // 검색 입력란 ref 추가
   const searchInputRef = useRef<HTMLInputElement>(null);
+  
+  // 로컬 스토리지에서 관리 소홀 광고주 ID 목록 가져오기
+  useEffect(() => {
+    try {
+      const storedPoorManagedClients = localStorage.getItem('wizweblast_poor_managed_clients');
+      if (storedPoorManagedClients) {
+        const parsedIds = JSON.parse(storedPoorManagedClients);
+        if (Array.isArray(parsedIds)) {
+          console.log('[클라이언트] 로컬 스토리지에서 관리 소홀 광고주 ID 목록을 불러왔습니다:', parsedIds.length + '개');
+          setPoorManagedClientIds(parsedIds);
+        }
+      }
+    } catch (storageErr) {
+      console.error('[클라이언트] 로컬 스토리지 데이터 로딩 오류:', storageErr);
+    }
+  }, []);
   
   // 키보드 단축키 처리
   useEffect(() => {
@@ -333,7 +353,36 @@ export default function ClientsPage() {
     // 상태 필터링
     let matchesStatus = true;
     if (statusFilter !== 'all') {
-      matchesStatus = client.statusTags?.includes(statusFilter) ?? false;
+      // 종료 임박의 경우 태그 기반 + 날짜 기반 필터링 결합
+      if (statusFilter === '종료 임박') {
+        // 태그 기반 확인
+        const hasTag = client.statusTags?.includes(statusFilter) ?? false;
+        
+        // 날짜 기반 확인 (현재로부터 30일 이내 종료 예정)
+        const today = new Date();
+        const thirtyDaysLater = new Date();
+        thirtyDaysLater.setDate(today.getDate() + 30);
+        const endDate = new Date(client.contractEnd);
+        const isNearExpiry = endDate <= thirtyDaysLater && endDate >= today;
+        
+        // 둘 중 하나라도 해당하면 '종료 임박'으로 간주
+        matchesStatus = hasTag || isNearExpiry;
+      } 
+      // 관리 소홀의 경우 태그 기반 + 최근 활동 기반 필터링 결합
+      else if (statusFilter === '관리 소홀') {
+        // 태그 기반 확인
+        const hasTag = client.statusTags?.includes(statusFilter) ?? false;
+        
+        // 활동 기반 확인 (대시보드에서 가져온 관리 소홀 ID 목록 활용)
+        const isInPoorManagedList = poorManagedClientIds.includes(client.id);
+        
+        // 둘 중 하나라도 해당하면 '관리 소홀'로 간주
+        matchesStatus = hasTag || isInPoorManagedList;
+      }
+      else {
+        // 다른 상태 필터는 기존대로 태그만 확인
+        matchesStatus = client.statusTags?.includes(statusFilter) ?? false;
+      }
     }
     
     // 추가 필터링 (쿠폰/소식/예약)
@@ -353,18 +402,58 @@ export default function ClientsPage() {
       matchesReservationFilter = !client.usesReservation;
     }
     
-    return matchesSearch && matchesStatus && matchesCouponFilter && matchesNewsFilter && matchesReservationFilter;
+    // 종료 업체 필터링
+    let matchesExpiredFilter = true;
+    if (showExpired) {
+      // 종료일이 현재 시간보다 이전인 경우 (종료된 업체)
+      const today = new Date();
+      const endDate = new Date(client.contractEnd);
+      matchesExpiredFilter = endDate < today;
+    } else {
+      // 종료일이 현재 시간 이후인 경우 (종료되지 않은 업체)
+      const today = new Date();
+      const endDate = new Date(client.contractEnd);
+      matchesExpiredFilter = endDate >= today;
+    }
+    
+    return matchesSearch && matchesStatus && matchesCouponFilter && matchesNewsFilter && matchesReservationFilter && matchesExpiredFilter;
   });
   
   // 상태별 카운트
   const statusCounts = {
     total: clients.length,
-    nearExpiry: clients.filter(c => c && c.statusTags && Array.isArray(c.statusTags) && c.statusTags.includes('종료 임박')).length,
-    poorManaged: clients.filter(c => c && c.statusTags && Array.isArray(c.statusTags) && c.statusTags.includes('관리 소홀')).length,
+    nearExpiry: clients.filter(c => {
+      // 태그 기반 확인
+      const hasNearExpiryTag = c && c.statusTags && Array.isArray(c.statusTags) && c.statusTags.includes('종료 임박');
+      
+      // 날짜 기반 확인 (현재로부터 30일 이내 종료 예정)
+      const today = new Date();
+      const thirtyDaysLater = new Date();
+      thirtyDaysLater.setDate(today.getDate() + 30);
+      
+      if (!c || !c.contractEnd) return false;
+      
+      const endDate = new Date(c.contractEnd);
+      const isNearExpiry = endDate <= thirtyDaysLater && endDate >= today;
+      
+      // 둘 중 하나라도 해당하면 '종료 임박'으로 간주
+      return hasNearExpiryTag || isNearExpiry;
+    }).length,
+    poorManaged: clients.filter(c => {
+      // 태그 기반 확인
+      const hasPoorManagedTag = c && c.statusTags && Array.isArray(c.statusTags) && c.statusTags.includes('관리 소홀');
+      
+      // 활동 기반 확인 (대시보드에서 가져온 관리 소홀 ID 목록 활용)
+      const isInPoorManagedList = c && poorManagedClientIds.includes(c.id);
+      
+      // 둘 중 하나라도 해당하면 '관리 소홀'로 간주
+      return hasPoorManagedTag || isInPoorManagedList;
+    }).length,
     complaints: clients.filter(c => c && c.statusTags && Array.isArray(c.statusTags) && c.statusTags.includes('민원 중')).length,
     noCoupon: clients.filter(c => c && c.usesCoupon === false).length,
     noNews: clients.filter(c => c && c.publishesNews === false).length,
-    noReservation: clients.filter(c => c && c.usesReservation === false).length
+    noReservation: clients.filter(c => c && c.usesReservation === false).length,
+    expired: clients.filter(c => c && c.contractEnd && new Date(c.contractEnd) < new Date()).length // 종료 업체 수 계산
   };
   
   // 필터 토글 함수
@@ -794,6 +883,12 @@ export default function ClientsPage() {
               <div className="mt-4 flex flex-wrap gap-3">
                 <span className="text-sm text-gray-600 self-center">추가 필터:</span>
                 <button
+                  className={`px-3 py-2 rounded-lg text-sm transition-all flex items-center ${showExpired ? 'bg-[#EFEBE9] text-[#795548] border border-[#795548]' : 'bg-gray-100 hover:bg-gray-200'}`}
+                  onClick={() => setShowExpired(!showExpired)}
+                >
+                  <span className="mr-1">📅</span> 종료 업체 ({statusCounts.expired})
+                </button>
+                <button
                   className={`px-3 py-2 rounded-lg text-sm transition-all flex items-center ${filterNoCoupon ? 'bg-[#E3F2FD] text-[#2196F3] border border-[#2196F3]' : 'bg-gray-100 hover:bg-gray-200'}`}
                   onClick={() => toggleFilter('coupon')}
                 >
@@ -811,13 +906,14 @@ export default function ClientsPage() {
                 >
                   <span className="mr-1">📅</span> 예약 미사용 ({statusCounts.noReservation})
                 </button>
-                {(filterNoCoupon || filterNoNews || filterNoReservation) && (
+                {(filterNoCoupon || filterNoNews || filterNoReservation || showExpired) && (
                   <button
                     className="px-3 py-2 rounded-lg text-sm transition-all bg-gray-200 hover:bg-gray-300 flex items-center"
                     onClick={() => {
                       setFilterNoCoupon(false);
                       setFilterNoNews(false);
                       setFilterNoReservation(false);
+                      setShowExpired(false);
                     }}
                   >
                     <span className="mr-1">🔄</span> 필터 초기화
@@ -851,6 +947,7 @@ export default function ClientsPage() {
                       setFilterNoCoupon(false);
                       setFilterNoNews(false);
                       setFilterNoReservation(false);
+                      setShowExpired(false);
                     }}
                     className="bg-[#2251D1] text-white px-4 py-2 rounded-lg hover:bg-[#1a3fa0] transition-all"
                   >

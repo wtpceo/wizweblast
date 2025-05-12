@@ -1,18 +1,26 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useUser, SignInButton, SignUpButton } from '@clerk/nextjs';
 import { DashboardStats } from "@/components/DashboardStats";
 import { NoticeList } from "@/components/NoticeList";
 import { DashboardActions } from "@/components/DashboardActions";
 import { EmailVerification } from "@/components/EmailVerification";
-import { mockDashboardStats, mockNotices } from "@/lib/mock-data";
+import { mockNotices, type DashboardStats as DashboardStatsType } from "@/lib/mock-data";
 import { Header } from '@/components/Header';
 
 export default function Dashboard() {
   const router = useRouter();
   const { isSignedIn, isLoaded } = useUser();
+  const [stats, setStats] = useState<DashboardStatsType>({
+    totalClients: 0,
+    nearExpiry: 0,
+    poorManaged: 0,
+    complaintsOngoing: 0
+  });
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   // 임의의 재미있는 인사말 목록
   const greetings = [
@@ -22,6 +30,45 @@ export default function Dashboard() {
     "우리의 협업이 멋진 결과를 만들어요! 🤝",
     "오늘의 업무, 게임처럼 즐겁게! 🎮"
   ];
+
+  // 통계 데이터 가져오기
+  const fetchDashboardStats = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const response = await fetch('/api/dashboard/stats');
+      
+      if (!response.ok) {
+        throw new Error('통계 데이터를 불러오는데 실패했습니다.');
+      }
+      
+      const data = await response.json();
+      setStats(data);
+      
+      // 관리 소홀 광고주 ID 목록을 로컬 스토리지에 저장
+      if (data.poorManagedClientIds && Array.isArray(data.poorManagedClientIds)) {
+        try {
+          localStorage.setItem('wizweblast_poor_managed_clients', JSON.stringify(data.poorManagedClientIds));
+          console.log('관리 소홀 광고주 ID 목록을 로컬 스토리지에 저장했습니다:', data.poorManagedClientIds.length + '개');
+        } catch (storageErr) {
+          console.error('로컬 스토리지 저장 오류:', storageErr);
+        }
+      }
+    } catch (err) {
+      console.error('대시보드 통계 로드 오류:', err);
+      setError('통계 데이터를 불러오는데 문제가 발생했습니다.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 페이지 로드 시 데이터 가져오기
+  useEffect(() => {
+    if (isSignedIn) {
+      fetchDashboardStats();
+    }
+  }, [isSignedIn]);
 
   // 랜덤 인사말 선택
   const randomGreeting = greetings[Math.floor(Math.random() * greetings.length)];
@@ -98,7 +145,10 @@ export default function Dashboard() {
         description={randomGreeting}
         icon="🌟"
         actions={
-          <button className="bg-white text-[#2251D1] px-4 py-2 rounded-lg hover:bg-opacity-90 transition-all duration-200 flex items-center text-sm font-medium shadow-sm hover:shadow">
+          <button 
+            className="bg-white text-[#2251D1] px-4 py-2 rounded-lg hover:bg-opacity-90 transition-all duration-200 flex items-center text-sm font-medium shadow-sm hover:shadow"
+            onClick={fetchDashboardStats}
+          >
             <span className="mr-2">🔄</span> 새로고침
           </button>
         }
@@ -108,8 +158,27 @@ export default function Dashboard() {
         {/* 이메일 검증 알림 */}
         <EmailVerification />
         
+        {/* 오류 메시지 표시 */}
+        {error && (
+          <div className="my-4 p-4 bg-red-50 border-l-4 border-red-500 text-red-700 rounded">
+            <p>{error}</p>
+            <button 
+              onClick={fetchDashboardStats}
+              className="text-sm underline mt-2"
+            >
+              다시 시도하기
+            </button>
+          </div>
+        )}
+        
         {/* 상단 통계 카드 */}
-        <DashboardStats stats={mockDashboardStats} />
+        {loading ? (
+          <div className="h-32 flex items-center justify-center my-6">
+            <div className="w-10 h-10 rounded-full border-4 border-[#2251D1] border-t-transparent animate-spin"></div>
+          </div>
+        ) : (
+          <DashboardStats stats={stats} />
+        )}
         
         {/* 공지사항 */}
         <NoticeList notices={mockNotices} />

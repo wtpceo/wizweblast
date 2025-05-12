@@ -295,13 +295,12 @@ export async function PUT(request: Request, { params }: { params: { id: string }
         icon: icon || existingClient.icon,
         contract_start: contractStart,
         contract_end: contractEnd,
-        status_tags: statusTags,
+        status_tags: Array.isArray(statusTags) ? statusTags : [statusTags].filter(Boolean),
         uses_coupon: usesCoupon,
         publishes_news: publishesNews,
         uses_reservation: usesReservation,
         phone_number: phoneNumber,
-        naver_place_url: naverPlaceUrl,
-        updated_at: new Date().toISOString()
+        naver_place_url: naverPlaceUrl
       })
       .eq('id', clientId)
       .select()
@@ -309,8 +308,20 @@ export async function PUT(request: Request, { params }: { params: { id: string }
 
     if (updateError) {
       console.error('광고주 업데이트 오류:', updateError);
+      console.error('업데이트 파라미터:', {
+        name,
+        icon,
+        contract_start: contractStart,
+        contract_end: contractEnd,
+        status_tags: Array.isArray(statusTags) ? statusTags : [statusTags].filter(Boolean),
+        uses_coupon: usesCoupon,
+        publishes_news: publishesNews,
+        uses_reservation: usesReservation,
+        phone_number: phoneNumber,
+        naver_place_url: naverPlaceUrl
+      });
       return NextResponse.json(
-        { error: '광고주 정보를 수정하는 중 오류가 발생했습니다.' },
+        { error: `광고주 정보를 수정하는 중 오류가 발생했습니다: ${updateError.message}` },
         { status: 500 }
       );
     }

@@ -1,48 +1,94 @@
 import { NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { createSafeServerClient } from '../../../../lib/supabase-server';
 
 // 대시보드 통계 API
 export async function GET(request: Request) {
   try {
     const now = new Date();
-    const oneWeekLater = new Date();
-    oneWeekLater.setDate(now.getDate() + 7);
+    const thirtyDaysLater = new Date();
+    thirtyDaysLater.setDate(now.getDate() + 30);
+    
+    // RLS 정책을 우회하는 클라이언트 생성
+    const supabaseAdmin = createSafeServerClient();
     
     // 1. 전체 광고주 수 조회
-    const { count: totalClients, error: totalError } = await supabase
+    const { data: allClients, error: totalError } = await supabaseAdmin
       .from('clients')
-      .select('*', { count: 'exact', head: true });
+      .select('id, contract_end');
     
     if (totalError) {
       console.error('전체 광고주 수 조회 오류:', totalError);
       return NextResponse.json({ error: '통계 데이터 조회에 실패했습니다.' }, { status: 500 });
     }
     
-    // 2. 계약 종료 임박 광고주 수 조회 (7일 이내)
-    const { count: nearExpiry, error: expiryError } = await supabase
-      .from('clients')
-      .select('*', { count: 'exact', head: true })
-      .lte('contract_end', oneWeekLater.toISOString())
-      .gte('contract_end', now.toISOString());
+    // 종료된 광고주 필터링 (contract_end < 현재 날짜)
+    const activeClients = allClients.filter((client: any) => {
+      const contractEnd = new Date(client.contract_end);
+      return contractEnd >= now;
+    });
     
-    // 3. 관리 소홀 광고주 수 조회
-    const { count: poorManaged, error: poorError } = await supabase
-      .from('clients')
-      .select('*', { count: 'exact', head: true })
-      .contains('status_tags', ['관리 소홀']);
+    // 2. 계약 종료 임박 광고주 수 조회 (D-30일 이하)
+    const nearExpiryClients = activeClients.filter((client: any) => {
+      const contractEnd = new Date(client.contract_end);
+      return contractEnd <= thirtyDaysLater && contractEnd >= now;
+    });
+    
+    // 3. 관리 소홀 광고주 데이터 조회 (최근 활동이 5일 이상 없는 경우)
+    const fiveDaysAgo = new Date();
+    fiveDaysAgo.setDate(now.getDate() - 5);
+    
+    // 모든 광고주 ID 목록
+    const clientIds = activeClients.map((client: any) => client.id);
+    
+    // 최근 활동이 있는 광고주 조회 (할일 추가, 완료로 갱신)
+    const { data: recentActivities, error: activityError } = await supabaseAdmin
+      .from('client_todos')
+      .select('client_id, updated_at')
+      .in('client_id', clientIds)
+      .gte('updated_at', fiveDaysAgo.toISOString());
+      
+    if (activityError) {
+      console.error('최근 활동 조회 오류:', activityError);
+    }
+    
+    // 최근 활동이 있는 광고주 ID 목록
+    const recentActiveClientIds = new Set(
+      (recentActivities || []).map((activity: any) => activity.client_id)
+    );
+    
+    // 관리 소홀 광고주 = 최근 활동이 없는 광고주
+    const poorManagedClients = activeClients.filter(
+      (client: any) => !recentActiveClientIds.has(client.id)
+    );
+    
+    // 관리 소홀 광고주 ID 목록
+    const poorManagedClientIds = poorManagedClients.map((client: any) => client.id);
     
     // 4. 민원 진행 중인 광고주 수 조회
-    const { count: complaintsOngoing, error: complaintsError } = await supabase
+    const { data: complaintsData, error: complaintsError } = await supabaseAdmin
       .from('clients')
-      .select('*', { count: 'exact', head: true })
-      .contains('status_tags', ['민원 중']);
+      .select('id, status_tags')
+      .in('id', clientIds);
+    
+    if (complaintsError) {
+      console.error('민원 광고주 조회 오류:', complaintsError);
+    }
+    
+    // 민원 중 태그가 있는 광고주 필터링
+    const complaintsOngoingClients = (complaintsData || []).filter((client: any) => {
+      return client.status_tags && 
+        Array.isArray(client.status_tags) && 
+        client.status_tags.includes('민원 중');
+    });
     
     // 통계 데이터 응답
     const dashboardStats = {
-      totalClients: totalClients || 0,
-      nearExpiry: nearExpiry || 0,
-      poorManaged: poorManaged || 0,
-      complaintsOngoing: complaintsOngoing || 0
+      totalClients: activeClients.length || 0,
+      nearExpiry: nearExpiryClients.length || 0,
+      poorManaged: poorManagedClients.length || 0,
+      complaintsOngoing: complaintsOngoingClients.length || 0,
+      // 관리 소홀 광고주 ID 목록 추가
+      poorManagedClientIds: poorManagedClientIds
     };
     
     return NextResponse.json(dashboardStats);
