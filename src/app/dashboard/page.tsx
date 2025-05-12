@@ -7,7 +7,7 @@ import { DashboardStats } from "@/components/DashboardStats";
 import { NoticeList } from "@/components/NoticeList";
 import { DashboardActions } from "@/components/DashboardActions";
 import { EmailVerification } from "@/components/EmailVerification";
-import { mockNotices, type DashboardStats as DashboardStatsType } from "@/lib/mock-data";
+import { type DashboardStats as DashboardStatsType } from "@/lib/mock-data";
 import { Header } from '@/components/Header';
 
 export default function Dashboard() {
@@ -181,7 +181,7 @@ export default function Dashboard() {
         )}
         
         {/* 공지사항 */}
-        <NoticeList notices={mockNotices} />
+        <NoticeList />
         
         {/* 기능 바로가기 */}
         <DashboardActions />

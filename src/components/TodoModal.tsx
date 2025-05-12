@@ -41,7 +41,8 @@ export function TodoModal({ client, isOpen, onClose, onSave }: TodoModalProps) {
         const response = await fetch('/api/users');
         
         if (!response.ok) {
-          throw new Error('사용자 목록을 가져오는데 실패했습니다.');
+          const errorText = await response.text();
+          throw new Error(`사용자 목록을 가져오는데 실패했습니다. 상태: ${response.status}, 메시지: ${errorText}`);
         }
         
         const users = await response.json();
@@ -59,9 +60,15 @@ export function TodoModal({ client, isOpen, onClose, onSave }: TodoModalProps) {
       } catch (error) {
         console.error('사용자 목록 로딩 오류:', error);
         // 오류 시 기본 사용자만 표시
-        setTeamMembers([
-          { id: user?.id || 'current-user', name: user?.firstName || '현재 사용자', emoji: '👨‍💼' }
-        ]);
+        if (user) {
+          setTeamMembers([
+            { id: user.id || 'current-user', name: user.firstName || '현재 사용자', emoji: '👨‍💼' }
+          ]);
+        } else {
+          setTeamMembers([
+            { id: 'current-user', name: '현재 사용자', emoji: '👨‍💼' }
+          ]);
+        }
       } finally {
         setIsLoadingUsers(false);
       }
