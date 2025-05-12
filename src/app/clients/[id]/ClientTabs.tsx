@@ -7,6 +7,7 @@ import { TodoSection } from './TodoSection';
 
 interface ClientTabsProps {
   client: Client;
+  onClientUpdate?: (updatedClient: Client) => void;
 }
 
 // 확장된 할 일 타입 정의
@@ -36,7 +37,7 @@ const departments = [
   { id: 'admin', name: '관리자', color: '#9C27B0', icon: '⚙️' }
 ];
 
-export function ClientTabs({ client }: ClientTabsProps) {
+export function ClientTabs({ client, onClientUpdate }: ClientTabsProps) {
   const [activeTab, setActiveTab] = useState<'info' | 'todos' | 'notes' | 'analytics'>('info');
   const [hasComplaint, setHasComplaint] = useState(client.statusTags.includes('민원 중'));
   const [todoInput, setTodoInput] = useState('');
@@ -1032,7 +1033,7 @@ export function ClientTabs({ client }: ClientTabsProps) {
         )}
         
         {activeTab === 'todos' && (
-          <TodoSection client={client} />
+          <TodoSection client={client} onClientUpdate={onClientUpdate} />
         )}
         
         {activeTab === 'notes' && (

@@ -37,38 +37,26 @@ export async function GET(request: Request) {
     const fiveDaysAgo = new Date();
     fiveDaysAgo.setDate(now.getDate() - 5);
     
-    // 모든 광고주 ID 목록
-    const clientIds = activeClients.map((client: any) => client.id);
+    // 최근 활동이 없는 광고주 조회 (last_activity_at 기준)
+    const { data: poorManagedClientsData, error: poorManagedError } = await supabaseAdmin
+      .from('clients')
+      .select('id, name, last_activity_at')
+      .lt('last_activity_at', fiveDaysAgo.toISOString())
+      .in('id', activeClients.map((client: any) => client.id));
     
-    // 최근 활동이 있는 광고주 조회 (할일 추가, 완료로 갱신)
-    const { data: recentActivities, error: activityError } = await supabaseAdmin
-      .from('client_todos')
-      .select('client_id, updated_at')
-      .in('client_id', clientIds)
-      .gte('updated_at', fiveDaysAgo.toISOString());
-      
-    if (activityError) {
-      console.error('최근 활동 조회 오류:', activityError);
+    if (poorManagedError) {
+      console.error('관리 소홀 광고주 조회 오류:', poorManagedError);
     }
     
-    // 최근 활동이 있는 광고주 ID 목록
-    const recentActiveClientIds = new Set(
-      (recentActivities || []).map((activity: any) => activity.client_id)
-    );
-    
-    // 관리 소홀 광고주 = 최근 활동이 없는 광고주
-    const poorManagedClients = activeClients.filter(
-      (client: any) => !recentActiveClientIds.has(client.id)
-    );
-    
     // 관리 소홀 광고주 ID 목록
-    const poorManagedClientIds = poorManagedClients.map((client: any) => client.id);
+    const poorManagedClientIds = (poorManagedClientsData || []).map((client: any) => client.id);
+    const poorManagedCount = poorManagedClientIds.length;
     
     // 4. 민원 진행 중인 광고주 수 조회
     const { data: complaintsData, error: complaintsError } = await supabaseAdmin
       .from('clients')
       .select('id, status_tags')
-      .in('id', clientIds);
+      .in('id', activeClients.map((client: any) => client.id));
     
     if (complaintsError) {
       console.error('민원 광고주 조회 오류:', complaintsError);
@@ -85,7 +73,7 @@ export async function GET(request: Request) {
     const dashboardStats = {
       totalClients: activeClients.length || 0,
       nearExpiry: nearExpiryClients.length || 0,
-      poorManaged: poorManagedClients.length || 0,
+      poorManaged: poorManagedCount || 0,
       complaintsOngoing: complaintsOngoingClients.length || 0,
       // 관리 소홀 광고주 ID 목록 추가
       poorManagedClientIds: poorManagedClientIds

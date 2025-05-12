@@ -431,20 +431,45 @@ export function ClientInfo({ client, onContractUpdate }: ClientInfoProps) {
             </div>
             
             {/* 네이버 플레이스 */}
-            <div className="flex justify-between items-center">
+            <div className="flex justify-between">
               <span className="text-gray-600">네이버 플레이스:</span>
-              {client.naverPlaceUrl ? (
-                <a 
-                  href={client.naverPlaceUrl.startsWith('http') ? client.naverPlaceUrl : `https://${client.naverPlaceUrl}`} 
-                  target="_blank" 
-                  rel="noopener noreferrer" 
-                  className="text-[#2251D1] hover:underline flex items-center"
-                >
-                  <span>바로가기</span>
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                  </svg>
-                </a>
+              <span className="font-medium">
+                {client.naverPlaceUrl ? (
+                  <a 
+                    href={client.naverPlaceUrl} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="text-blue-500 hover:underline"
+                  >
+                    바로가기
+                  </a>
+                ) : (
+                  '정보 없음'
+                )}
+              </span>
+            </div>
+            
+            {/* 최근 활동일 */}
+            <div className="flex justify-between">
+              <span className="text-gray-600">최근 활동일:</span>
+              {client.last_activity_at ? (
+                (() => {
+                  const date = new Date(client.last_activity_at);
+                  const today = new Date();
+                  const diffTime = today.getTime() - date.getTime();
+                  const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+                  
+                  // 시간 포맷팅 추가 (24시간제)
+                  const hours = String(date.getHours()).padStart(2, '0');
+                  const minutes = String(date.getMinutes()).padStart(2, '0');
+                  
+                  return (
+                    <span className={`font-medium ${diffDays >= 5 ? 'text-[#FF9800]' : ''}`}>
+                      {`${date.getFullYear()}.${String(date.getMonth() + 1).padStart(2, '0')}.${String(date.getDate()).padStart(2, '0')} ${hours}:${minutes}`}
+                      {diffDays >= 5 ? ` (${diffDays}일 전)` : ''}
+                    </span>
+                  );
+                })()
               ) : (
                 <span className="text-gray-400">정보 없음</span>
               )}

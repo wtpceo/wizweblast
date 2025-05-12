@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Client } from '@/lib/mock-data';
 
 interface ClientCardProps {
@@ -12,11 +12,80 @@ interface ClientCardProps {
 
 export function ClientCard({ client, onAddTodo, onAddNote }: ClientCardProps) {
   const [isHovered, setIsHovered] = useState(false);
+  const [lastActivityDate, setLastActivityDate] = useState<string | undefined>(client.last_activity_at);
+  
+  // 클라이언트 로컬 스토리지에서 최신 활동일 확인
+  useEffect(() => {
+    // 초기 설정 (처음 한 번만 설정)
+    if (client.last_activity_at) {
+      setLastActivityDate(client.last_activity_at);
+    }
+    
+    // 로컬 스토리지 이벤트 리스너
+    const checkLocalStorage = () => {
+      try {
+        // 클라이언트 개별 데이터 확인
+        const clientData = localStorage.getItem(`wizweblast_client_${client.id}`);
+        if (clientData) {
+          const parsedClient = JSON.parse(clientData);
+          if (parsedClient.last_activity_at && parsedClient.last_activity_at !== client.last_activity_at) {
+            setLastActivityDate(parsedClient.last_activity_at);
+          }
+        }
+        
+        // 업데이트 트리거 확인
+        const updateTrigger = localStorage.getItem('__temp_client_update_trigger');
+        if (updateTrigger) {
+          const triggerData = JSON.parse(updateTrigger);
+          if (triggerData.clientId === client.id && triggerData.last_activity_at !== client.last_activity_at) {
+            setLastActivityDate(triggerData.last_activity_at);
+          }
+        }
+      } catch (e) {
+        console.error('로컬 스토리지 활동일 확인 오류:', e);
+      }
+    };
+    
+    // 이벤트 리스너 등록 (함수 레퍼런스 유지를 위해 내부에서 정의)
+    const handleStorage = () => checkLocalStorage();
+    const handleFocus = () => checkLocalStorage();
+    
+    window.addEventListener('storage', handleStorage);
+    window.addEventListener('focus', handleFocus);
+    
+    // 컴포넌트 마운트 시 확인
+    checkLocalStorage();
+    
+    // 클린업
+    return () => {
+      window.removeEventListener('storage', handleStorage);
+      window.removeEventListener('focus', handleFocus);
+    };
+  }, [client.id, client.last_activity_at]); // lastActivityDate 의존성 제거
   
   // 계약 기간 포맷팅 함수
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     return `${date.getFullYear()}.${String(date.getMonth() + 1).padStart(2, '0')}.${String(date.getDate()).padStart(2, '0')}`;
+  };
+  
+  // 최근 활동일 포맷팅 및 경과일 계산
+  const formatActivityDate = (dateString?: string) => {
+    if (!dateString) return { formatted: '정보 없음', daysAgo: 0 };
+    
+    const date = new Date(dateString);
+    const today = new Date();
+    const diffTime = today.getTime() - date.getTime();
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+    
+    // 시간 포맷팅 추가 (24시간제)
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    
+    return {
+      formatted: `${date.getFullYear()}.${String(date.getMonth() + 1).padStart(2, '0')}.${String(date.getDate()).padStart(2, '0')} ${hours}:${minutes}`,
+      daysAgo: diffDays
+    };
   };
   
   // 계약 종료까지 남은 일수 계산
@@ -98,6 +167,38 @@ export function ClientCard({ client, onAddTodo, onAddNote }: ClientCardProps) {
               </span>
             </div>
           )}
+        </div>
+        
+        {/* 최근 활동일 */}
+        <div className="mb-3 text-sm">
+          <div className="flex justify-between items-center">
+            <span className="text-gray-600">최근 활동일:</span>
+            {lastActivityDate ? (
+              (() => {
+                const { formatted, daysAgo } = formatActivityDate(lastActivityDate);
+                return (
+                  <span className={`font-medium ${daysAgo >= 5 ? 'text-[#FF9800]' : ''}`}>
+                    {formatted}
+                  </span>
+                );
+              })()
+            ) : (
+              <span className="text-gray-400">정보 없음</span>
+            )}
+          </div>
+          {lastActivityDate && (() => {
+            const { daysAgo } = formatActivityDate(lastActivityDate);
+            if (daysAgo >= 5) {
+              return (
+                <div className="mt-1 flex justify-end">
+                  <span className="text-xs px-2 py-1 rounded-full bg-[#FFF3E0] text-[#FF9800]">
+                    {daysAgo}일 동안 활동 없음
+                  </span>
+                </div>
+              );
+            }
+            return null;
+          })()}
         </div>
         
         {/* 서비스 사용 현황 */}

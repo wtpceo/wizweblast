@@ -10,9 +10,10 @@ import Link from 'next/link';
 
 interface TodoSectionProps {
   client: Client;
+  onClientUpdate?: (updatedClient: Client) => void;
 }
 
-export function TodoSection({ client }: TodoSectionProps) {
+export function TodoSection({ client, onClientUpdate }: TodoSectionProps) {
   const [todos, setTodos] = useState<Todo[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -427,6 +428,95 @@ export function TodoSection({ client }: TodoSectionProps) {
         
         // UI 업데이트
         setTodos(prev => [newTodo, ...prev]);
+        
+        // 클라이언트의 최근 활동일 업데이트 (현재 시간으로)
+        const now = new Date().toISOString();
+        
+        // 클라이언트 객체의 최근 활동일 로컬에서 업데이트
+        if (client) {
+          // 1. 단일 클라이언트 데이터 업데이트
+          const updatedClient = { ...client, last_activity_at: now };
+          
+          try {
+            // 2. 클라이언트 상세 정보 로컬 스토리지 업데이트
+            localStorage.setItem(`wizweblast_client_${client.id}`, JSON.stringify(updatedClient));
+            addDebugLog(`클라이언트 상세 정보의 최근 활동일이 업데이트되었습니다: ${now}`);
+            
+            // 3. 클라이언트 목록에서도 업데이트
+            const storedClientsJSON = localStorage.getItem('wizweblast_clients');
+            if (storedClientsJSON) {
+              const storedClients = JSON.parse(storedClientsJSON);
+              if (Array.isArray(storedClients)) {
+                const updatedClients = storedClients.map(c => 
+                  c.id === client.id ? { ...c, last_activity_at: now } : c
+                );
+                localStorage.setItem('wizweblast_clients', JSON.stringify(updatedClients));
+                addDebugLog('클라이언트 목록에서도 최근 활동일 업데이트 완료');
+              }
+            }
+            
+            // 4. 부모 컴포넌트에 변경 사항 알림 (UI 업데이트를 위해)
+            if (onClientUpdate) {
+              const updatedClient = {
+                ...client,
+                last_activity_at: now
+              };
+              onClientUpdate(updatedClient);
+              addDebugLog('onClientUpdate 콜백 호출 완료');
+            }
+            
+            // 5. 전체 UI 갱신을 위해 클라이언트 목록 업데이트 이벤트 발생
+            const updateEvent = new CustomEvent('client_updated', { 
+              detail: { 
+                clientId: client.id,
+                last_activity_at: now
+              },
+              bubbles: true, // 이벤트 버블링 허용
+              composed: true // Shadow DOM 경계를 넘어 이벤트 전파
+            });
+            window.dispatchEvent(updateEvent);
+            addDebugLog('클라이언트 업데이트 이벤트 발생');
+            
+            // page.tsx에서 localStorage 직접 업데이트 추가 시도
+            try {
+              // 클라이언트 목록의 상태 업데이트 트리거
+              localStorage.setItem('__temp_client_update_trigger', JSON.stringify({
+                clientId: client.id,
+                last_activity_at: now,
+                timestamp: Date.now() // 항상 다른 값을 만들어 변경 감지
+              }));
+              addDebugLog('localStorage 업데이트 트리거 저장 완료');
+              
+              // 개별 클라이언트 정보 로컬 스토리지 업데이트 (목록에서 불러올 수 있도록)
+              const clientData = localStorage.getItem(`wizweblast_client_${client.id}`);
+              if (clientData) {
+                const parsedClient = JSON.parse(clientData);
+                parsedClient.last_activity_at = now;
+                localStorage.setItem(`wizweblast_client_${client.id}`, JSON.stringify(parsedClient));
+                addDebugLog('개별 클라이언트 데이터 업데이트 완료');
+              }
+              
+              // 클라이언트 목록 전체 업데이트
+              const allClientsData = localStorage.getItem('wizweblast_clients');
+              if (allClientsData) {
+                const parsedClients = JSON.parse(allClientsData);
+                const updatedClients = parsedClients.map((c: any) => 
+                  c.id === client.id ? { ...c, last_activity_at: now } : c
+                );
+                localStorage.setItem('wizweblast_clients', JSON.stringify(updatedClients));
+                addDebugLog('전체 클라이언트 목록 업데이트 완료');
+              }
+              
+            } catch (err) {
+              console.error('localStorage 업데이트 실패:', err);
+              addDebugLog(`localStorage 업데이트 실패: ${err instanceof Error ? err.message : '알 수 없는 오류'}`);
+            }
+            
+          } catch (storageErr) {
+            console.error('로컬 스토리지 업데이트 오류:', storageErr);
+            addDebugLog(`클라이언트 데이터 업데이트 중 오류: ${storageErr instanceof Error ? storageErr.message : '알 수 없는 오류'}`);
+          }
+        }
         
         // 로컬 스토리지 업데이트
         try {

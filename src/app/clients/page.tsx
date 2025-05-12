@@ -37,6 +37,81 @@ export default function ClientsPage() {
   // 검색 입력란 ref 추가
   const searchInputRef = useRef<HTMLInputElement>(null);
   
+  // 클라이언트 업데이트 이벤트 리스너 추가
+  useEffect(() => {
+    // 상세 페이지에서 발생한 업데이트 이벤트 감지
+    const handleClientUpdate = (event: CustomEvent) => {
+      const { clientId, last_activity_at } = event.detail;
+      console.log('[클라이언트] 업데이트 이벤트 감지:', clientId, last_activity_at);
+      
+      // 클라이언트 목록에서 해당 클라이언트 업데이트
+      setClients(prevClients => 
+        prevClients.map(client => 
+          client.id === clientId 
+            ? { ...client, last_activity_at } 
+            : client
+        )
+      );
+    };
+    
+    // localStorage 변경 이벤트 감지
+    const handleStorageChange = (event: StorageEvent) => {
+      if (event.key === '__temp_client_update_trigger') {
+        try {
+          if (event.newValue) {
+            const triggerData = JSON.parse(event.newValue);
+            console.log('[클라이언트] storage 이벤트로 업데이트 감지:', triggerData);
+            
+            // 클라이언트 목록에서 해당 ID 찾아 최근 활동일 업데이트
+            setClients(prevClients => 
+              prevClients.map(client => 
+                client.id === triggerData.clientId 
+                  ? { ...client, last_activity_at: triggerData.last_activity_at } 
+                  : client
+              )
+            );
+          }
+        } catch (e) {
+          console.error('[클라이언트] storage 이벤트 처리 오류:', e);
+        }
+      }
+    };
+    
+    // 창 포커스 이벤트 감지 (다른 탭에서 돌아올 때)
+    const handleFocus = () => {
+      try {
+        const updateTrigger = localStorage.getItem('__temp_client_update_trigger');
+        if (updateTrigger) {
+          const triggerData = JSON.parse(updateTrigger);
+          console.log('[클라이언트] 창 포커스 시 업데이트 감지:', triggerData);
+          
+          // 클라이언트 목록에서 해당 ID 찾아 최근 활동일 업데이트
+          setClients(prevClients => 
+            prevClients.map(client => 
+              client.id === triggerData.clientId 
+                ? { ...client, last_activity_at: triggerData.last_activity_at } 
+                : client
+            )
+          );
+        }
+      } catch (e) {
+        console.error('[클라이언트] 포커스 이벤트 처리 오류:', e);
+      }
+    };
+    
+    // 이벤트 리스너 등록
+    window.addEventListener('client_updated', handleClientUpdate as EventListener);
+    window.addEventListener('storage', handleStorageChange);
+    window.addEventListener('focus', handleFocus);
+    
+    // 컴포넌트 언마운트 시 제거
+    return () => {
+      window.removeEventListener('client_updated', handleClientUpdate as EventListener);
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('focus', handleFocus);
+    };
+  }, []);
+  
   // 로컬 스토리지에서 관리 소홀 광고주 ID 목록 가져오기
   useEffect(() => {
     try {
@@ -89,6 +164,26 @@ export default function ClientsPage() {
   useEffect(() => {
     const fetchClients = async () => {
       try {
+        // localStorage에서 최근 업데이트된 클라이언트 정보 확인
+        try {
+          const updateTrigger = localStorage.getItem('__temp_client_update_trigger');
+          if (updateTrigger) {
+            const triggerData = JSON.parse(updateTrigger);
+            console.log('[클라이언트] localStorage에서 업데이트 트리거 감지:', triggerData);
+            
+            // 클라이언트 목록에서 해당 ID 찾아 최근 활동일 업데이트
+            setClients(prevClients => 
+              prevClients.map(client => 
+                client.id === triggerData.clientId 
+                  ? { ...client, last_activity_at: triggerData.last_activity_at } 
+                  : client
+              )
+            );
+          }
+        } catch (triggerErr) {
+          console.error('[클라이언트] 업데이트 트리거 처리 오류:', triggerErr);
+        }
+
         setIsLoading(true);
         console.log('[클라이언트] 광고주 목록 로드 시작');
         
@@ -510,6 +605,24 @@ export default function ClientsPage() {
       if (!response.ok) {
         throw new Error('할 일 추가에 실패했습니다.');
       }
+      
+      // API 응답에서 할일 데이터 추출
+      const data = await response.json();
+      
+      // 광고주 목록에서 해당 광고주 데이터 업데이트
+      const updatedClients = clients.map(client => {
+        if (client.id === clientId) {
+          // 광고주의 최근 활동일을 현재 시간으로 업데이트
+          return {
+            ...client,
+            last_activity_at: new Date().toISOString()
+          };
+        }
+        return client;
+      });
+      
+      // 상태 업데이트
+      setClients(updatedClients);
       
       alert(`'${content}' 할 일이 성공적으로 등록되었습니다! 👍`);
     } catch (err) {

@@ -343,10 +343,26 @@ export async function POST(request: Request) {
       console.log('삽입된 할 일 데이터:', data?.length || 0, '개');
       
       if (data && data.length > 0) {
+        // 광고주의 last_activity_at 업데이트
+        try {
+          const { error: updateError } = await supabase
+            .from('clients')
+            .update({ last_activity_at: new Date().toISOString() })
+            .eq('id', supabaseClientId);
+          
+          if (updateError) {
+            console.warn('광고주 최근 활동 시간 업데이트 실패:', updateError);
+          } else {
+            console.log(`광고주 ID ${supabaseClientId}의 최근 활동 시간이 업데이트되었습니다.`);
+          }
+        } catch (updateError) {
+          console.warn('광고주 최근 활동 시간 업데이트 중 오류:', updateError);
+        }
+        
         // 클라이언트 정보 조회
         const { data: clientData, error: clientError } = await supabase
           .from('clients')
-          .select('name, icon')
+          .select('name, icon, last_activity_at')
           .eq('id', supabaseClientId)
           .single();
           

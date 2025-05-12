@@ -80,7 +80,7 @@ export async function PATCH(
       .from('client_todos')
       .update(updateData)
       .eq('id', todoId)
-      .select();
+      .select('*, clients(id, name, icon)');
     
     if (error) {
       console.error('할 일 상태 업데이트 오류:', error);
@@ -105,9 +105,27 @@ export async function PATCH(
     
     if (!data || data.length === 0) {
       return NextResponse.json(
-        { error: '할 일을 업데이트했지만 결과를 반환받지 못했습니다.' },
-        { status: 500 }
+        { error: '할 일을 찾을 수 없습니다.' },
+        { status: 404 }
       );
+    }
+    
+    // 광고주의 last_activity_at 업데이트
+    try {
+      const clientId = data[0].client_id;
+      
+      const { error: updateError } = await supabase
+        .from('clients')
+        .update({ last_activity_at: new Date().toISOString() })
+        .eq('id', clientId);
+      
+      if (updateError) {
+        console.warn('광고주 최근 활동 시간 업데이트 실패:', updateError);
+      } else {
+        console.log(`광고주 ID ${clientId}의 최근 활동 시간이 업데이트되었습니다.`);
+      }
+    } catch (updateError) {
+      console.warn('광고주 최근 활동 시간 업데이트 중 오류:', updateError);
     }
     
     return NextResponse.json({

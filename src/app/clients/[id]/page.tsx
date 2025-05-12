@@ -82,7 +82,8 @@ export default function ClientDetailPage() {
           publishesNews: data.publishesNews ?? data.publishes_news ?? false,
           usesReservation: data.usesReservation ?? data.uses_reservation ?? false,
           phoneNumber: data.phoneNumber || data.phone_number || '',
-          naverPlaceUrl: data.naverPlaceUrl || data.naver_place_url || ''
+          naverPlaceUrl: data.naverPlaceUrl || data.naver_place_url || '',
+          last_activity_at: data.last_activity_at || data.lastActivityAt || ''
         };
         
         // 로컬 스토리지에 저장
@@ -137,7 +138,8 @@ export default function ClientDetailPage() {
                 publishesNews: false,
                 usesReservation: false,
                 phoneNumber: '010-0000-0000',
-                naverPlaceUrl: ''
+                naverPlaceUrl: '',
+                last_activity_at: ''
               };
               setClient(sampleClient);
               setError(null);
@@ -153,6 +155,39 @@ export default function ClientDetailPage() {
     
     fetchClientData();
   }, [clientId]);
+  
+  // 클라이언트 업데이트 이벤트 리스너 추가
+  useEffect(() => {
+    // 상세 페이지 내부에서 발생한 업데이트 이벤트 감지 (예: Todo 추가)
+    const handleClientUpdate = (event: CustomEvent) => {
+      const { clientId: updatedClientId, last_activity_at } = event.detail;
+      
+      // 현재 보고 있는 클라이언트가 업데이트된 경우에만 처리
+      if (clientId === updatedClientId && client) {
+        console.log("클라이언트 업데이트 이벤트 감지:", updatedClientId, last_activity_at);
+        
+        // 로컬 스토리지에서 최신 데이터 다시 불러오기
+        try {
+          const localClientData = localStorage.getItem(`wizweblast_client_${clientId}`);
+          if (localClientData) {
+            const parsedClientData = JSON.parse(localClientData);
+            console.log("업데이트 후 로컬 스토리지에서 재로딩:", parsedClientData);
+            setClient(parsedClientData);
+          }
+        } catch (storageErr) {
+          console.error("로컬 스토리지 데이터 로딩 오류:", storageErr);
+        }
+      }
+    };
+    
+    // 이벤트 리스너 등록
+    window.addEventListener('client_updated', handleClientUpdate as EventListener);
+    
+    // 컴포넌트 언마운트 시 제거
+    return () => {
+      window.removeEventListener('client_updated', handleClientUpdate as EventListener);
+    };
+  }, [clientId, client]);
   
   // 계약 날짜 업데이트 핸들러
   const handleContractUpdate = (start?: string, end?: string) => {
@@ -287,7 +322,12 @@ export default function ClientDetailPage() {
           
           {/* 우측: 탭 콘텐츠 */}
           <div className="lg:col-span-2">
-            <ClientTabs client={client} />
+            <ClientTabs 
+              client={client} 
+              onClientUpdate={(updatedClient) => {
+                setClient(updatedClient);
+              }}
+            />
           </div>
         </div>
       </div>
