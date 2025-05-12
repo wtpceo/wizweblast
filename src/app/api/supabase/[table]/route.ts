@@ -63,26 +63,80 @@ export async function GET(
     const supabase = createSafeServerClient();
     console.log(`[API] Supabase 클라이언트 생성 성공`);
     
-    let query = supabase.from(table).select('*');
-    
     // 특정 ID의 데이터만 요청한 경우
     if (id) {
-      query = query.eq('id', id);
+      console.log(`[API] ${table} 테이블에서 ID: ${id} 조회 중...`);
+      const { data, error } = await supabase
+        .from(table)
+        .select('*')
+        .eq('id', id);
+      
+      if (error) {
+        console.error(`[API] 테이블 ${table} ID: ${id} 조회 오류:`, error);
+        return NextResponse.json(
+          { error: `테이블 데이터 조회 실패: ${error.message}` },
+          { status: 500 }
+        );
+      }
+      
+      console.log(`[API] ${table} 테이블 ID: ${id} 데이터 로드 성공`);
+      return NextResponse.json(data);
     }
     
-    console.log(`[API] ${table} 테이블 쿼리 실행 중...`);
-    const { data, error } = await query;
+    // 전체 데이터 조회시 페이지네이션 적용
+    console.log(`[API] ${table} 테이블 전체 데이터 조회 중...`);
     
-    if (error) {
-      console.error(`[API] 테이블 ${table} 조회 오류:`, error);
+    // 전체 레코드 수 먼저 확인
+    const { count, error: countError } = await supabase
+      .from(table)
+      .select('*', { count: 'exact', head: true });
+      
+    if (countError) {
+      console.error(`[API] 테이블 ${table} 전체 레코드 수 조회 오류:`, countError);
       return NextResponse.json(
-        { error: `테이블 데이터 조회 실패: ${error.message}` },
+        { error: `테이블 레코드 수 조회 실패: ${countError.message}` },
         { status: 500 }
       );
     }
     
-    console.log(`[API] ${table} 테이블 데이터 ${data?.length || 0}개 로드 성공`);
-    return NextResponse.json(data);
+    console.log(`[API] ${table} 테이블 전체 레코드 수: ${count || 0}`);
+    
+    // 페이지네이션 설정
+    const pageSize = 1000; // 한 번에 가져올 최대 레코드 수
+    const totalPages = Math.ceil((count || 0) / pageSize);
+    let allData: any[] = [];
+    
+    // 모든 페이지 데이터 가져오기
+    for (let page = 0; page < totalPages; page++) {
+      const from = page * pageSize;
+      const to = from + pageSize - 1;
+      
+      console.log(`[API] ${table} 페이지 ${page + 1}/${totalPages} 로드 중 (${from}-${to})...`);
+      
+      const { data: pageData, error: pageError } = await supabase
+        .from(table)
+        .select('*')
+        .range(from, to);
+        
+      if (pageError) {
+        console.error(`[API] 테이블 ${table} 페이지 ${page + 1} 로드 오류:`, pageError);
+        return NextResponse.json(
+          { error: `테이블 데이터 페이지 ${page + 1} 조회 실패: ${pageError.message}` },
+          { status: 500 }
+        );
+      }
+      
+      if (pageData && pageData.length > 0) {
+        allData = [...allData, ...pageData];
+        console.log(`[API] ${table} 페이지 ${page + 1} 데이터 ${pageData.length}개 로드 완료`);
+      } else {
+        console.log(`[API] ${table} 페이지 ${page + 1}에 데이터가 없습니다.`);
+        break; // 더 이상 데이터가 없으면 중단
+      }
+    }
+    
+    console.log(`[API] ${table} 테이블 데이터 ${allData.length || 0}개 로드 성공`);
+    return NextResponse.json(allData);
   } catch (err: any) {
     console.error(`[API] 테이블 ${table} 조회 중 예외 발생:`, err);
     return NextResponse.json(

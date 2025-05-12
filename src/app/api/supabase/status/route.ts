@@ -28,20 +28,38 @@ export async function GET() {
     const tableStats = await Promise.all(
       tables.map(async (tableName) => {
         try {
-          const { count, error } = await supabase
+          // 전체 행 수를 조회하고 첫 번째 페이지 데이터를 샘플로 가져옴
+          const { count, error: countError } = await supabase
             .from(tableName)
             .select('*', { count: 'exact', head: true });
+            
+          if (countError) {
+            return {
+              table: tableName,
+              count: 0,
+              status: 'error',
+              error: `행 수 조회 오류: ${countError.message}`
+            };
+          }
           
+          // 첫 번째 페이지 데이터 일부만 가져와서 실제 접근 가능한지 테스트
+          const { data: sampleData, error: sampleError } = await supabase
+            .from(tableName)
+            .select('*')
+            .range(0, 9); // 처음 10개 항목만 확인
+            
           return {
             table: tableName,
             count: count || 0,
-            status: error ? 'error' : 'ok',
-            error: error ? error.message : null
+            sample_count: sampleData?.length || 0,
+            status: sampleError ? 'error' : 'ok',
+            error: sampleError ? sampleError.message : null
           };
         } catch (err: any) {
           return {
             table: tableName,
             count: 0,
+            sample_count: 0,
             status: 'error',
             error: err.message
           };

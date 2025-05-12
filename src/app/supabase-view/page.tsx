@@ -150,19 +150,52 @@ export default function SupabaseViewPage() {
         // 첫 번째 방법이 실패한 경우 Supabase 클라이언트를 직접 사용하여 시도
         try {
           console.log(`[Supabase View] Supabase 직접 호출 시도`);
-          const { data, error } = await supabase
+          
+          // 전체 row 수를 먼저 확인
+          const { count, error: countError } = await supabase
             .from(selectedTable)
-            .select('*')
-            .limit(100);
-          
-          console.log(`[Supabase View] Supabase 직접 호출 응답:`, { data: data?.length || 0, error });
-          
-          if (error) {
-            throw error;
+            .select('*', { count: 'exact', head: true });
+            
+          if (countError) {
+            console.error(`[Supabase View] 전체 데이터 수 조회 오류:`, countError);
+            throw countError;
           }
           
-          setTableData(data || []);
-          console.log(`[Supabase View] ${selectedTable} 테이블 데이터 로드 완료:`, data?.length || 0);
+          console.log(`[Supabase View] ${selectedTable} 테이블 전체 행 수:`, count);
+          
+          // 페이지네이션 크기
+          const pageSize = 1000;
+          const totalPages = Math.ceil((count || 0) / pageSize);
+          let allData: any[] = [];
+          
+          // 페이지별로 데이터 가져오기
+          for (let page = 0; page < totalPages; page++) {
+            const from = page * pageSize;
+            const to = from + pageSize - 1;
+            
+            console.log(`[Supabase View] 페이지 ${page + 1}/${totalPages} 로드 중 (${from}-${to})...`);
+            
+            const { data: pageData, error: pageError } = await supabase
+              .from(selectedTable)
+              .select('*')
+              .range(from, to);
+              
+            if (pageError) {
+              console.error(`[Supabase View] 페이지 ${page + 1} 데이터 로드 오류:`, pageError);
+              throw pageError;
+            }
+            
+            if (pageData && pageData.length > 0) {
+              allData = [...allData, ...pageData];
+              console.log(`[Supabase View] 페이지 ${page + 1} 데이터 ${pageData.length}개 로드 완료`);
+            } else {
+              console.log(`[Supabase View] 페이지 ${page + 1}에 데이터가 없습니다.`);
+              break; // 더 이상 데이터가 없으면 중단
+            }
+          }
+          
+          setTableData(allData || []);
+          console.log(`[Supabase View] ${selectedTable} 테이블 데이터 전체 로드 완료:`, allData?.length || 0);
         } catch (supabaseError: any) {
           console.error(`[Supabase View] Supabase 직접 호출 실패:`, supabaseError);
           throw new Error(`Supabase 직접 호출 오류: ${supabaseError.message || supabaseError}`);
