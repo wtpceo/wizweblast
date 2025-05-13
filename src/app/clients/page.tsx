@@ -912,6 +912,9 @@ export default function ClientsPage() {
         icon="👥"
         actions={
           <>
+            <Link href="/my-todos" className="bg-white text-[#FF9800] px-4 py-2 rounded-lg hover:bg-opacity-90 transition-all duration-200 flex items-center text-sm font-medium shadow-sm hover:shadow mr-2">
+              <span className="mr-2">✅</span> 나의 할 일 모아보기
+            </Link>
             <Link href="/dashboard" className="bg-white text-[#2251D1] px-4 py-2 rounded-lg hover:bg-opacity-90 transition-all duration-200 flex items-center text-sm font-medium shadow-sm hover:shadow">
               <span className="mr-2">📊</span> 대시보드로 돌아가기
             </Link>
