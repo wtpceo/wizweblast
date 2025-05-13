@@ -3,7 +3,8 @@
 import { useState } from 'react';
 import { format, isPast } from 'date-fns';
 import { ko } from 'date-fns/locale';
-import { Check, Clock, AlertTriangle, User, Calendar, MoreHorizontal, Trash2 } from 'lucide-react';
+import { Check, Clock, AlertTriangle, User, Calendar, MoreHorizontal, Trash2, Lock } from 'lucide-react';
+import { useUser } from '@clerk/nextjs';
 
 // 할 일 타입 정의
 export interface Todo {
@@ -31,6 +32,7 @@ interface TodoCardProps {
 export function TodoCard({ todo, onComplete, onAssigneeChange, onDelete }: TodoCardProps) {
   const [showActions, setShowActions] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const { user } = useUser();
   
   // 상태 계산: 완료, 지연, 진행 중
   const getStatus = () => {
@@ -74,6 +76,12 @@ export function TodoCard({ todo, onComplete, onAssigneeChange, onDelete }: TodoC
       setIsDeleting(true);
       onDelete(todo.id);
     }
+  };
+  
+  // 담당자 변경 처리
+  const handleAssigneeChange = () => {
+    if (!onAssigneeChange) return;
+    onAssigneeChange(todo.id);
   };
   
   return (
@@ -166,12 +174,13 @@ export function TodoCard({ todo, onComplete, onAssigneeChange, onDelete }: TodoC
                   </span>
                   {onAssigneeChange && (
                     <button
-                      onClick={() => onAssigneeChange(todo.id)}
+                      onClick={handleAssigneeChange}
                       disabled={isDeleting}
-                      className="ml-2 text-xs text-gray-400 hover:text-blue-500 hover:underline flex items-center"
+                      className="ml-2 text-xs bg-blue-50 hover:bg-blue-100 text-blue-600 px-2 py-0.5 rounded-full flex items-center transition-colors"
+                      title="담당자 변경하기"
                     >
                       <User className="h-3 w-3 mr-1" />
-                      변경
+                      담당자 변경
                     </button>
                   )}
                 </div>

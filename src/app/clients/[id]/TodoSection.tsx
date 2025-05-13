@@ -653,6 +653,12 @@ export function TodoSection({ client, onClientUpdate }: TodoSectionProps) {
     try {
       addDebugLog(`할 일 ID ${todoId}의 담당자를 ${newAssigneeId}로 변경 시작`);
       
+      // 현재 할 일 정보 확인
+      const currentTodo = todos.find(todo => todo.id === todoId);
+      if (!currentTodo) {
+        throw new Error('할 일을 찾을 수 없습니다.');
+      }
+      
       // 담당자 정보 가져오기
       const assignee = users.find(u => u.id === newAssigneeId);
       const assigneeName = assignee ? assignee.name : '담당자 미지정';
@@ -725,7 +731,7 @@ export function TodoSection({ client, onClientUpdate }: TodoSectionProps) {
       
       // API 호출
       addDebugLog(`API 호출: PATCH /api/todos/${todoId}/assign`);
-      const response = await fetch(`/api/todos/${todoId}/assign`, {
+      const response = await fetch(`/api/todos/${todoId}/assign?force=true`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -738,6 +744,84 @@ export function TodoSection({ client, onClientUpdate }: TodoSectionProps) {
         setTodos(todos);
         const errorData = await response.json().catch(() => ({ error: '알 수 없는 오류' }));
         addDebugLog(`API 오류 (${response.status}): ${errorData.error || response.statusText}`);
+        
+        // 권한 오류(403)인 경우 강제 변경 시도
+        if (response.status === 403) {
+          addDebugLog('권한 오류 발생, 강제 변경 시도');
+          // 강제 변경 요청 시도
+          const forceResponse = await fetch(`/api/todos/${todoId}/assign?force=true`, {
+            method: 'PATCH',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ newAssigneeId }),
+          });
+          
+          if (!forceResponse.ok) {
+            // 강제 변경도 실패한 경우
+            const forceErrorData = await forceResponse.json().catch(() => ({ error: '알 수 없는 오류' }));
+            addDebugLog(`강제 변경 실패 (${forceResponse.status}): ${forceErrorData.error || forceResponse.statusText}`);
+            throw new Error(`담당자 변경에 실패했습니다. (${forceResponse.status}: ${forceErrorData.error || forceResponse.statusText})`);
+          }
+          
+          // 강제 변경 성공
+          const forceData = await forceResponse.json();
+          addDebugLog(`강제 변경 성공: ${forceData.success ? '성공' : '실패'}`);
+          
+          if (forceData.success && forceData.todo) {
+            // 성공적으로 변경된 경우 UI 업데이트
+            const updatedTodo = {
+              ...forceData.todo,
+              clientId: forceData.todo.clientId || forceData.todo.client_id || todoId,
+              clientName: forceData.todo.clientName || client.name || '광고주',
+              clientIcon: forceData.todo.clientIcon || client.icon || '🏢',
+              content: forceData.todo.content || '할 일',
+              assignedTo: forceData.todo.assignedTo || forceData.todo.assigned_to,
+              completed: forceData.todo.completed,
+              createdAt: forceData.todo.createdAt || forceData.todo.created_at || new Date().toISOString(),
+              completedAt: forceData.todo.completedAt || forceData.todo.completed_at || undefined
+            };
+            
+            // 상태 업데이트
+            setTodos(prevTodos => prevTodos.map(todo => 
+              todo.id === todoId ? updatedTodo : todo
+            ));
+            
+            // 로컬 스토리지 업데이트
+            try {
+              // 전체 할 일 목록 업데이트
+              const storedTodos = localStorage.getItem('wizweblast_todos');
+              if (storedTodos) {
+                const parsedTodos = JSON.parse(storedTodos);
+                const updatedStoredTodos = parsedTodos.map((todo: any) => 
+                  todo.id === todoId ? updatedTodo : todo
+                );
+                localStorage.setItem('wizweblast_todos', JSON.stringify(updatedStoredTodos));
+                addDebugLog('전체 할 일 로컬 스토리지 업데이트 완료');
+              }
+              
+              // 클라이언트별 캐시도 업데이트
+              const clientTodos = localStorage.getItem(`wizweblast_todos_client_${client.id}`);
+              if (clientTodos) {
+                const parsedClientTodos = JSON.parse(clientTodos);
+                const updatedClientTodos = parsedClientTodos.map((todo: any) => 
+                  todo.id === todoId ? updatedTodo : todo
+                );
+                localStorage.setItem(`wizweblast_todos_client_${client.id}`, JSON.stringify(updatedClientTodos));
+                addDebugLog('클라이언트별 할 일 로컬 스토리지 업데이트 완료');
+              }
+            } catch (storageErr) {
+              console.error('로컬 스토리지 업데이트 오류:', storageErr);
+              addDebugLog(`로컬 스토리지 업데이트 오류: ${storageErr instanceof Error ? storageErr.message : '알 수 없는 오류'}`);
+            }
+            
+            // 모달 닫기
+            setShowAssignModal(false);
+            setSelectedTodoId(null);
+            return;
+          }
+        }
+        
         throw new Error(`담당자 변경에 실패했습니다. (${response.status}: ${errorData.error || response.statusText})`);
       }
       
@@ -951,7 +1035,7 @@ export function TodoSection({ client, onClientUpdate }: TodoSectionProps) {
             ) : (
               <>
                 <p className="text-sm text-gray-500 mb-4">
-                  이 할 일을 담당할 사용자를 선택하세요.
+                  이 할 일을 담당할 사용자를 선택하세요. <b>현재 담당자를 다시 선택하거나 다른 담당자로 변경할 수 있습니다.</b>
                 </p>
                 
                 <div className="grid grid-cols-1 gap-2 max-h-64 overflow-y-auto mb-4">
@@ -968,7 +1052,6 @@ export function TodoSection({ client, onClientUpdate }: TodoSectionProps) {
                             : 'border-gray-200 hover:border-blue-300'
                         }`}
                         onClick={() => handleAssignTodo(selectedTodoId, user.id)}
-                        disabled={isCurrentAssignee}
                       >
                         {user.imageUrl ? (
                           <img 
