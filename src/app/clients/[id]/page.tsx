@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter, useParams } from 'next/navigation';
+import { useRouter, useParams, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { mockClients, Client } from '@/lib/mock-data';
 import { ClientInfo } from './ClientInfo';
@@ -13,6 +13,7 @@ import { Header } from '@/components/Header';
 export default function ClientDetailPage() {
   const router = useRouter();
   const params = useParams();
+  const searchParams = useSearchParams();
   const clientId = params.id as string;
   
   const [client, setClient] = useState<Client | null>(null);
@@ -20,6 +21,24 @@ export default function ClientDetailPage() {
   const [error, setError] = useState<string | null>(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [activeTab, setActiveTab] = useState<'info' | 'todos' | 'notes' | 'analytics'>('info');
+  
+  // URL 쿼리 파라미터에서 탭 정보 가져오기
+  useEffect(() => {
+    const tabParam = searchParams.get('tab');
+    if (tabParam && ['info', 'todos', 'notes', 'analytics'].includes(tabParam)) {
+      setActiveTab(tabParam as 'info' | 'todos' | 'notes' | 'analytics');
+    }
+  }, [searchParams]);
+
+  // 탭 변경 핸들러
+  const handleTabChange = (tab: 'info' | 'todos' | 'notes' | 'analytics') => {
+    setActiveTab(tab);
+    // URL 업데이트 (history 스택에 추가하지 않고 현재 URL만 변경)
+    const url = new URL(window.location.href);
+    url.searchParams.set('tab', tab);
+    window.history.replaceState({}, '', url);
+  };
   
   // API에서 광고주 정보 가져오기
   useEffect(() => {
@@ -327,6 +346,8 @@ export default function ClientDetailPage() {
               onClientUpdate={(updatedClient) => {
                 setClient(updatedClient);
               }}
+              activeTab={activeTab}
+              onTabChange={handleTabChange}
             />
           </div>
         </div>

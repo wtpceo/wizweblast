@@ -8,6 +8,8 @@ import { TodoSection } from './TodoSection';
 interface ClientTabsProps {
   client: Client;
   onClientUpdate?: (updatedClient: Client) => void;
+  activeTab?: 'info' | 'todos' | 'notes' | 'analytics';
+  onTabChange?: (tab: 'info' | 'todos' | 'notes' | 'analytics') => void;
 }
 
 // 확장된 할 일 타입 정의
@@ -37,8 +39,23 @@ const departments = [
   { id: 'admin', name: '관리자', color: '#9C27B0', icon: '⚙️' }
 ];
 
-export function ClientTabs({ client, onClientUpdate }: ClientTabsProps) {
-  const [activeTab, setActiveTab] = useState<'info' | 'todos' | 'notes' | 'analytics'>('info');
+export function ClientTabs({ client, onClientUpdate, activeTab: externalActiveTab, onTabChange }: ClientTabsProps) {
+  const [internalActiveTab, setInternalActiveTab] = useState<'info' | 'todos' | 'notes' | 'analytics'>('info');
+  
+  // 외부에서 activeTab이 제공되면 그것을 사용, 아니면 내부 상태 사용
+  const currentActiveTab = externalActiveTab || internalActiveTab;
+  
+  // 탭 변경 핸들러
+  const handleTabChange = (tab: 'info' | 'todos' | 'notes' | 'analytics') => {
+    if (onTabChange) {
+      // 외부 핸들러가 있으면 호출
+      onTabChange(tab);
+    } else {
+      // 없으면 내부 상태만 변경
+      setInternalActiveTab(tab);
+    }
+  };
+  
   const [hasComplaint, setHasComplaint] = useState(client.statusTags.includes('민원 중'));
   const [noteInput, setNoteInput] = useState('');
   const [isSavingNote, setIsSavingNote] = useState(false);
@@ -194,6 +211,27 @@ export function ClientTabs({ client, onClientUpdate }: ClientTabsProps) {
   // 로컬 스토리지에서 메모 로드 함수 (중복 코드 제거)
   const loadNotesFromLocalStorage = useCallback(() => {
     try {
+      // 먼저 새로운 형식의 스토리지 키로 확인
+      const clientSpecificNotes = localStorage.getItem(`wizweblast_notes_client_${client.id}`);
+      if (clientSpecificNotes) {
+        const parsedNotes = JSON.parse(clientSpecificNotes);
+        
+        if (parsedNotes.length > 0) {
+          const notesData: Note[] = parsedNotes.map((item: any) => ({
+            id: item.id,
+            content: item.note || item.content,
+            date: item.createdAt || item.created_at,
+            user: item.createdBy || item.created_by || '로컬 저장'
+          }));
+          
+          setNotes(notesData);
+          setNotesSource('local');
+          console.log('새 형식 로컬 스토리지에서 메모 데이터 복구:', notesData);
+          return;
+        }
+      }
+      
+      // 이전 형식의 스토리지 확인
       const localNotes = localStorage.getItem('client_notes');
       if (localNotes) {
         const parsedNotes = JSON.parse(localNotes);
@@ -209,7 +247,25 @@ export function ClientTabs({ client, onClientUpdate }: ClientTabsProps) {
           
           setNotes(notesData);
           setNotesSource('local');
-          console.log('로컬 스토리지에서 메모 데이터 복구:', notesData);
+          console.log('이전 형식 로컬 스토리지에서 메모 데이터 복구:', notesData);
+          
+          // 이전 형식에서 로드한 데이터를 새 형식으로도 저장 (마이그레이션)
+          try {
+            localStorage.setItem(`wizweblast_notes_client_${client.id}`, JSON.stringify(
+              clientNotes.map((note: any) => ({
+                id: note.id,
+                note: note.note,
+                content: note.note,
+                createdAt: note.createdAt,
+                created_at: note.createdAt,
+                createdBy: note.createdBy,
+                created_by: note.createdBy
+              }))
+            ));
+            console.log('메모 데이터를 새 형식으로 마이그레이션했습니다.');
+          } catch (migrationErr) {
+            console.error('메모 데이터 마이그레이션 오류:', migrationErr);
+          }
         } else {
           setNotes([]);
         }
@@ -271,6 +327,7 @@ export function ClientTabs({ client, onClientUpdate }: ClientTabsProps) {
       
       // 로컬 스토리지에 메모 저장 (백업)
       try {
+        // 기존 'client_notes' 형식에 저장 (이전 버전 호환성)
         const localNotes = JSON.parse(localStorage.getItem('client_notes') || '[]');
         const noteData = {
           id: `local-${Date.now()}`,
@@ -282,7 +339,24 @@ export function ClientTabs({ client, onClientUpdate }: ClientTabsProps) {
         
         localNotes.push(noteData);
         localStorage.setItem('client_notes', JSON.stringify(localNotes));
+        
+        // 새로운 'wizweblast_notes_client_${client.id}' 형식에도 저장
+        const clientSpecificNotes = JSON.parse(localStorage.getItem(`wizweblast_notes_client_${client.id}`) || '[]');
+        clientSpecificNotes.push({
+          id: `local-${Date.now()}`,
+          note: noteInput,
+          content: noteInput,
+          createdAt: new Date().toISOString(),
+          created_at: new Date().toISOString(),
+          createdBy: currentUser,
+          created_by: currentUser
+        });
+        localStorage.setItem(`wizweblast_notes_client_${client.id}`, JSON.stringify(clientSpecificNotes));
+        
         console.log('메모가 로컬 스토리지에 백업되었습니다.');
+        
+        // 상위 컴포넌트에 업데이트 알림을 위한 커스텀 이벤트 발생
+        window.dispatchEvent(new Event('note_updated'));
       } catch (localError) {
         console.error('로컬 스토리지 저장 오류:', localError);
       }
@@ -714,11 +788,11 @@ export function ClientTabs({ client, onClientUpdate }: ClientTabsProps) {
         <nav className="flex">
           <button
             className={`px-4 py-4 font-medium text-sm flex items-center border-b-2 ${
-              activeTab === 'info'
+              currentActiveTab === 'info'
                 ? 'border-[#2251D1] text-[#2251D1]'
                 : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
             }`}
-            onClick={() => setActiveTab('info')}
+            onClick={() => handleTabChange('info')}
           >
             <span className="mr-2">📌</span>
             상세 정보
@@ -726,11 +800,11 @@ export function ClientTabs({ client, onClientUpdate }: ClientTabsProps) {
           
           <button
             className={`px-4 py-4 font-medium text-sm flex items-center border-b-2 ${
-              activeTab === 'todos'
+              currentActiveTab === 'todos'
                 ? 'border-[#2251D1] text-[#2251D1]'
                 : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
             }`}
-            onClick={() => setActiveTab('todos')}
+            onClick={() => handleTabChange('todos')}
           >
             <span className="mr-2">✅</span>
             할 일
@@ -738,11 +812,11 @@ export function ClientTabs({ client, onClientUpdate }: ClientTabsProps) {
           
           <button
             className={`px-4 py-4 font-medium text-sm flex items-center border-b-2 ${
-              activeTab === 'notes'
+              currentActiveTab === 'notes'
                 ? 'border-[#2251D1] text-[#2251D1]'
                 : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
             }`}
-            onClick={() => setActiveTab('notes')}
+            onClick={() => handleTabChange('notes')}
           >
             <span className="mr-2">📝</span>
             메모
@@ -750,11 +824,11 @@ export function ClientTabs({ client, onClientUpdate }: ClientTabsProps) {
           
           <button
             className={`px-4 py-4 font-medium text-sm flex items-center border-b-2 ${
-              activeTab === 'analytics'
+              currentActiveTab === 'analytics'
                 ? 'border-[#2251D1] text-[#2251D1]'
                 : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
             }`}
-            onClick={() => setActiveTab('analytics')}
+            onClick={() => handleTabChange('analytics')}
           >
             <span className="mr-2">📊</span>
             분석
@@ -765,7 +839,7 @@ export function ClientTabs({ client, onClientUpdate }: ClientTabsProps) {
       {/* 탭 컨텐츠 */}
       <div className="p-6">
         {/* 상세 정보 탭 */}
-        {activeTab === 'info' && (
+        {currentActiveTab === 'info' && (
           <div>
             <div className="flex justify-between items-center mb-6">
               <h3 className="font-medium text-lg">네이버 플레이스 정보</h3>
@@ -932,11 +1006,11 @@ export function ClientTabs({ client, onClientUpdate }: ClientTabsProps) {
           </div>
         )}
         
-        {activeTab === 'todos' && (
+        {currentActiveTab === 'todos' && (
           <TodoSection client={client} onClientUpdate={onClientUpdate} />
         )}
         
-        {activeTab === 'notes' && (
+        {currentActiveTab === 'notes' && (
           <div>
             <div className="mb-6">
               <h3 className="font-medium text-lg mb-4">메모</h3>
@@ -1040,7 +1114,7 @@ export function ClientTabs({ client, onClientUpdate }: ClientTabsProps) {
           </div>
         )}
         
-        {activeTab === 'analytics' && (
+        {currentActiveTab === 'analytics' && (
           <div>
             <div className="mb-6">
               <h3 className="font-medium text-lg mb-4">서비스 사용 현황</h3>

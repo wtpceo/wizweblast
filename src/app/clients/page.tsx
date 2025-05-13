@@ -580,6 +580,39 @@ export default function ClientsPage() {
         throw new Error('메모 추가에 실패했습니다.');
       }
       
+      const data = await response.json();
+      
+      // 로컬 스토리지에 메모 저장
+      try {
+        const localNotes = JSON.parse(localStorage.getItem('client_notes') || '[]');
+        localNotes.push({
+          id: data.note?.id || `local-${Date.now()}`,
+          clientId,
+          note,
+          createdAt: new Date().toISOString(),
+          createdBy: '나'
+        });
+        localStorage.setItem('client_notes', JSON.stringify(localNotes));
+        
+        // 커스텀 이벤트를 발생시켜 UI 업데이트 알림
+        window.dispatchEvent(new Event('note_updated'));
+      } catch (storageErr) {
+        console.error('로컬 스토리지 저장 오류:', storageErr);
+      }
+      
+      // 클라이언트 최근 활동일 업데이트
+      const updatedClients = clients.map(client => {
+        if (client.id === clientId) {
+          return {
+            ...client,
+            last_activity_at: new Date().toISOString()
+          };
+        }
+        return client;
+      });
+      
+      setClients(updatedClients);
+      
       alert(`'${note}' 메모가 저장되었습니다. 굿잡! 🙌`);
     } catch (err) {
       console.error('메모 추가 오류:', err);
@@ -606,8 +639,30 @@ export default function ClientsPage() {
         throw new Error('할 일 추가에 실패했습니다.');
       }
       
-      // API 응답에서 할일 데이터 추출
       const data = await response.json();
+      
+      // 로컬 스토리지에 할 일 저장
+      try {
+        const localTodos = JSON.parse(localStorage.getItem('client_todos') || '[]');
+        localTodos.push({
+          id: data.todo?.id || `local-${Date.now()}`,
+          clientId,
+          content,
+          createdAt: new Date().toISOString(),
+          assignedTo,
+          assigneeName: data.todo?.assigneeName || '담당자',
+          completed: false
+        });
+        localStorage.setItem('client_todos', JSON.stringify(localTodos));
+        
+        // 커스텀 이벤트를 발생시켜 UI 업데이트 알림
+        window.dispatchEvent(new Event('todo_updated'));
+      } catch (storageErr) {
+        console.error('로컬 스토리지 저장 오류:', storageErr);
+      }
+      
+      // API 응답에서 할일 데이터 추출
+      // const data = await response.json();
       
       // 광고주 목록에서 해당 광고주 데이터 업데이트
       const updatedClients = clients.map(client => {
@@ -857,34 +912,6 @@ export default function ClientsPage() {
         icon="👥"
         actions={
           <>
-            <div className="flex items-center justify-between mb-4">
-              <h1 className="text-2xl font-bold">광고주 관리</h1>
-              <div className="flex gap-2">
-                <button
-                  onClick={handleRefresh}
-                  disabled={isLoading}
-                  className={`px-3 py-1 rounded text-white ${isLoading ? 'bg-gray-400' : 'bg-blue-500 hover:bg-blue-600'} transition-colors flex items-center space-x-1`}
-                  title="최신 데이터로 새로고침"
-                >
-                  <svg 
-                    xmlns="http://www.w3.org/2000/svg" 
-                    className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} 
-                    fill="none" 
-                    viewBox="0 0 24 24" 
-                    stroke="currentColor"
-                  >
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                  </svg>
-                  <span>새로고침</span>
-                </button>
-                <button
-                  onClick={() => setRegisterDialogOpen(true)}
-                  className="px-3 py-1 bg-green-500 hover:bg-green-600 text-white rounded transition-colors"
-                >
-                  + 광고주 등록
-                </button>
-              </div>
-            </div>
             <Link href="/dashboard" className="bg-white text-[#2251D1] px-4 py-2 rounded-lg hover:bg-opacity-90 transition-all duration-200 flex items-center text-sm font-medium shadow-sm hover:shadow">
               <span className="mr-2">📊</span> 대시보드로 돌아가기
             </Link>
@@ -1033,12 +1060,22 @@ export default function ClientsPage() {
                   </button>
                 )}
               </div>
+              
+              {/* 광고주 등록 버튼 */}
+              <div className="mt-4 flex justify-center">
+                <button
+                  onClick={() => setRegisterDialogOpen(true)}
+                  className="px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg transition-colors w-full max-w-md flex items-center justify-center"
+                >
+                  <span className="mr-2">➕</span> 광고주 등록
+                </button>
+              </div>
             </div>
           
             {/* 광고주 목록 */}
             <div className={`transition-all duration-500 delay-300 ${animateIn ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-5'}`}>
               {filteredClients.length > 0 ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 pb-24">
                   {filteredClients.map(client => (
                     <ClientCard
                       key={client.id}

@@ -11,6 +11,15 @@ interface User {
   role: string;
 }
 
+interface Todo {
+  id: string | number;
+  content: string;
+  date: string;
+  completed: boolean;
+  assignedTo: string;
+  assigneeName?: string;
+}
+
 interface ClientTodoDialogProps {
   client: Client | null;
   isOpen: boolean;
@@ -24,6 +33,8 @@ export function ClientTodoDialog({ client, isOpen, onClose, onSave }: ClientTodo
   const [teamMembers, setTeamMembers] = useState<User[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [clientTodos, setClientTodos] = useState<Todo[]>([]);
+  const [isLoadingTodos, setIsLoadingTodos] = useState(false);
   
   // 입력 필드 ref 추가
   const contentInputRef = useRef<HTMLInputElement>(null);
@@ -53,8 +64,100 @@ export function ClientTodoDialog({ client, isOpen, onClose, onSave }: ClientTodo
       };
       
       fetchUsers();
+      
+      // 클라이언트 ID가 있을 때만 할 일 불러오기
+      if (client?.id) {
+        loadClientTodos(client.id);
+      }
     }
-  }, [isOpen]);
+  }, [isOpen, client?.id]);
+  
+  // 로컬 스토리지에서 할 일 불러오기
+  const loadClientTodos = (clientId: string) => {
+    setIsLoadingTodos(true);
+    
+    try {
+      // 먼저 새로운 형식의 스토리지 키로 확인
+      const wizweblastTodos = localStorage.getItem(`wizweblast_todos_client_${clientId}`);
+      if (wizweblastTodos) {
+        const parsedTodos = JSON.parse(wizweblastTodos);
+        
+        if (parsedTodos.length > 0) {
+          const formattedTodos = parsedTodos.map((item: any) => ({
+            id: item.id,
+            content: item.content,
+            date: item.createdAt || item.created_at,
+            completed: item.completed || false,
+            assignedTo: item.assignedTo || item.assigned_to,
+            assigneeName: item.assigneeName || item.assignee_name || '담당자'
+          }));
+          
+          // 날짜 기준 내림차순 정렬
+          formattedTodos.sort((a: Todo, b: Todo) => 
+            new Date(b.date).getTime() - new Date(a.date).getTime()
+          );
+          
+          setClientTodos(formattedTodos);
+          setIsLoadingTodos(false);
+          return;
+        }
+      }
+      
+      // 이전 형식의 스토리지 확인
+      const localTodos = localStorage.getItem('client_todos');
+      if (localTodos) {
+        const parsedTodos = JSON.parse(localTodos);
+        const filteredTodos = parsedTodos.filter((todo: any) => todo.clientId === clientId);
+        
+        if (filteredTodos.length > 0) {
+          const formattedTodos = filteredTodos.map((item: any) => ({
+            id: item.id,
+            content: item.content,
+            date: item.createdAt,
+            completed: item.completed || false,
+            assignedTo: item.assignedTo,
+            assigneeName: item.assigneeName || '담당자'
+          }));
+          
+          // 날짜 기준 내림차순 정렬
+          formattedTodos.sort((a: Todo, b: Todo) => 
+            new Date(b.date).getTime() - new Date(a.date).getTime()
+          );
+          
+          setClientTodos(formattedTodos);
+          
+          // 이전 형식에서 로드한 데이터를 새 형식으로도 저장 (마이그레이션)
+          try {
+            localStorage.setItem(`wizweblast_todos_client_${clientId}`, JSON.stringify(
+              filteredTodos.map((todo: any) => ({
+                id: todo.id,
+                content: todo.content,
+                createdAt: todo.createdAt,
+                created_at: todo.createdAt,
+                completed: todo.completed || false,
+                assignedTo: todo.assignedTo,
+                assigned_to: todo.assignedTo,
+                assigneeName: todo.assigneeName || '담당자',
+                assignee_name: todo.assigneeName || '담당자'
+              }))
+            ));
+            console.log('할 일 데이터를 새 형식으로 마이그레이션했습니다.');
+          } catch (migrationErr) {
+            console.error('할 일 데이터 마이그레이션 오류:', migrationErr);
+          }
+        } else {
+          setClientTodos([]);
+        }
+      } else {
+        setClientTodos([]);
+      }
+    } catch (err) {
+      console.error('할 일 로드 오류:', err);
+      setClientTodos([]);
+    } finally {
+      setIsLoadingTodos(false);
+    }
+  };
   
   // 다이얼로그가 열릴 때 content 입력 필드에 포커스
   useEffect(() => {
@@ -98,9 +201,58 @@ export function ClientTodoDialog({ client, isOpen, onClose, onSave }: ClientTodo
   const handleSaveAction = () => {
     if (content.trim() && assignedTo) {
       onSave(client.id, content, assignedTo);
+      
+      // 로컬 스토리지에 할 일 직접 추가 (낙관적 UI 업데이트)
+      try {
+        const selectedMember = teamMembers.find(m => m.id === assignedTo);
+        const now = new Date().toISOString();
+        const newTodoId = `local-${Date.now()}`;
+        
+        // 새 할 일 데이터 생성
+        const newTodo = {
+          id: newTodoId,
+          clientId: client.id,
+          content: content,
+          createdAt: now,
+          created_at: now,
+          assignedTo: assignedTo,
+          assigned_to: assignedTo,
+          assigneeName: selectedMember?.name || '담당자',
+          assignee_name: selectedMember?.name || '담당자',
+          completed: false
+        };
+        
+        // 1. 이전 형식의 스토리지 업데이트 (호환성)
+        const localTodos = JSON.parse(localStorage.getItem('client_todos') || '[]');
+        localTodos.push(newTodo);
+        localStorage.setItem('client_todos', JSON.stringify(localTodos));
+        
+        // 2. 새로운 형식의 스토리지 업데이트
+        const wizweblastTodos = JSON.parse(localStorage.getItem(`wizweblast_todos_client_${client.id}`) || '[]');
+        wizweblastTodos.push(newTodo);
+        localStorage.setItem(`wizweblast_todos_client_${client.id}`, JSON.stringify(wizweblastTodos));
+        
+        // 새 할 일을 목록 맨 위에 추가
+        setClientTodos([
+          {
+            id: newTodo.id,
+            content: newTodo.content,
+            date: newTodo.createdAt,
+            completed: newTodo.completed,
+            assignedTo: newTodo.assignedTo,
+            assigneeName: newTodo.assigneeName
+          },
+          ...clientTodos
+        ]);
+        
+        // 커스텀 이벤트를 발생시켜 UI 업데이트 알림
+        window.dispatchEvent(new Event('todo_updated'));
+      } catch (storageErr) {
+        console.error('로컬 스토리지 저장 오류:', storageErr);
+      }
+      
       setContent('');
       setAssignedTo('');
-      onClose();
     }
   };
   
@@ -116,6 +268,26 @@ export function ClientTodoDialog({ client, isOpen, onClose, onSave }: ClientTodo
     if (e.key === 'Enter' && assignedTo) {
       e.preventDefault();
       handleSaveAction();
+    }
+  };
+  
+  // 할 일 날짜 포맷팅
+  const formatTodoDate = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffDays = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
+    
+    if (diffDays === 0) {
+      // 시간 포맷팅 추가 (24시간제)
+      const hours = String(date.getHours()).padStart(2, '0');
+      const minutes = String(date.getMinutes()).padStart(2, '0');
+      return `오늘 ${hours}:${minutes}`;
+    } else if (diffDays === 1) {
+      return '어제';
+    } else if (diffDays < 7) {
+      return `${diffDays}일 전`;
+    } else {
+      return `${date.getFullYear()}.${String(date.getMonth() + 1).padStart(2, '0')}.${String(date.getDate()).padStart(2, '0')}`;
     }
   };
   
@@ -153,7 +325,7 @@ export function ClientTodoDialog({ client, isOpen, onClose, onSave }: ClientTodo
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 animate-fade-in">
       <div 
-        className="bg-white rounded-xl shadow-xl p-6 w-full max-w-md transform transition-all animate-scale-up"
+        className="bg-white rounded-xl shadow-xl p-6 w-full max-w-md transform transition-all animate-scale-up max-h-[90vh] flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
         {/* 헤더 부분 */}
@@ -164,7 +336,7 @@ export function ClientTodoDialog({ client, isOpen, onClose, onSave }: ClientTodo
             </div>
             <div>
               <div>{client.name}</div>
-              <div className="text-xs text-gray-500">할 일 추가하기</div>
+              <div className="text-xs text-gray-500">할 일 관리</div>
             </div>
           </h3>
           <button 
@@ -181,7 +353,7 @@ export function ClientTodoDialog({ client, isOpen, onClose, onSave }: ClientTodo
           <p>{randomTip}</p>
         </div>
         
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit} className="mb-4">
           <div className="mb-4">
             <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center">
               <span className="mr-2">✏️</span> 할 일 내용
@@ -198,7 +370,7 @@ export function ClientTodoDialog({ client, isOpen, onClose, onSave }: ClientTodo
             />
           </div>
           
-          <div className="mb-6">
+          <div className="mb-4">
             <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center">
               <span className="mr-2">👤</span> 담당자
             </label>
@@ -244,37 +416,73 @@ export function ClientTodoDialog({ client, isOpen, onClose, onSave }: ClientTodo
             </div>
           )}
           
-          <div className="flex justify-between items-center">
-            <div className="text-xs text-gray-500">
-              {content.length > 0 && assignedTo
-                ? "모든 정보가 입력되었어요! 👍 (Enter 키로 등록)"
-                : "모든 항목을 입력해주세요"}
-            </div>
-            
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={onClose}
-                className="bg-gray-200 hover:bg-gray-300 text-gray-800 py-2 px-4 rounded-lg transition-all hover:shadow flex items-center"
-                title="취소 (Esc)"
-              >
-                <span className="mr-1">✕</span> 취소
-              </button>
-              <button
-                type="submit"
-                disabled={!content || !assignedTo}
-                className={`py-2 px-4 rounded-lg shadow transition-all flex items-center ${
-                  content && assignedTo
-                    ? 'bg-[#4CAF50] hover:bg-[#3d8b40] text-white hover:translate-y-[-1px]'
-                    : 'bg-gray-200 text-gray-500 cursor-not-allowed'
-                }`}
-                title="추가 (Enter)"
-              >
-                <span className="mr-1">✓</span> 추가
-              </button>
-            </div>
+          <div className="flex justify-end gap-2">
+            <button
+              type="submit"
+              className="wiz-btn bg-[#4CAF50] hover:bg-[#3d8b40] hover:translate-y-[-1px] flex items-center"
+              disabled={!content.trim() || !assignedTo}
+            >
+              <span className="mr-1">✓</span> 할 일 추가
+            </button>
           </div>
         </form>
+        
+        {/* 할 일 목록 */}
+        <div className="border-t border-gray-200 pt-3 mt-2">
+          <h4 className="text-sm font-medium mb-3 flex items-center">
+            <span className="mr-1">📋</span> 
+            진행 중인 할 일 ({clientTodos.filter(t => !t.completed).length}개)
+          </h4>
+          
+          <div className="overflow-y-auto max-h-[30vh]">
+            {isLoadingTodos ? (
+              <div className="text-center py-4 text-gray-500">
+                <div className="inline-block animate-spin text-xl mb-2">⏳</div>
+                <p className="text-sm">할 일을 불러오는 중...</p>
+              </div>
+            ) : clientTodos.length > 0 ? (
+              <div className="space-y-3">
+                {clientTodos.map((todoItem) => (
+                  <div 
+                    key={todoItem.id} 
+                    className={`p-3 rounded-lg ${todoItem.completed ? 'bg-[#E8F5E9]' : 'bg-[#E3F2FD]'}`}
+                  >
+                    <div className="flex justify-between items-center mb-1 text-xs">
+                      <div className="font-medium flex items-center">
+                        <span className="mr-1">{todoItem.completed ? '✅' : '⏳'}</span>
+                        <span className={`${todoItem.completed ? 'text-green-600' : 'text-blue-600'}`}>
+                          {todoItem.completed ? '완료됨' : '진행 중'}
+                        </span>
+                      </div>
+                      <span className="text-gray-500">{formatTodoDate(todoItem.date)}</span>
+                    </div>
+                    <p className={`text-sm whitespace-pre-wrap break-words ${todoItem.completed ? 'line-through text-gray-500' : ''}`}>
+                      {todoItem.content}
+                    </p>
+                    <div className="mt-1 text-xs text-gray-500 flex items-center">
+                      <span className="mr-1">👤</span>
+                      담당: {todoItem.assigneeName}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-4 text-gray-500">
+                <p className="text-sm">등록된 할 일이 없습니다.</p>
+              </div>
+            )}
+          </div>
+        </div>
+        
+        <div className="mt-4 pt-3 border-t border-gray-200">
+          <button
+            type="button"
+            onClick={onClose}
+            className="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 py-2 rounded-lg transition-all text-sm"
+          >
+            닫기
+          </button>
+        </div>
       </div>
     </div>
   );

@@ -810,26 +810,6 @@ export function TodoSection({ client, onClientUpdate }: TodoSectionProps) {
       <div className="p-6 border-b border-gray-100">
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-lg font-semibold">할 일 관리</h2>
-          <div className="flex space-x-2">
-            <button
-              onClick={() => setShowDebug(!showDebug)}
-              className="text-xs px-2 py-1 rounded bg-gray-200 hover:bg-gray-300"
-            >
-              {showDebug ? '디버그 숨기기' : '디버그 보기'}
-            </button>
-            <button
-              onClick={clearTodoCache}
-              className="text-xs px-2 py-1 rounded bg-red-100 hover:bg-red-200 text-red-700"
-            >
-              캐시 삭제
-            </button>
-            <button
-              onClick={fetchTodos}
-              className="text-xs px-2 py-1 rounded bg-blue-100 hover:bg-blue-200 text-blue-700"
-            >
-              새로고침
-            </button>
-          </div>
         </div>
         
         {/* 필터 탭 */}
@@ -885,13 +865,6 @@ export function TodoSection({ client, onClientUpdate }: TodoSectionProps) {
             내가 배정한 할 일
           </button>
         </div>
-        
-        {/* 디버그 패널 */}
-        {showDebug && (
-          <div className="bg-gray-800 text-green-400 p-3 mb-4 rounded text-xs overflow-auto" style={{ maxHeight: '200px' }}>
-            <pre className="font-mono whitespace-pre-wrap">{debugLog || '로그가 없습니다.'}</pre>
-          </div>
-        )}
         
         {/* 할 일 추가 */}
         <div className="mb-4">
