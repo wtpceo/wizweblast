@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { Plus, Search, FilePlus, ClipboardList, Calendar } from 'lucide-react';
 
 export function DashboardActions() {
   const actionButtons = [
@@ -11,24 +10,6 @@ export function DashboardActions() {
       hoverEffect: "transform hover:translate-y-[-5px]",
       caption: "고객을 만나러 가볼까요?",
       href: "/clients"
-    },
-    {
-      title: "할 일 모아보기",
-      description: "내 할 일 목록, 완료 여부 관리, 진행 현황",
-      icon: "✅",
-      color: "bg-gradient-to-r from-[#4CAF50] to-[#66BB6A]",
-      hoverEffect: "transform hover:translate-y-[-5px]",
-      caption: "할 일 마스터되기!",
-      href: "/my-todos"
-    },
-    {
-      title: "공지사항",
-      description: "업무 소식, 시스템 공지, 이벤트 안내",
-      icon: "📋",
-      color: "bg-gradient-to-r from-[#FF9800] to-[#FFC107]",
-      hoverEffect: "transform hover:scale-[1.02]",
-      caption: "새로운 공지를 확인하세요",
-      href: "/notices"
     },
     {
       title: "WIZ AI 도구",
@@ -47,15 +28,6 @@ export function DashboardActions() {
       hoverEffect: "transform hover:rotate-1",
       caption: "업무도 게임처럼 즐겁게!",
       href: "/game"
-    },
-    {
-      title: "관리자 대시보드",
-      description: "팀 통계, 업무 분석, 성과 트래킹",
-      icon: "📊",
-      color: "bg-gradient-to-r from-[#9C27B0] to-[#CE93D8]",
-      hoverEffect: "transform hover:scale-[1.03]",
-      caption: "팀 성과를 한눈에!",
-      href: "/admin"
     },
   ];
 
@@ -93,80 +65,6 @@ export function DashboardActions() {
             </div>
           </Link>
         ))}
-      </div>
-
-      <h2 className="font-bold text-lg mb-3">빠른 작업</h2>
-      
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-        {/* 광고주 검색 */}
-        <Link 
-          href="/clients/search" 
-          className="flex items-center p-4 bg-white rounded-xl border border-gray-200 hover:border-[#2251D1] transition-colors group"
-        >
-          <div className="w-10 h-10 rounded-lg bg-[#EEF2FB] flex items-center justify-center mr-3 group-hover:bg-[#2251D1]/10">
-            <Search className="w-5 h-5 text-[#2251D1]" />
-          </div>
-          <div>
-            <h3 className="font-medium">광고주 검색</h3>
-            <p className="text-xs text-gray-500">이름 또는 전화번호로 검색</p>
-          </div>
-        </Link>
-        
-        {/* 광고주 등록 */}
-        <Link 
-          href="/clients/new"
-          className="flex items-center p-4 bg-white rounded-xl border border-gray-200 hover:border-[#2251D1] transition-colors group"
-        >
-          <div className="w-10 h-10 rounded-lg bg-[#EEF2FB] flex items-center justify-center mr-3 group-hover:bg-[#2251D1]/10">
-            <Plus className="w-5 h-5 text-[#2251D1]" />
-          </div>
-          <div>
-            <h3 className="font-medium">광고주 등록</h3>
-            <p className="text-xs text-gray-500">새 광고주 정보 추가</p>
-          </div>
-        </Link>
-        
-        {/* 상담일지 작성 */}
-        <Link 
-          href="/clients/notes"
-          className="flex items-center p-4 bg-white rounded-xl border border-gray-200 hover:border-[#2251D1] transition-colors group"
-        >
-          <div className="w-10 h-10 rounded-lg bg-[#EEF2FB] flex items-center justify-center mr-3 group-hover:bg-[#2251D1]/10">
-            <FilePlus className="w-5 h-5 text-[#2251D1]" />
-          </div>
-          <div>
-            <h3 className="font-medium">상담일지 작성</h3>
-            <p className="text-xs text-gray-500">광고주 상담 기록</p>
-          </div>
-        </Link>
-        
-        {/* 나의 할 일 모아보기 */}
-        <Link 
-          href="/my-todos"
-          className="flex items-center p-4 bg-white rounded-xl border border-gray-200 hover:border-[#2251D1] transition-colors group"
-        >
-          <div className="w-10 h-10 rounded-lg bg-[#EEF2FB] flex items-center justify-center mr-3 group-hover:bg-[#2251D1]/10">
-            <ClipboardList className="w-5 h-5 text-[#2251D1]" />
-          </div>
-          <div>
-            <h3 className="font-medium">나의 할 일 모아보기</h3>
-            <p className="text-xs text-gray-500">담당 할 일 한눈에 보기</p>
-          </div>
-        </Link>
-        
-        {/* 일정 보기 */}
-        <Link 
-          href="/calendar"
-          className="flex items-center p-4 bg-white rounded-xl border border-gray-200 hover:border-[#2251D1] transition-colors group"
-        >
-          <div className="w-10 h-10 rounded-lg bg-[#EEF2FB] flex items-center justify-center mr-3 group-hover:bg-[#2251D1]/10">
-            <Calendar className="w-5 h-5 text-[#2251D1]" />
-          </div>
-          <div>
-            <h3 className="font-medium">일정 보기</h3>
-            <p className="text-xs text-gray-500">주간 미팅 및 일정 관리</p>
-          </div>
-        </Link>
       </div>
     </div>
   );

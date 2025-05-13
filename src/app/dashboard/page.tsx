@@ -9,6 +9,7 @@ import { DashboardActions } from "@/components/DashboardActions";
 import { EmailVerification } from "@/components/EmailVerification";
 import { type DashboardStats as DashboardStatsType } from "@/lib/mock-data";
 import { Header } from '@/components/Header';
+import Link from 'next/link';
 
 export default function Dashboard() {
   const router = useRouter();
@@ -145,12 +146,12 @@ export default function Dashboard() {
         description={randomGreeting}
         icon="🌟"
         actions={
-          <button 
+          <Link 
+            href="/my-todos"
             className="bg-white text-[#2251D1] px-4 py-2 rounded-lg hover:bg-opacity-90 transition-all duration-200 flex items-center text-sm font-medium shadow-sm hover:shadow"
-            onClick={fetchDashboardStats}
           >
-            <span className="mr-2">🔄</span> 새로고침
-          </button>
+            <span className="mr-2">✅</span> 나의 할 일 모아보기
+          </Link>
         }
       />
       
