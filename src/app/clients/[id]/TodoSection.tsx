@@ -53,11 +53,48 @@ export function TodoSection({ client, onClientUpdate }: TodoSectionProps) {
     }
   };
   
+  // 사용자 목록 가져오기
+  const fetchUsers = useCallback(async () => {
+    try {
+      setIsLoadingUsers(true);
+      addDebugLog('사용자 목록 가져오기 시작');
+      
+      const response = await fetch('/api/users');
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: '알 수 없는 오류' }));
+        throw new Error(`사용자 목록 조회 실패: ${response.status} - ${errorData.error || response.statusText}`);
+      }
+      
+      const data = await response.json();
+      addDebugLog(`${data.length}명의 사용자 정보 로드 성공`);
+      
+      // 사용자 정보에 이름과 이미지 URL 포함
+      const usersWithDetails = data.map((user: any) => ({
+        ...user,
+        displayName: user.name,
+        imageUrl: user.imageUrl || null
+      }));
+      
+      setUsers(usersWithDetails);
+      return usersWithDetails;
+    } catch (err) {
+      console.error('사용자 목록 로딩 오류:', err);
+      addDebugLog(`사용자 목록 로딩 오류: ${err instanceof Error ? err.message : '알 수 없는 오류'}`);
+      return [];
+    } finally {
+      setIsLoadingUsers(false);
+    }
+  }, [addDebugLog]);
+  
   // 할 일 목록 가져오기
   const fetchTodos = useCallback(async () => {
     try {
       setIsLoading(true);
       addDebugLog(`광고주 ID ${client.id}의 할 일 목록 가져오기 시작`);
+      
+      // 사용자 목록 먼저 가져오기
+      const usersList = await fetchUsers();
       
       // API에서 할 일 목록 조회
       const userId = user?.id;
@@ -80,11 +117,22 @@ export function TodoSection({ client, onClientUpdate }: TodoSectionProps) {
       
       const data = await response.json();
       addDebugLog(`${data.length || 0}개의 할 일 데이터 로드 성공`);
-      setTodos(data);
+      
+      // 사용자 정보 포함하여 할 일 목록 업데이트
+      const todosWithUserInfo = data.map((todo: any) => {
+        const assignee = usersList.find((u: any) => u.id === todo.assignedTo);
+        return {
+          ...todo,
+          assigneeName: assignee ? assignee.displayName : '담당자 미지정',
+          assigneeAvatar: assignee ? assignee.imageUrl : null
+        };
+      });
+      
+      setTodos(todosWithUserInfo);
       
       // 로컬 스토리지에 캐싱
       try {
-        localStorage.setItem(`wizweblast_todos_client_${client.id}`, JSON.stringify(data));
+        localStorage.setItem(`wizweblast_todos_client_${client.id}`, JSON.stringify(todosWithUserInfo));
         addDebugLog('할 일 데이터 로컬 스토리지에 캐싱 완료');
       } catch (storageErr) {
         console.error('로컬 스토리지 저장 오류:', storageErr);
@@ -126,7 +174,7 @@ export function TodoSection({ client, onClientUpdate }: TodoSectionProps) {
     } finally {
       setIsLoading(false);
     }
-  }, [client.id, user?.id, addDebugLog]);
+  }, [client.id, user?.id, addDebugLog, fetchUsers]);
   
   // 초기 로딩 - 의존성 배열에 fetchTodos 추가
   useEffect(() => {
@@ -386,7 +434,14 @@ export function TodoSection({ client, onClientUpdate }: TodoSectionProps) {
   };
   
   // 할 일 추가
-  const handleAddTodo = async (clientId: string, content: string, assignedTo: string, dueDate?: string) => {
+  const handleAddTodo = async (
+    clientId: string, 
+    content: string, 
+    assignedTo: string, 
+    dueDate: string | undefined,
+    assigneeName: string,
+    assigneeAvatar: string
+  ) => {
     try {
       addDebugLog(`새 할 일 추가 시작: 클라이언트 ID ${clientId}`);
       
@@ -401,6 +456,8 @@ export function TodoSection({ client, onClientUpdate }: TodoSectionProps) {
           clientId,  // 원래 클라이언트 ID 전달 (route.ts에서 UUID 변환)
           content,
           assignedTo,
+          assigneeName,
+          assigneeAvatar,
           dueDate
         }),
       });
@@ -419,7 +476,11 @@ export function TodoSection({ client, onClientUpdate }: TodoSectionProps) {
       
       if (data.success) {
         // 새 할 일 추가
-        const newTodo: Todo = data.todo;
+        const newTodo: Todo = {
+          ...data.todo,
+          assigneeName: data.todo.assigneeName || assigneeName,
+          assigneeAvatar: data.todo.assigneeAvatar || assigneeAvatar
+        };
         addDebugLog(`할 일 등록 성공: ID ${newTodo.id}`);
         
         if (data.message) {
@@ -556,32 +617,6 @@ export function TodoSection({ client, onClientUpdate }: TodoSectionProps) {
     }
   };
   
-  // 사용자 목록 가져오기
-  const fetchUsers = useCallback(async () => {
-    try {
-      setIsLoadingUsers(true);
-      addDebugLog('사용자 목록 가져오기 시작');
-      
-      const response = await fetch('/api/users');
-      
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ error: '알 수 없는 오류' }));
-        throw new Error(`사용자 목록 조회 실패: ${response.status} - ${errorData.error || response.statusText}`);
-      }
-      
-      const data = await response.json();
-      addDebugLog(`${data.length}명의 사용자 정보 로드 성공`);
-      setUsers(data);
-      return data;
-    } catch (err) {
-      console.error('사용자 목록 로딩 오류:', err);
-      addDebugLog(`사용자 목록 로딩 오류: ${err instanceof Error ? err.message : '알 수 없는 오류'}`);
-      return [];
-    } finally {
-      setIsLoadingUsers(false);
-    }
-  }, [addDebugLog]);
-  
   // 담당자 변경
   const handleAssigneeChange = async (todoId: string) => {
     try {
@@ -610,10 +645,20 @@ export function TodoSection({ client, onClientUpdate }: TodoSectionProps) {
     try {
       addDebugLog(`할 일 ID ${todoId}의 담당자를 ${newAssigneeId}로 변경 시작`);
       
+      // 담당자 정보 가져오기
+      const assignee = users.find(u => u.id === newAssigneeId);
+      const assigneeName = assignee ? assignee.name : '담당자 미지정';
+      const assigneeAvatar = assignee ? assignee.imageUrl : null;
+      
       // 옵티미스틱 UI 업데이트
       const updatedTodos = todos.map(todo => 
         todo.id === todoId 
-          ? { ...todo, assignedTo: newAssigneeId } 
+          ? { 
+              ...todo, 
+              assignedTo: newAssigneeId,
+              assigneeName,
+              assigneeAvatar
+            } 
           : todo
       );
       
@@ -632,7 +677,12 @@ export function TodoSection({ client, onClientUpdate }: TodoSectionProps) {
             const parsedTodos = JSON.parse(storedTodos);
             const updatedStoredTodos = parsedTodos.map((todo: any) => 
               todo.id === todoId 
-                ? { ...todo, assignedTo: newAssigneeId } 
+                ? { 
+                    ...todo, 
+                    assignedTo: newAssigneeId,
+                    assigneeName,
+                    assigneeAvatar
+                  } 
                 : todo
             );
             localStorage.setItem('wizweblast_todos', JSON.stringify(updatedStoredTodos));
@@ -645,7 +695,12 @@ export function TodoSection({ client, onClientUpdate }: TodoSectionProps) {
             const parsedClientTodos = JSON.parse(clientTodos);
             const updatedClientTodos = parsedClientTodos.map((todo: any) => 
               todo.id === todoId 
-                ? { ...todo, assignedTo: newAssigneeId } 
+                ? { 
+                    ...todo, 
+                    assignedTo: newAssigneeId,
+                    assigneeName,
+                    assigneeAvatar
+                  } 
                 : todo
             );
             localStorage.setItem(`wizweblast_todos_client_${client.id}`, JSON.stringify(updatedClientTodos));
@@ -896,4 +951,4 @@ export function TodoSection({ client, onClientUpdate }: TodoSectionProps) {
       )}
     </div>
   );
-} 
+}

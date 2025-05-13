@@ -33,6 +33,10 @@ export const clientTodos = pgTable('client_todos', {
   assignedTo: varchar('assigned_to', { length: 255 }),
   completed: boolean('completed').default(false),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+  completedAt: timestamp('completed_at', { withTimezone: true }),
+  completedBy: varchar('completed_by', { length: 255 }),
+  dueDate: timestamp('due_date', { withTimezone: true }),
+  updatedAt: timestamp('updated_at', { withTimezone: true }),
 });
 
 // 광고주 메모 테이블 (client_notes)

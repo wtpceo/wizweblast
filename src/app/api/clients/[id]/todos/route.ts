@@ -50,10 +50,16 @@ export async function GET(request: Request, { params }: { params: { id: string }
       // 무시하고 계속 진행
     }
     
+    // 현재 사용자 ID 가져오기
+    const { userId } = await auth();
+    const currentUserId = userId || 'unknown';
+    
+    // 쿼리 수정: 클라이언트 ID로 필터링 + (현재 사용자가 담당하거나 생성한 할 일만 표시)
     const { data, error } = await supabase
       .from('client_todos')
       .select('*')
       .eq('client_id', formattedClientId)
+      .or(`assigned_to.eq.${currentUserId},created_by.eq.${currentUserId}`)
       .order('created_at', { ascending: false });
     
     if (error) {

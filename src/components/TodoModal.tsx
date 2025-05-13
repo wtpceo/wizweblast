@@ -11,7 +11,14 @@ interface TodoModalProps {
   client: Client;
   isOpen: boolean;
   onClose: () => void;
-  onSave: (clientId: string, content: string, assignedTo: string, dueDate?: string) => Promise<void>;
+  onSave: (
+    clientId: string, 
+    content: string, 
+    assignedTo: string, 
+    dueDate: string | undefined, 
+    assigneeName: string, 
+    assigneeAvatar: string
+  ) => Promise<void>;
 }
 
 type TeamMember = {
@@ -57,6 +64,17 @@ export function TodoModal({ client, isOpen, onClose, onSave }: TodoModalProps) {
         }));
         
         setTeamMembers(formattedTeamMembers);
+        
+        // 기본 담당자를 현재 로그인한 사용자로 설정
+        if (formattedTeamMembers.length > 0 && user) {
+          const currentUserMember = formattedTeamMembers.find(m => m.id === user.id);
+          if (currentUserMember) {
+            setAssignedTo(currentUserMember.id);
+          } else if (formattedTeamMembers.length > 0) {
+            // 현재 사용자가 목록에 없으면 첫 번째 사용자 선택
+            setAssignedTo(formattedTeamMembers[0].id);
+          }
+        }
       } catch (error) {
         console.error('사용자 목록 로딩 오류:', error);
         // 오류 시 기본 사용자만 표시
@@ -64,10 +82,12 @@ export function TodoModal({ client, isOpen, onClose, onSave }: TodoModalProps) {
           setTeamMembers([
             { id: user.id || 'current-user', name: user.firstName || '현재 사용자', emoji: '👨‍💼' }
           ]);
+          setAssignedTo(user.id || 'current-user');
         } else {
           setTeamMembers([
             { id: 'current-user', name: '현재 사용자', emoji: '👨‍💼' }
           ]);
+          setAssignedTo('current-user');
         }
       } finally {
         setIsLoadingUsers(false);
@@ -83,8 +103,6 @@ export function TodoModal({ client, isOpen, onClose, onSave }: TodoModalProps) {
   useEffect(() => {
     if (isOpen) {
       setContent('');
-      // 기본 담당자를 현재 로그인한 사용자로 설정
-      setAssignedTo(user?.id || '');
       setDueDate(null);
       setShowCalendar(false);
       setIsSubmitting(false);
@@ -94,7 +112,7 @@ export function TodoModal({ client, isOpen, onClose, onSave }: TodoModalProps) {
         contentInputRef.current?.focus();
       }, 100);
     }
-  }, [isOpen, user?.id]);
+  }, [isOpen]);
   
   // 키보드 이벤트 처리
   useEffect(() => {
@@ -219,7 +237,21 @@ export function TodoModal({ client, isOpen, onClose, onSave }: TodoModalProps) {
     
     try {
       setIsSubmitting(true);
-      await onSave(client.id, content, assignedTo, dueDate || undefined);
+      
+      // 선택된 담당자 정보 가져오기
+      const selectedMember = teamMembers.find(m => m.id === assignedTo);
+      const assigneeName = selectedMember?.name || '';
+      const assigneeAvatar = selectedMember?.imageUrl || '';
+      
+      await onSave(
+        client.id, 
+        content, 
+        assignedTo, 
+        dueDate || undefined, 
+        assigneeName, 
+        assigneeAvatar
+      );
+      
       onClose();
     } catch (error) {
       console.error('할 일 저장 오류:', error);
@@ -278,41 +310,54 @@ export function TodoModal({ client, isOpen, onClose, onSave }: TodoModalProps) {
           {/* 담당자 선택 */}
           <div className="mb-4">
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              담당자
+              담당자 선택
             </label>
+            
             {isLoadingUsers ? (
-              <div className="flex justify-center py-4">
-                <div className="animate-spin rounded-full h-6 w-6 border-2 border-blue-500 border-t-transparent"></div>
+              <div className="flex justify-center py-3">
+                <div className="animate-spin rounded-full h-5 w-5 border-2 border-blue-500 border-t-transparent"></div>
               </div>
             ) : (
-              <div className="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto">
+              <div className="max-h-48 overflow-y-auto rounded-lg border border-gray-200">
                 {teamMembers.map(member => (
-                  <button
-                    type="button"
+                  <div
                     key={member.id}
-                    className={`flex items-center p-2 border rounded-lg transition-all ${
-                      assignedTo === member.id 
-                        ? 'border-blue-500 bg-blue-50 text-blue-700'
-                        : 'border-gray-300 hover:border-blue-300'
-                    }`}
                     onClick={() => setAssignedTo(member.id)}
+                    className={`flex items-center p-3 cursor-pointer transition-colors ${
+                      assignedTo === member.id
+                        ? 'bg-blue-50 border-l-4 border-l-blue-500 border-t-0 border-r-0 border-b border-b-gray-100'
+                        : 'hover:bg-gray-50 border-b border-gray-100'
+                    }`}
                   >
                     {member.imageUrl ? (
-                      <img 
-                        src={member.imageUrl} 
-                        alt={member.name} 
-                        className="w-8 h-8 rounded-full mr-2"
+                      <img
+                        src={member.imageUrl}
+                        alt={member.name}
+                        className="w-8 h-8 rounded-full mr-3"
                       />
                     ) : (
-                      <span className="mr-2 text-lg">{member.emoji}</span>
+                      <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center mr-3">
+                        <User className="h-4 w-4 text-gray-500" />
+                      </div>
                     )}
-                    <div className="text-left">
-                      <div className={assignedTo === member.id ? 'font-medium' : ''}>{member.name}</div>
+                    <div className="flex-1">
+                      <div className={`${assignedTo === member.id ? 'font-medium text-blue-600' : 'text-gray-700'}`}>
+                        {member.name}
+                      </div>
                       {member.department && (
-                        <div className="text-xs text-gray-500">{member.department}</div>
+                        <div className="text-xs text-gray-500">
+                          {member.department}
+                        </div>
                       )}
                     </div>
-                  </button>
+                    {assignedTo === member.id && (
+                      <div className="w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 text-white" viewBox="0 0 20 20" fill="currentColor">
+                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                        </svg>
+                      </div>
+                    )}
+                  </div>
                 ))}
               </div>
             )}

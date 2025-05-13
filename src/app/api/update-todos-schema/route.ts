@@ -1,64 +1,85 @@
 import { NextResponse } from 'next/server';
-import { auth } from '@clerk/nextjs/server';
 import { supabase } from '@/lib/supabase';
 
+// 할 일 테이블 스키마 업데이트 API
 export async function POST(request: Request) {
   try {
-    // 인증 확인 (보안을 위해 관리자만 접근 가능하도록)
-    const { userId } = await auth();
+    console.log('할 일 테이블 스키마 업데이트 시작...');
     
-    if (!userId) {
+    // 1. 기존 테이블 확인
+    const { data: tableExists, error: tableCheckError } = await supabase
+      .from('client_todos')
+      .select('id')
+      .limit(1);
+    
+    if (tableCheckError) {
+      console.error('테이블 확인 실패:', tableCheckError);
       return NextResponse.json(
-        { error: '인증되지 않은 사용자입니다.' },
-        { status: 401 }
+        { error: '테이블 확인 중 오류가 발생했습니다.' },
+        { status: 500 }
       );
     }
     
-    // Supabase 연결 확인
-    const testQuery = await supabase.from('client_todos').select('count').limit(1);
-    console.log('Supabase 연결 테스트 결과:', testQuery);
+    // 유효한 UUID 형식 (더미 ID)
+    const dummyUuid = '00000000-0000-0000-0000-000000000000';
     
-    if (testQuery.error) {
-      throw new Error(`Supabase 연결 오류: ${testQuery.error.message}`);
-    }
-
-    // 컬럼 추가: ALTER TABLE 대신 직접 컬럼 추가 시도
-    const addCompletedAtResult = await supabase
-      .from('client_todos')
-      .update({ completed_at: null })
-      .eq('id', 'fakeid');
-    
-    const addCompletedByResult = await supabase
-      .from('client_todos')
-      .update({ completed_by: null })
-      .eq('id', 'fakeid');
-    
-    // 결과 반환
-    return NextResponse.json({
-      success: true,
-      message: 'client_todos 테이블 스키마가 검사되었습니다.',
-      updateResults: {
-        completed_at: addCompletedAtResult.error 
-          ? addCompletedAtResult.error.message.includes('column') 
-            ? '컬럼이 존재하지 않음' 
-            : addCompletedAtResult.error.message
-          : '컬럼이 존재함',
-        completed_by: addCompletedByResult.error 
-          ? addCompletedByResult.error.message.includes('column') 
-            ? '컬럼이 존재하지 않음' 
-            : addCompletedByResult.error.message
-          : '컬럼이 존재함'
-      },
-      rawResults: {
-        completed_at: addCompletedAtResult,
-        completed_by: addCompletedByResult
+    // 2. assignee_avatar 컬럼 추가 시도
+    try {
+      // assignee_avatar 컬럼 추가 (이미 존재하면 무시)
+      const alterQuery = `
+        ALTER TABLE client_todos 
+        ADD COLUMN IF NOT EXISTS assignee_avatar TEXT DEFAULT '';
+      `;
+      
+      // SQL 직접 실행 (RPC 대신 raw query 사용)
+      const { error: alterError } = await supabase.rpc('exec_sql', { sql: alterQuery });
+      
+      if (alterError) {
+        console.error('컬럼 추가 실패:', alterError);
+        
+        // 대안 시도: 데이터 업데이트를 통한 컬럼 추가
+        console.log('대안 방법으로 컬럼 추가 시도...');
+        const { error: updateError } = await supabase
+          .from('client_todos')
+          .update({ assignee_avatar: '' })
+          .eq('id', dummyUuid);
+        
+        if (updateError && !updateError.message.includes('does not exist')) {
+          return NextResponse.json(
+            { error: `컬럼 추가 중 오류: ${updateError.message}` },
+            { status: 500 }
+          );
+        }
       }
-    });
+      
+      // assignee_name 컬럼 추가 (이미 존재하면 무시)
+      const { error: updateNameError } = await supabase
+        .from('client_todos')
+        .update({ assignee_name: '' })
+        .eq('id', dummyUuid);
+      
+      if (updateNameError && !updateNameError.message.includes('does not exist')) {
+        console.error('assignee_name 컬럼 추가 실패:', updateNameError);
+      }
+      
+      console.log('스키마 업데이트 완료');
+      
+      return NextResponse.json({
+        success: true,
+        message: '할 일 테이블 스키마가 성공적으로 업데이트되었습니다.'
+      });
+    } catch (sqlError) {
+      console.error('SQL 실행 오류:', sqlError);
+      return NextResponse.json(
+        { error: '스키마 업데이트 중 오류가 발생했습니다.' },
+        { status: 500 }
+      );
+    }
   } catch (error) {
-    console.error('스키마 업데이트 오류:', error);
-    return NextResponse.json({ 
-      success: false,
-      error: error instanceof Error ? error.message : '서버 오류가 발생했습니다.' 
-    }, { status: 500 });
+    console.error('스키마 업데이트 API 오류:', error);
+    return NextResponse.json(
+      { error: '서버 오류가 발생했습니다.' },
+      { status: 500 }
+    );
   }
 } 

@@ -40,8 +40,6 @@ const departments = [
 export function ClientTabs({ client, onClientUpdate }: ClientTabsProps) {
   const [activeTab, setActiveTab] = useState<'info' | 'todos' | 'notes' | 'analytics'>('info');
   const [hasComplaint, setHasComplaint] = useState(client.statusTags.includes('민원 중'));
-  const [todoInput, setTodoInput] = useState('');
-  const [selectedDepartment, setSelectedDepartment] = useState<string>('media');
   const [noteInput, setNoteInput] = useState('');
   const [isSavingNote, setIsSavingNote] = useState(false);
   const [isLoadingNotes, setIsLoadingNotes] = useState(false);
@@ -51,14 +49,6 @@ export function ClientTabs({ client, onClientUpdate }: ClientTabsProps) {
   const [keywordInput, setKeywordInput] = useState('');
   const [isSavingKeywords, setIsSavingKeywords] = useState(false);
   const { user } = useUser();
-  
-  // 할 일 목업 데이터
-  const [todos, setTodos] = useState<Todo[]>([
-    { id: 1, content: '네이버 플레이스 리뷰 관리 교육', date: '2023-12-10T14:00:00Z', completed: true, user: '이매니저', department: 'media' },
-    { id: 2, content: '홀리데이 시즌 프로모션 기획 미팅', date: '2023-11-20T15:30:00Z', completed: false, user: '이매니저', department: 'content' },
-    { id: 3, content: '제품 사진 촬영 일정 조율', date: '2023-12-05T10:00:00Z', completed: false, user: '김디자이너', department: 'design' },
-    { id: 4, content: '민원 대응 프로세스 설명', date: '2023-12-12T09:00:00Z', completed: true, user: '박매니저', department: 'cs' },
-  ]);
   
   // 메모 목업 데이터
   const [notes, setNotes] = useState<Note[]>([
@@ -252,96 +242,6 @@ export function ClientTabs({ client, onClientUpdate }: ClientTabsProps) {
     } else {
       return `${date.getFullYear()}.${String(date.getMonth() + 1).padStart(2, '0')}.${String(date.getDate()).padStart(2, '0')}`;
     }
-  };
-  
-  // 할 일 추가
-  const handleAddTodo = async () => {
-    if (!todoInput.trim()) return;
-    
-    // 현재 로그인한 사용자의 ID를 담당자로 설정
-    const currentUserId = user?.id || 'user1'; // 기본값은 모의 데이터 사용
-    
-    // 새 할 일 데이터 생성
-    const newTodo: Todo = {
-      id: Date.now(),
-      content: todoInput,
-      date: new Date().toISOString(),
-      completed: false,
-      user: '현재 사용자', // 실제 구현 시 로그인 사용자 정보 사용
-      department: selectedDepartment as any
-    };
-    
-    // 화면에 먼저 표시 (낙관적 UI 업데이트)
-    setTodos([newTodo, ...todos]);
-    setTodoInput('');
-    
-    try {
-      // API 호출하여 할 일 등록
-      const response = await fetch(`/api/clients/${client.id}/todos`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          content: todoInput,
-          assignedTo: currentUserId // 현재 사용자 ID 전달
-        })
-      });
-      
-      if (!response.ok) {
-        throw new Error('할 일 등록에 실패했습니다.');
-      }
-      
-      // 성공 시 로컬 스토리지 업데이트
-      try {
-        // 로컬 스토리지에서 기존 할 일 목록 가져오기
-        const storedTodos = localStorage.getItem('wizweblast_todos');
-        let todosList = [];
-        
-        if (storedTodos) {
-          todosList = JSON.parse(storedTodos);
-        }
-        
-        // 새 할 일 추가
-        const todoData = {
-          id: `temp-${Date.now()}`,
-          clientId: client.id,
-          clientName: client.name,
-          clientIcon: client.icon,
-          content: todoInput,
-          assignedTo: currentUserId,
-          completed: false,
-          createdAt: new Date().toISOString()
-        };
-        
-        // 목록 업데이트 후 저장
-        todosList.unshift(todoData);
-        localStorage.setItem('wizweblast_todos', JSON.stringify(todosList));
-        
-        console.log('할 일이 로컬 스토리지에 저장되었습니다.');
-      } catch (storageErr) {
-        console.error('로컬 스토리지 저장 오류:', storageErr);
-      }
-      
-      alert(`'${todoInput}' 할 일이 등록되었습니다! 👍`);
-    } catch (err) {
-      console.error('할 일 등록 오류:', err);
-      // 에러 발생 시 UI 원상복구
-      setTodos(todos.filter(todo => todo.id !== newTodo.id));
-      alert('할 일 등록 중 오류가 발생했습니다.');
-    }
-  };
-  
-  // 할 일 완료 토글
-  const toggleTodoComplete = (id: number) => {
-    setTodos(todos.map(todo => 
-      todo.id === id ? { ...todo, completed: !todo.completed } : todo
-    ));
-  };
-  
-  // 할 일 삭제
-  const deleteTodo = (id: number) => {
-    setTodos(todos.filter(todo => todo.id !== id));
   };
   
   // 메모 추가
@@ -1170,21 +1070,8 @@ export function ClientTabs({ client, onClientUpdate }: ClientTabsProps) {
               <h3 className="font-medium text-lg mb-4">업무 진행 현황</h3>
               
               <div className="bg-white rounded-lg border border-gray-200 p-4">
-                <div className="flex justify-between items-center mb-4">
-                  <span className="text-gray-700">할 일 완료율</span>
-                  <span className="font-bold">{Math.round((todos.filter(t => t.completed).length / todos.length) * 100) || 0}%</span>
-                </div>
-                
-                <div className="w-full bg-gray-200 rounded-full h-2.5">
-                  <div 
-                    className="bg-[#4CAF50] h-2.5 rounded-full" 
-                    style={{ width: `${Math.round((todos.filter(t => t.completed).length / todos.length) * 100) || 0}%` }}
-                  ></div>
-                </div>
-                
-                <div className="flex justify-between text-xs text-gray-500 mt-2">
-                  <span>완료: {todos.filter(t => t.completed).length}개</span>
-                  <span>전체: {todos.length}개</span>
+                <div className="text-center py-4 text-gray-500">
+                  <p>진행 상황 데이터를 불러오는 중입니다...</p>
                 </div>
               </div>
             </div>
@@ -1193,20 +1080,15 @@ export function ClientTabs({ client, onClientUpdate }: ClientTabsProps) {
               <h3 className="font-medium text-lg mb-4">부서별 할 일 현황</h3>
               
               <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-                {departments.map(dept => {
-                  const deptTodos = todos.filter(t => t.department === dept.id);
-                  const completedCount = deptTodos.filter(t => t.completed).length;
-                  
-                  return (
-                    <div key={dept.id} className="bg-white rounded-lg border border-gray-200 p-4 text-center">
-                      <div className="w-10 h-10 rounded-full mx-auto mb-2 flex items-center justify-center" style={{ backgroundColor: `${dept.color}20`, color: dept.color }}>
-                        <span className="text-xl">{dept.icon}</span>
-                      </div>
-                      <div className="font-medium text-sm mb-1">{dept.name}</div>
-                      <div className="text-xs text-gray-500">{completedCount}/{deptTodos.length} 완료</div>
+                {['디자인', '콘텐츠', '미디어', '고객관리', '관리자'].map((dept, index) => (
+                  <div key={index} className="bg-white rounded-lg border border-gray-200 p-4 text-center">
+                    <div className="w-10 h-10 rounded-full mx-auto mb-2 flex items-center justify-center bg-gray-100">
+                      <span className="text-xl">📊</span>
                     </div>
-                  );
-                })}
+                    <div className="font-medium text-sm mb-1">{dept}</div>
+                    <div className="text-xs text-gray-500">데이터 로딩 중...</div>
+                  </div>
+                ))}
               </div>
             </div>
             

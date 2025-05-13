@@ -159,16 +159,27 @@ export function TodoCard({ todo, onComplete, onAssigneeChange, onDelete }: TodoC
                   <User className="h-3 w-3 text-gray-500" />
                 </div>
               )}
-              <div className="text-xs text-gray-600">
-                <span className="font-medium">{todo.assigneeName || '담당자 미지정'}</span>
-                {onAssigneeChange && (
-                  <button
-                    onClick={() => onAssigneeChange(todo.id)}
-                    disabled={isDeleting}
-                    className="ml-2 text-blue-500 hover:text-blue-700 hover:underline"
-                  >
-                    변경
-                  </button>
+              <div className="text-xs">
+                <div className="flex items-center">
+                  <span className={`font-medium ${todo.assigneeName ? 'text-blue-600' : 'text-gray-500'}`}>
+                    {todo.assigneeName || '담당자 미지정'}
+                  </span>
+                  {onAssigneeChange && (
+                    <button
+                      onClick={() => onAssigneeChange(todo.id)}
+                      disabled={isDeleting}
+                      className="ml-2 text-xs text-gray-400 hover:text-blue-500 hover:underline flex items-center"
+                    >
+                      <User className="h-3 w-3 mr-1" />
+                      변경
+                    </button>
+                  )}
+                </div>
+                {todo.clientName && (
+                  <div className="text-gray-500 mt-1 flex items-center">
+                    <span className="mr-1">{todo.clientIcon || '🏢'}</span>
+                    {todo.clientName}
+                  </div>
                 )}
               </div>
             </div>

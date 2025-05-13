@@ -88,8 +88,13 @@ export async function GET(request: Request) {
         query = query.eq('client_id', supabaseClientId);
       }
       
-      if (assignedTo) {
+      // 담당자 필터 수정: 특정 담당자가 지정된 경우 그대로 적용, 그렇지 않으면 내가 담당하거나 내가 만든 할 일 조회
+      if (assignedTo && assignedTo !== userId) {
+        // URL에서 특정 담당자를 명시적으로 요청한 경우
         query = query.eq('assigned_to', assignedTo);
+      } else {
+        // 담당자 미지정 또는 현재 사용자인 경우 -> 내가 담당하거나 내가 만든 할 일 조회
+        query = query.or(`assigned_to.eq.${userId},created_by.eq.${userId}`);
       }
       
       if (completed !== null) {
@@ -211,9 +216,16 @@ export async function POST(request: Request) {
     }
     
     const body = await request.json();
-    const { clientId: originalClientId, content, assignedTo, dueDate } = body;
+    const { clientId: originalClientId, content, assignedTo, assigneeName, assigneeAvatar, dueDate } = body;
     
-    console.log('할 일 추가 요청:', { clientId: originalClientId, content, assignedTo: assignedTo?.substring(0, 10) + '...', dueDate });
+    console.log('할 일 추가 요청:', { 
+      clientId: originalClientId, 
+      content, 
+      assignedTo: assignedTo?.substring(0, 10) + '...', 
+      assigneeName,
+      assigneeAvatar,
+      dueDate 
+    });
     
     // 기본값: 담당자는 현재 사용자
     const assignee = assignedTo || userId;
@@ -248,161 +260,138 @@ export async function POST(request: Request) {
           // 클라이언트 테이블 구조 확인
           console.log('클라이언트 테이블 구조 확인 중...');
           
-          // 1. ID 필드로 직접 조회 시도
-          const { data: directClient, error: directError } = await supabase
+          // 클라이언트 ID 유효성 검사
+          const { data: clientData, error: clientError } = await supabase
             .from('clients')
             .select('id, name')
             .eq('id', originalClientId)
             .single();
           
-          if (!directError && directClient) {
-            // ID 필드로 직접 찾은 경우
-            console.log(`클라이언트 ID '${originalClientId}'를 직접 찾음`);
-            supabaseClientId = directClient.id;
-          } else {
-            // 2. 이름으로 조회 시도
-            const { data: nameClients, error: nameError } = await supabase
+          if (clientError || !clientData) {
+            // ID를 찾을 수 없는 경우 이름으로 검색
+            console.log(`ID '${originalClientId}'로 광고주를 찾을 수 없음, 이름으로 시도...`);
+            
+            const { data: clientByName, error: clientByNameError } = await supabase
               .from('clients')
               .select('id, name')
               .ilike('name', `%${originalClientId}%`)
               .limit(1);
             
-            if (!nameError && nameClients && nameClients.length > 0) {
-              // 이름으로 찾은 경우
-              console.log(`이름이 '${originalClientId}'와 유사한 클라이언트 찾음: ${nameClients[0].id}`);
-              supabaseClientId = nameClients[0].id;
-            } else {
-              // 모든 시도가 실패한 경우
-              console.log('모든 방법으로 클라이언트를 찾을 수 없음, 목업 데이터 사용:', originalClientId);
-              
-              // 개발 환경에서는 목업 데이터로 진행
-              if (process.env.NODE_ENV === 'development') {
-                const client = mockClients.find(c => c.id === originalClientId);
-                const newTodo = {
-                  id: `temp-${Date.now()}`,
-                  clientId: originalClientId,
-                  clientName: client?.name || '광고주',
-                  clientIcon: client?.icon || '🏢',
-                  content,
-                  assignedTo: assignee,
-                  completed: false,
-                  createdAt: new Date().toISOString(),
-                  dueDate
-                };
-                
-                console.log('목업 데이터 사용하여 할 일 추가:', newTodo);
-                
-                return NextResponse.json({ 
-                  success: true, 
-                  todo: newTodo,
-                  message: '임시 저장되었습니다. Supabase ID로 변환할 수 없어 임시 저장됩니다.'
-                });
-              }
-              
-              throw new Error(`클라이언트 ID(${originalClientId})에 해당하는 Supabase UUID를 찾을 수 없습니다.`);
+            if (clientByNameError || !clientByName || clientByName.length === 0) {
+              console.error('클라이언트 찾기 실패:', clientByNameError || '일치하는 클라이언트 없음');
+              return NextResponse.json(
+                { error: '지정된 광고주 ID 또는 이름을 찾을 수 없습니다.' },
+                { status: 404 }
+              );
             }
+            
+            supabaseClientId = clientByName[0].id;
+            console.log(`이름으로 클라이언트 찾기 성공. ID: ${supabaseClientId}, 이름: ${clientByName[0].name}`);
+          } else {
+            supabaseClientId = clientData.id;
+            console.log(`ID로 클라이언트 찾기 성공. ID: ${supabaseClientId}, 이름: ${clientData.name}`);
           }
-        } catch (lookupError) {
-          console.error('클라이언트 ID 조회 오류:', lookupError);
-          throw new Error(`클라이언트 조회 중 오류 발생: ${lookupError instanceof Error ? lookupError.message : '알 수 없는 오류'}`);
+        } catch (clientLookupError) {
+          console.error('클라이언트 조회 중 오류:', clientLookupError);
+          return NextResponse.json(
+            { error: '광고주 정보 조회 중 오류가 발생했습니다.' },
+            { status: 500 }
+          );
         }
       }
       
-      // 할 일 데이터 준비 - 필수 필드만 사용
-      const todoData: { 
-        client_id: string; 
-        content: string;
-        [key: string]: any; 
-      } = {
+      // 담당자 정보 설정
+      const finalAssigneeName = assigneeName || '담당자';
+      const finalAssigneeAvatar = assigneeAvatar || '';
+      
+      // 할 일 데이터 준비
+      const todoData = {
         client_id: supabaseClientId,
-        content: content
+        content,
+        assigned_to: assignee,
+        assignee_name: finalAssigneeName,
+        assignee_avatar: finalAssigneeAvatar,
+        due_date: dueDate,
+        created_by: userId,
+        updated_at: new Date().toISOString()
       };
       
-      // 선택적 필드는 값이 있을 때만 추가
-      if (assignee) {
-        todoData['assigned_to'] = assignee;
-      }
+      console.log('삽입할 할 일 데이터:', todoData);
       
-      if (dueDate) {
-        todoData['due_date'] = dueDate;
-      }
-      
-      console.log('DB에 삽입할 할 일 데이터:', todoData);
-      
-      // 할 일 데이터 삽입
+      // Supabase에 할 일 데이터 삽입
       const { data, error } = await supabase
         .from('client_todos')
-        .insert(todoData)
+        .insert([todoData])
         .select();
       
       if (error) {
-        console.error('할 일 추가 오류:', error);
-        throw new Error(`데이터베이스 삽입 실패: ${error.message}`);
-      }
-      
-      console.log('삽입된 할 일 데이터:', data?.length || 0, '개');
-      
-      if (data && data.length > 0) {
-        // 광고주의 last_activity_at 업데이트
-        try {
-          const { error: updateError } = await supabase
-            .from('clients')
-            .update({ last_activity_at: new Date().toISOString() })
-            .eq('id', supabaseClientId);
-          
-          if (updateError) {
-            console.warn('광고주 최근 활동 시간 업데이트 실패:', updateError);
-          } else {
-            console.log(`광고주 ID ${supabaseClientId}의 최근 활동 시간이 업데이트되었습니다.`);
-          }
-        } catch (updateError) {
-          console.warn('광고주 최근 활동 시간 업데이트 중 오류:', updateError);
+        console.error('할 일 생성 오류:', error);
+        
+        // 스키마 문제인 경우 확인
+        if (error.message.includes('column') && error.message.includes('does not exist')) {
+          return NextResponse.json({
+            error: '스키마 오류: 데이터베이스 스키마를 업데이트해야 합니다.',
+            suggestion: '스키마 업데이트를 위해 /api/update-todos-schema를 호출하세요.',
+            details: error.message
+          }, { status: 400 });
         }
         
-        // 클라이언트 정보 조회
-        const { data: clientData, error: clientError } = await supabase
-          .from('clients')
-          .select('name, icon, last_activity_at')
-          .eq('id', supabaseClientId)
-          .single();
-          
-        if (clientError) {
-          console.warn('클라이언트 정보 조회 실패:', clientError);
-        }
-          
-        return NextResponse.json({ 
-          success: true, 
-          todo: {
-            id: data[0].id,
-            clientId: data[0].client_id,
-            clientName: clientData?.name || '광고주',
-            clientIcon: clientData?.icon || '🏢',
-            content: data[0].content,
-            assignedTo: data[0].assigned_to,
-            completed: data[0].completed,
-            createdAt: data[0].created_at,
-            dueDate: data[0].due_date
-          }
-        });
-      } else {
-        throw new Error('할 일 데이터가 추가되지 않았습니다.');
-      }
-    } catch (dbError) {
-      console.error('DB 저장 실패, 목업 데이터에 추가:', dbError);
-      
-      // 개발 환경에서 디버깅을 위한 추가 정보
-      if (process.env.NODE_ENV === 'development') {
-        console.log('데이터베이스 연결 정보 확인:');
-        console.log('- NEXT_PUBLIC_SUPABASE_URL:', process.env.NEXT_PUBLIC_SUPABASE_URL ? '설정됨' : '미설정');
-        console.log('- NEXT_PUBLIC_SUPABASE_ANON_KEY:', process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ? '설정됨' : '미설정');
+        return NextResponse.json(
+          { error: `할 일 생성에 실패했습니다: ${error.message}` },
+          { status: 500 }
+        );
       }
       
-      // DB 저장 실패 시 오류 발생
-      throw new Error('할 일 데이터를 Supabase에 저장하는 데 실패했습니다. 다시 시도해주세요.');
+      if (!data || data.length === 0) {
+        return NextResponse.json(
+          { error: '할 일을 생성했지만 데이터를 찾을 수 없습니다.' },
+          { status: 500 }
+        );
+      }
+      
+      console.log('할 일 생성 성공:', data[0]);
+      
+      // 클라이언트 정보 가져오기
+      const { data: clientInfo } = await supabase
+        .from('clients')
+        .select('name, icon')
+        .eq('id', supabaseClientId)
+        .single();
+      
+      // 응답 데이터 형식
+      const todoResponse = {
+        id: data[0].id,
+        clientId: data[0].client_id,
+        clientName: clientInfo?.name || '광고주',
+        clientIcon: clientInfo?.icon || '🏢',
+        content: data[0].content,
+        assignedTo: data[0].assigned_to,
+        assigneeName: data[0].assignee_name || finalAssigneeName,
+        assigneeAvatar: data[0].assignee_avatar || finalAssigneeAvatar,
+        completed: data[0].completed,
+        createdAt: data[0].created_at,
+        completedAt: data[0].completed_at,
+        dueDate: data[0].due_date
+      };
+      
+      return NextResponse.json({
+        success: true,
+        message: '할 일이 성공적으로 생성되었습니다.',
+        todo: todoResponse
+      });
+    } catch (err) {
+      console.error('할 일 생성 오류:', err);
+      return NextResponse.json(
+        { error: err instanceof Error ? err.message : '서버 오류가 발생했습니다.' },
+        { status: 500 }
+      );
     }
   } catch (error) {
     console.error('할 일 추가 API 오류:', error);
-    return NextResponse.json({ error: error instanceof Error ? error.message : '서버 오류가 발생했습니다.' }, { status: 500 });
+    return NextResponse.json(
+      { error: '서버 오류가 발생했습니다.' },
+      { status: 500 }
+    );
   }
 }
 
