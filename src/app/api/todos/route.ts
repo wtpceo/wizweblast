@@ -120,6 +120,8 @@ export async function GET(request: Request) {
           clientIcon: todo.clients?.icon || '🏢',
           content: todo.content,
           assignedTo: todo.assigned_to,
+          assigneeName: todo.assignee_name || '담당자', // 담당자 이름 추가
+          assigneeAvatar: todo.assignee_avatar || '', // 담당자 아바타 추가
           completed: todo.completed,
           createdAt: todo.created_at,
           completedAt: todo.completed_at,

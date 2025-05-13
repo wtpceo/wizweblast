@@ -5,16 +5,23 @@ import { useRouter } from 'next/navigation';
 import { useUser } from '@clerk/nextjs';
 import { Header } from '@/components/Header';
 import Link from 'next/link';
-import { ClientTodo } from '@/lib/mock-data';
+import { ClientTodo as BaseClientTodo } from '@/lib/mock-data';
 import { format, parseISO } from 'date-fns';
 import { ko } from 'date-fns/locale';
 import { TodoCard } from '@/components/TodoCard';
+
+// ClientTodo 타입 확장
+interface ClientTodo extends BaseClientTodo {
+  assigneeName?: string;
+  assigneeAvatar?: string;
+  createdBy?: string;
+}
 
 export default function MyTodosPage() {
   const [todos, setTodos] = useState<ClientTodo[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [filter, setFilter] = useState<'all' | 'active' | 'completed'>('all');
+  const [filter, setFilter] = useState<'all' | 'active' | 'completed' | 'mine' | 'assigned'>('all');
   const [showDebug, setShowDebug] = useState(false);
   const [debugLog, setDebugLog] = useState<string>('');
   const router = useRouter();
@@ -72,13 +79,20 @@ export default function MyTodosPage() {
       const data = await response.json();
       addDebugLog(`${data.length}개 할 일 데이터 받음`);
       
+      // 데이터 가공 - 담당자 이름과 createdBy 필드 추가
+      const processedData = data.map((todo: any) => ({
+        ...todo,
+        // API에서 받은 created_by 필드를 createdBy로 매핑, 없으면 현재 사용자 ID
+        createdBy: todo.created_by || userId
+      }));
+      
       // 데이터 저장 및 상태 업데이트
-      setTodos(data);
+      setTodos(processedData);
       setError(null);
       
       // 로컬 스토리지에 캐싱 (순수하게 오프라인 복구용)
       try {
-        localStorage.setItem('wizweblast_todos', JSON.stringify(data));
+        localStorage.setItem('wizweblast_todos', JSON.stringify(processedData));
         addDebugLog('할 일 데이터 로컬 스토리지에 백업 완료 (오프라인 복구용)');
       } catch (storageErr) {
         console.error('로컬 스토리지 저장 오류:', storageErr);
@@ -313,20 +327,45 @@ export default function MyTodosPage() {
       filteredTodos = todos.filter(todo => !todo.completed);
     } else if (filter === 'completed') {
       filteredTodos = todos.filter(todo => todo.completed);
+    } else if (filter === 'mine') {
+      filteredTodos = todos.filter(todo => todo.assignedTo === user?.id);
+    } else if (filter === 'assigned') {
+      filteredTodos = todos.filter(todo => todo.assignedTo !== user?.id && todo.createdBy === user?.id);
     }
     
-    // 광고주별로 그룹화
-    const groupedTodos: Record<string, ClientTodo[]> = {};
+    // 담당자별로 그룹화
+    const myTodos = filteredTodos.filter(todo => todo.assignedTo === user?.id);
+    const assignedByMe = filteredTodos.filter(todo => todo.assignedTo !== user?.id && todo.createdBy === user?.id);
     
-    filteredTodos.forEach(todo => {
+    // 광고주별로 그룹화
+    const groupedMyTodos: Record<string, ClientTodo[]> = {};
+    const groupedAssignedByMe: Record<string, ClientTodo[]> = {};
+    
+    // 내가 담당하는 할일 그룹화
+    myTodos.forEach(todo => {
       const clientId = todo.clientId;
-      if (!groupedTodos[clientId]) {
-        groupedTodos[clientId] = [];
+      if (!groupedMyTodos[clientId]) {
+        groupedMyTodos[clientId] = [];
       }
-      groupedTodos[clientId].push(todo);
+      groupedMyTodos[clientId].push(todo);
     });
     
-    return groupedTodos;
+    // 내가 배정한 할일 그룹화
+    assignedByMe.forEach(todo => {
+      const clientId = todo.clientId;
+      if (!groupedAssignedByMe[clientId]) {
+        groupedAssignedByMe[clientId] = [];
+      }
+      groupedAssignedByMe[clientId].push(todo);
+    });
+    
+    return {
+      myTodos: groupedMyTodos,
+      assignedByMe: groupedAssignedByMe,
+      hasMyTodos: Object.keys(groupedMyTodos).length > 0,
+      hasAssignedByMe: Object.keys(groupedAssignedByMe).length > 0,
+      isEmpty: filteredTodos.length === 0
+    };
   };
   
   // 광고주별 그룹화된 할 일
@@ -391,8 +430,8 @@ export default function MyTodosPage() {
         
         {/* 필터 탭 */}
         <div className="bg-white rounded-lg shadow-sm mb-6 p-4">
-          <div className="flex justify-between items-center">
-            <div className="flex items-center space-x-2">
+          <div className="flex justify-between items-center flex-wrap gap-2">
+            <div className="flex items-center space-x-2 flex-wrap gap-2">
               <button
                 onClick={() => setFilter('all')}
                 className={`px-4 py-2 rounded-lg transition-colors ${
@@ -402,6 +441,26 @@ export default function MyTodosPage() {
                 }`}
               >
                 전체 할 일
+              </button>
+              <button
+                onClick={() => setFilter('mine')}
+                className={`px-4 py-2 rounded-lg transition-colors ${
+                  filter === 'mine' 
+                    ? 'bg-[#FF9800] text-white'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                내 할 일만
+              </button>
+              <button
+                onClick={() => setFilter('assigned')}
+                className={`px-4 py-2 rounded-lg transition-colors ${
+                  filter === 'assigned' 
+                    ? 'bg-[#2196F3] text-white'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                내가 배정한 할 일
               </button>
               <button
                 onClick={() => setFilter('active')}
@@ -447,7 +506,7 @@ export default function MyTodosPage() {
         )}
         
         {/* 할 일 목록이 비어있는 경우 */}
-        {Object.keys(todosByClient).length === 0 && (
+        {todosByClient.isEmpty && (
           <div className="bg-white rounded-lg shadow-sm p-8 text-center">
             <div className="text-6xl mb-4">🔍</div>
             <h3 className="text-xl font-medium mb-2">할 일이 없습니다</h3>
@@ -468,53 +527,91 @@ export default function MyTodosPage() {
         )}
         
         {/* 광고주별 할 일 목록 */}
-        {Object.keys(todosByClient).length > 0 ? (
-          Object.entries(todosByClient).map(([clientId, clientTodos]) => (
-            <div key={clientId} className="bg-white rounded-lg shadow-sm mb-6 overflow-hidden">
-              <div className="bg-[#EEF2FB] px-6 py-4 border-b border-gray-200">
-                <h3 className="text-lg font-bold flex items-center">
-                  <span className="text-xl mr-2">{clientTodos[0].clientIcon || '🏢'}</span>
-                  <Link href={`/clients/${clientId}`} className="hover:underline text-[#2251D1]">
-                    {clientTodos[0].clientName || '광고주'}
-                  </Link>
-                  <span className="ml-2 text-sm font-normal text-gray-500">
-                    {clientTodos.length}개의 할 일
-                  </span>
-                </h3>
-              </div>
-              
-              <div className="p-4">
-                {clientTodos.map(todo => (
-                  <div key={todo.id} className="mb-3">
-                    <TodoCard 
-                      todo={todo} 
-                      onComplete={handleToggleComplete}
-                      onDelete={handleDeleteTodo}
-                    />
-                  </div>
-                ))}
-              </div>
+        {todosByClient.hasMyTodos && (
+          <div className="bg-white rounded-lg shadow-sm mb-6 overflow-hidden">
+            <div className="bg-[#EEF2FB] px-6 py-4 border-b border-gray-200">
+              <h3 className="text-lg font-bold flex items-center">
+                <span className="text-xl mr-2">👤</span>
+                <span className="text-[#2251D1]">나의 할 일</span>
+              </h3>
             </div>
-          ))
-        ) : (
-          <div className="bg-white rounded-lg shadow-sm p-8 text-center">
-            <div className="text-6xl mb-4">🎉</div>
-            <h3 className="text-xl font-medium mb-2">
-              {filter === 'all' 
-                ? '할 일이 없습니다' 
-                : filter === 'active' 
-                  ? '모든 할 일을 완료했습니다!' 
-                  : '완료된 할 일이 없습니다'
-              }
-            </h3>
-            <p className="text-gray-500 mb-4">
-              {filter === 'all' 
-                ? '광고주 페이지에서 새로운 할 일을 추가해보세요.' 
-                : filter === 'active' 
-                  ? '잘 하셨어요! 다른 할 일이 추가되면 여기에 표시됩니다.' 
-                  : '할 일을 완료하면 이곳에 표시됩니다.'
-              }
-            </p>
+            
+            <div className="p-4">
+              {Object.entries(todosByClient.myTodos).map(([clientId, clientTodos]) => (
+                <div key={clientId} className="mb-6">
+                  <div className="flex items-center mb-3 border-b pb-2">
+                    <span className="text-lg mr-2">{clientTodos[0].clientIcon || '🏢'}</span>
+                    <Link href={`/clients/${clientId}`} className="text-gray-700 font-medium hover:underline">
+                      {clientTodos[0].clientName || '광고주'}
+                    </Link>
+                    <span className="ml-2 text-sm text-gray-500">
+                      {clientTodos.length}개의 할 일
+                    </span>
+                  </div>
+                  
+                  <div className="space-y-3">
+                    {clientTodos.map(todo => (
+                      <TodoCard 
+                        key={todo.id}
+                        todo={{
+                          ...todo,
+                          // 담당자 이름이 없거나 '담당자 미지정'인 경우 처리
+                          assigneeName: todo.assigneeName && todo.assigneeName !== '담당자 미지정' 
+                            ? todo.assigneeName 
+                            : '담당자 미지정'
+                        }}
+                        onComplete={handleToggleComplete}
+                        onDelete={handleDeleteTodo}
+                      />
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+        
+        {todosByClient.hasAssignedByMe && (
+          <div className="bg-white rounded-lg shadow-sm mb-6 overflow-hidden">
+            <div className="bg-[#EEF2FB] px-6 py-4 border-b border-gray-200">
+              <h3 className="text-lg font-bold flex items-center">
+                <span className="text-xl mr-2">👥</span>
+                <span className="text-[#2251D1]">내가 배정한 할 일</span>
+              </h3>
+            </div>
+            
+            <div className="p-4">
+              {Object.entries(todosByClient.assignedByMe).map(([clientId, clientTodos]) => (
+                <div key={clientId} className="mb-6">
+                  <div className="flex items-center mb-3 border-b pb-2">
+                    <span className="text-lg mr-2">{clientTodos[0].clientIcon || '🏢'}</span>
+                    <Link href={`/clients/${clientId}`} className="text-gray-700 font-medium hover:underline">
+                      {clientTodos[0].clientName || '광고주'}
+                    </Link>
+                    <span className="ml-2 text-sm text-gray-500">
+                      {clientTodos.length}개의 할 일
+                    </span>
+                  </div>
+                  
+                  <div className="space-y-3">
+                    {clientTodos.map(todo => (
+                      <TodoCard 
+                        key={todo.id}
+                        todo={{
+                          ...todo,
+                          // 담당자 이름이 없거나 '담당자 미지정'인 경우 처리
+                          assigneeName: todo.assigneeName && todo.assigneeName !== '담당자 미지정' 
+                            ? todo.assigneeName 
+                            : '담당자 미지정'
+                        }}
+                        onComplete={handleToggleComplete}
+                        onDelete={handleDeleteTodo}
+                      />
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         )}
       </div>

@@ -4,9 +4,14 @@ import { useState, useEffect, useCallback } from 'react';
 import { Plus, PlusCircle, X, User } from 'lucide-react';
 import { useUser } from '@clerk/nextjs';
 import { Client } from '@/lib/mock-data';
-import { TodoCard, Todo } from '@/components/TodoCard';
+import { TodoCard, Todo as BaseTodo } from '@/components/TodoCard';
 import { TodoModal } from '@/components/TodoModal';
 import Link from 'next/link';
+
+// Todo 인터페이스 확장
+interface Todo extends BaseTodo {
+  createdBy?: string;
+}
 
 interface TodoSectionProps {
   client: Client;
@@ -24,6 +29,7 @@ export function TodoSection({ client, onClientUpdate }: TodoSectionProps) {
   const [selectedTodoId, setSelectedTodoId] = useState<string | null>(null);
   const [users, setUsers] = useState<any[]>([]);
   const [isLoadingUsers, setIsLoadingUsers] = useState(false);
+  const [filter, setFilter] = useState<'all' | 'active' | 'completed' | 'mine' | 'assigned'>('all');
   const { user } = useUser();
   
   // 디버그 로그 추가 함수
@@ -123,8 +129,10 @@ export function TodoSection({ client, onClientUpdate }: TodoSectionProps) {
         const assignee = usersList.find((u: any) => u.id === todo.assignedTo);
         return {
           ...todo,
-          assigneeName: assignee ? assignee.displayName : '담당자 미지정',
-          assigneeAvatar: assignee ? assignee.imageUrl : null
+          assigneeName: assignee ? assignee.displayName || assignee.name : todo.assigneeName || '담당자 미지정',
+          assigneeAvatar: assignee ? assignee.imageUrl : todo.assigneeAvatar || null,
+          // created_by 필드가 없는 경우 현재 사용자 ID를 기본값으로 설정
+          createdBy: todo.created_by || userId
         };
       });
       
@@ -824,6 +832,60 @@ export function TodoSection({ client, onClientUpdate }: TodoSectionProps) {
           </div>
         </div>
         
+        {/* 필터 탭 */}
+        <div className="flex flex-wrap gap-2 mb-4">
+          <button
+            onClick={() => setFilter('all')}
+            className={`px-3 py-1 text-sm rounded-full transition-colors ${
+              filter === 'all' 
+                ? 'bg-[#2251D1] text-white'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+            }`}
+          >
+            전체 할 일
+          </button>
+          <button
+            onClick={() => setFilter('active')}
+            className={`px-3 py-1 text-sm rounded-full transition-colors ${
+              filter === 'active' 
+                ? 'bg-[#4CAF50] text-white'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+            }`}
+          >
+            진행 중
+          </button>
+          <button
+            onClick={() => setFilter('completed')}
+            className={`px-3 py-1 text-sm rounded-full transition-colors ${
+              filter === 'completed' 
+                ? 'bg-[#9E9E9E] text-white'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+            }`}
+          >
+            완료됨
+          </button>
+          <button
+            onClick={() => setFilter('mine')}
+            className={`px-3 py-1 text-sm rounded-full transition-colors ${
+              filter === 'mine' 
+                ? 'bg-[#FF9800] text-white'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+            }`}
+          >
+            내 할 일
+          </button>
+          <button
+            onClick={() => setFilter('assigned')}
+            className={`px-3 py-1 text-sm rounded-full transition-colors ${
+              filter === 'assigned' 
+                ? 'bg-[#2196F3] text-white'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+            }`}
+          >
+            내가 배정한 할 일
+          </button>
+        </div>
+        
         {/* 디버그 패널 */}
         {showDebug && (
           <div className="bg-gray-800 text-green-400 p-3 mb-4 rounded text-xs overflow-auto" style={{ maxHeight: '200px' }}>
@@ -854,15 +916,30 @@ export function TodoSection({ client, onClientUpdate }: TodoSectionProps) {
           </div>
         ) : (
           <div className="space-y-4">
-            {todos.map(todo => (
-              <TodoCard
-                key={todo.id}
-                todo={todo}
-                onComplete={handleToggleComplete}
-                onDelete={handleDeleteTodo}
-                onAssigneeChange={handleAssigneeChange}
-              />
-            ))}
+            {todos
+              .filter(todo => {
+                // 필터 적용
+                if (filter === 'active') return !todo.completed;
+                if (filter === 'completed') return todo.completed;
+                if (filter === 'mine') return todo.assignedTo === user?.id;
+                if (filter === 'assigned') return todo.assignedTo !== user?.id && todo.createdBy === user?.id;
+                return true; // 'all' 필터
+              })
+              .map(todo => (
+                <TodoCard
+                  key={todo.id}
+                  todo={{
+                    ...todo,
+                    // 담당자 이름이 없거나 '담당자 미지정'인 경우 사용자 정보에서 이름 가져오기
+                    assigneeName: todo.assigneeName && todo.assigneeName !== '담당자 미지정' 
+                      ? todo.assigneeName 
+                      : users.find(u => u.id === todo.assignedTo)?.name || '담당자 미지정'
+                  }}
+                  onComplete={handleToggleComplete}
+                  onDelete={handleDeleteTodo}
+                  onAssigneeChange={handleAssigneeChange}
+                />
+              ))}
           </div>
         )}
       </div>
