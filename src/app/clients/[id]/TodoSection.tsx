@@ -890,10 +890,13 @@ export function TodoSection({ client, onClientUpdate }: TodoSectionProps) {
   };
   
   return (
-    <div className="bg-white rounded-lg shadow-sm">
-      <div className="p-6 border-b border-gray-100">
+    <div className="bg-[#151523] rounded-lg shadow-xl overflow-hidden border border-white/10">
+      <div className="bg-gradient-to-r from-blue-900/30 to-purple-900/30 backdrop-blur-sm p-6 border-b border-white/10">
         <div className="flex justify-between items-center mb-4">
-          <h2 className="text-lg font-semibold">할 일 관리</h2>
+          <h2 className="text-lg font-semibold text-white flex items-center">
+            <span className="text-xl mr-2">✅</span>
+            할 일 관리
+          </h2>
         </div>
         
         {/* 필터 탭 */}
@@ -902,8 +905,8 @@ export function TodoSection({ client, onClientUpdate }: TodoSectionProps) {
             onClick={() => setFilter('all')}
             className={`px-3 py-1 text-sm rounded-full transition-colors ${
               filter === 'all' 
-                ? 'bg-[#2251D1] text-white'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                ? 'bg-blue-600 text-white shadow-lg shadow-blue-700/30'
+                : 'bg-slate-800/80 text-slate-300 hover:bg-slate-700/80 border border-white/10'
             }`}
           >
             전체 할 일
@@ -912,8 +915,8 @@ export function TodoSection({ client, onClientUpdate }: TodoSectionProps) {
             onClick={() => setFilter('active')}
             className={`px-3 py-1 text-sm rounded-full transition-colors ${
               filter === 'active' 
-                ? 'bg-[#4CAF50] text-white'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                ? 'bg-green-600 text-white shadow-lg shadow-green-700/30'
+                : 'bg-slate-800/80 text-slate-300 hover:bg-slate-700/80 border border-white/10'
             }`}
           >
             진행 중
@@ -922,8 +925,8 @@ export function TodoSection({ client, onClientUpdate }: TodoSectionProps) {
             onClick={() => setFilter('completed')}
             className={`px-3 py-1 text-sm rounded-full transition-colors ${
               filter === 'completed' 
-                ? 'bg-[#9E9E9E] text-white'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                ? 'bg-slate-600 text-white shadow-lg shadow-slate-700/30'
+                : 'bg-slate-800/80 text-slate-300 hover:bg-slate-700/80 border border-white/10'
             }`}
           >
             완료됨
@@ -932,8 +935,8 @@ export function TodoSection({ client, onClientUpdate }: TodoSectionProps) {
             onClick={() => setFilter('mine')}
             className={`px-3 py-1 text-sm rounded-full transition-colors ${
               filter === 'mine' 
-                ? 'bg-[#FF9800] text-white'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                ? 'bg-amber-600 text-white shadow-lg shadow-amber-700/30'
+                : 'bg-slate-800/80 text-slate-300 hover:bg-slate-700/80 border border-white/10'
             }`}
           >
             내 할 일
@@ -942,8 +945,8 @@ export function TodoSection({ client, onClientUpdate }: TodoSectionProps) {
             onClick={() => setFilter('assigned')}
             className={`px-3 py-1 text-sm rounded-full transition-colors ${
               filter === 'assigned' 
-                ? 'bg-[#2196F3] text-white'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-700/30'
+                : 'bg-slate-800/80 text-slate-300 hover:bg-slate-700/80 border border-white/10'
             }`}
           >
             내가 배정한 할 일
@@ -951,25 +954,25 @@ export function TodoSection({ client, onClientUpdate }: TodoSectionProps) {
         </div>
         
         {/* 할 일 추가 */}
-        <div className="mb-4">
+        <div className="mb-2">
           <button
             onClick={() => setShowTodoModal(true)}
-            className="wiz-btn-small w-full py-2 flex justify-center items-center"
+            className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white w-full py-2 rounded-lg flex justify-center items-center transition-all duration-300 shadow-lg hover:shadow-blue-700/30 border border-blue-500/30"
           >
             <PlusCircle size={16} className="mr-1" /> 새 할 일 추가
           </button>
         </div>
       </div>
       
-      <div className="p-6">
+      <div className="p-6 text-white">
         {isLoading ? (
           <div className="flex justify-center items-center h-32">
-            <div className="animate-spin rounded-full h-8 w-8 border-2 border-[#2251D1] border-t-transparent"></div>
+            <div className="animate-spin rounded-full h-10 w-10 border-4 border-blue-500 border-t-transparent"></div>
           </div>
         ) : todos.length === 0 ? (
-          <div className="text-center py-10 text-gray-500">
+          <div className="text-center py-10 text-slate-400">
             <p>이 광고주에 등록된 할 일이 없습니다.</p>
-            <p className="text-sm mt-1">위 폼을 통해 새로운 할 일을 추가해보세요!</p>
+            <p className="text-sm mt-1">위 버튼을 통해 새로운 할 일을 추가해보세요!</p>
           </div>
         ) : (
           <div className="space-y-4">
@@ -999,6 +1002,32 @@ export function TodoSection({ client, onClientUpdate }: TodoSectionProps) {
               ))}
           </div>
         )}
+        
+        {/* 디버그 섹션 (개발 중에만 표시) */}
+        {showDebug && (
+          <div className="mt-8 p-4 bg-[#1e1e30] rounded-lg border border-white/10">
+            <div className="flex justify-between items-center mb-2">
+              <h3 className="text-sm font-semibold text-slate-300">디버그 로그</h3>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setShowDebug(false)}
+                  className="text-xs bg-slate-800 text-slate-300 px-2 py-1 rounded hover:bg-slate-700 transition-colors"
+                >
+                  닫기
+                </button>
+                <button
+                  onClick={clearTodoCache}
+                  className="text-xs bg-red-900/40 text-red-300 px-2 py-1 rounded hover:bg-red-800/40 transition-colors border border-red-500/30"
+                >
+                  캐시 삭제
+                </button>
+              </div>
+            </div>
+            <pre className="text-xs bg-slate-900/50 p-3 rounded-lg mt-2 max-h-40 overflow-y-auto whitespace-pre-wrap text-slate-400">
+              {debugLog || "로그가 없습니다."}
+            </pre>
+          </div>
+        )}
       </div>
       
       {/* 할 일 등록 모달 */}
@@ -1013,16 +1042,16 @@ export function TodoSection({ client, onClientUpdate }: TodoSectionProps) {
       
       {/* 담당자 변경 모달 */}
       {showAssignModal && selectedTodoId && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 animate-fade-in">
-          <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-md transform transition-all animate-scale-up">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 animate-fade-in">
+          <div className="bg-[#151523] rounded-xl shadow-xl p-6 w-full max-w-md transform transition-all animate-scale-up border border-white/10">
             <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-bold">담당자 변경</h3>
+              <h3 className="text-lg font-bold text-white">담당자 변경</h3>
               <button 
                 onClick={() => {
                   setShowAssignModal(false);
                   setSelectedTodoId(null);
                 }}
-                className="bg-gray-100 hover:bg-gray-200 rounded-full w-8 h-8 flex items-center justify-center"
+                className="bg-slate-800 hover:bg-slate-700 rounded-full w-8 h-8 flex items-center justify-center text-slate-300 hover:text-white transition-colors"
               >
                 <X className="h-4 w-4" />
               </button>
@@ -1030,15 +1059,15 @@ export function TodoSection({ client, onClientUpdate }: TodoSectionProps) {
             
             {isLoadingUsers ? (
               <div className="flex justify-center py-8">
-                <div className="animate-spin rounded-full h-8 w-8 border-2 border-blue-500 border-t-transparent"></div>
+                <div className="animate-spin rounded-full h-10 w-10 border-4 border-blue-500 border-t-transparent"></div>
               </div>
             ) : (
               <>
-                <p className="text-sm text-gray-500 mb-4">
-                  이 할 일을 담당할 사용자를 선택하세요. <b>현재 담당자를 다시 선택하거나 다른 담당자로 변경할 수 있습니다.</b>
+                <p className="text-sm text-slate-400 mb-4">
+                  이 할 일을 담당할 사용자를 선택하세요. <b className="text-slate-200">현재 담당자를 다시 선택하거나 다른 담당자로 변경할 수 있습니다.</b>
                 </p>
                 
-                <div className="grid grid-cols-1 gap-2 max-h-64 overflow-y-auto mb-4">
+                <div className="grid grid-cols-1 gap-2 max-h-64 overflow-y-auto pr-1 mb-4">
                   {users.map(user => {
                     const todo = todos.find(t => t.id === selectedTodoId);
                     const isCurrentAssignee = todo && todo.assignedTo === user.id;
@@ -1046,10 +1075,10 @@ export function TodoSection({ client, onClientUpdate }: TodoSectionProps) {
                     return (
                       <button
                         key={user.id}
-                        className={`flex items-center p-3 border rounded-lg transition-all ${
+                        className={`flex items-center p-3 rounded-lg transition-all ${
                           isCurrentAssignee 
-                            ? 'border-blue-500 bg-blue-50 text-blue-700'
-                            : 'border-gray-200 hover:border-blue-300'
+                            ? 'bg-blue-900/30 text-blue-100 border border-blue-500/50 shadow-inner shadow-blue-700/20'
+                            : 'bg-[#1e1e30] text-white hover:bg-[#242438] border border-white/10'
                         }`}
                         onClick={() => handleAssignTodo(selectedTodoId, user.id)}
                       >
@@ -1057,20 +1086,20 @@ export function TodoSection({ client, onClientUpdate }: TodoSectionProps) {
                           <img 
                             src={user.imageUrl} 
                             alt={user.name} 
-                            className="w-10 h-10 rounded-full mr-3"
+                            className="w-10 h-10 rounded-full mr-3 border border-white/20"
                           />
                         ) : (
-                          <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center mr-3">
-                            <User className="h-5 w-5 text-gray-500" />
+                          <div className="w-10 h-10 rounded-full bg-slate-700 flex items-center justify-center mr-3 text-slate-300">
+                            <User className="h-5 w-5" />
                           </div>
                         )}
                         <div className="text-left">
                           <div className={isCurrentAssignee ? 'font-medium' : ''}>
                             {user.name}
-                            {isCurrentAssignee && <span className="ml-2 text-xs">(현재 담당자)</span>}
+                            {isCurrentAssignee && <span className="ml-2 text-xs text-blue-300">(현재 담당자)</span>}
                           </div>
                           {user.department && (
-                            <div className="text-xs text-gray-500">{user.department}</div>
+                            <div className="text-xs text-slate-400">{user.department}</div>
                           )}
                         </div>
                       </button>

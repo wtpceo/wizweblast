@@ -416,27 +416,33 @@ export default function MyTodosPage() {
   // 로딩 중일 때 표시할 화면
   if (!isLoaded || isLoading) {
     return (
-      <div className="min-h-screen bg-[#F9FAFD] flex items-center justify-center">
+      <div className="min-h-screen bg-[#0F0F1A] flex items-center justify-center">
         <div className="text-center">
-          <div className="w-12 h-12 rounded-full border-4 border-[#2251D1] border-t-transparent animate-spin mb-4 mx-auto"></div>
-          <p className="text-lg text-[#2251D1] font-medium">로딩 중...</p>
+          <div className="w-12 h-12 rounded-full border-4 border-blue-500 border-t-transparent animate-spin mb-4 mx-auto"></div>
+          <p className="text-lg text-blue-300 font-medium">로딩 중...</p>
         </div>
       </div>
     );
   }
   
   return (
-    <div className="min-h-screen bg-[#F9FAFD]">
+    <div className="min-h-screen bg-[#0F0F1A]">
       <Header
         title="나의 할 일 목록"
         description="등록한 모든 할 일을 보고 관리하세요"
         icon="✅"
         actions={
           <div className="flex space-x-2">
-            <Link href="/clients" className="bg-white text-[#FF9800] px-4 py-2 rounded-lg hover:bg-opacity-90 transition-all duration-200 flex items-center text-sm font-medium shadow-sm hover:shadow">
+            <Link 
+              href="/clients" 
+              className="bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-500 hover:to-amber-600 text-white py-2 px-4 rounded-lg flex items-center transition-all duration-300 shadow-lg hover:shadow-amber-700/30 border border-amber-500/30"
+            >
               <span className="mr-2">🏢</span> 광고주 목록으로 이동
             </Link>
-            <Link href="/dashboard" className="bg-white text-[#2251D1] px-4 py-2 rounded-lg hover:bg-opacity-90 transition-all duration-200 flex items-center text-sm font-medium shadow-sm hover:shadow">
+            <Link 
+              href="/dashboard" 
+              className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white py-2 px-4 rounded-lg flex items-center transition-all duration-300 shadow-lg hover:shadow-blue-700/30 border border-blue-500/30"
+            >
               <span className="mr-2">📊</span> 대시보드로 돌아가기
             </Link>
           </div>
@@ -445,15 +451,15 @@ export default function MyTodosPage() {
       
       <div className="container mx-auto px-4 py-6">
         {/* 필터 탭 */}
-        <div className="bg-white rounded-lg shadow-sm mb-6 p-4">
+        <div className="bg-[#151523] rounded-lg shadow-xl mb-6 p-4 border border-white/10">
           <div className="flex justify-between items-center flex-wrap gap-2">
             <div className="flex items-center space-x-2 flex-wrap gap-2">
               <button
                 onClick={() => setFilter('all')}
                 className={`px-4 py-2 rounded-lg transition-colors ${
                   filter === 'all' 
-                    ? 'bg-[#2251D1] text-white'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    ? 'bg-blue-600 text-white shadow-lg shadow-blue-700/30'
+                    : 'bg-slate-800/80 text-slate-300 hover:bg-slate-700/80 border border-white/10'
                 }`}
               >
                 전체 할 일
@@ -462,8 +468,8 @@ export default function MyTodosPage() {
                 onClick={() => setFilter('mine')}
                 className={`px-4 py-2 rounded-lg transition-colors ${
                   filter === 'mine' 
-                    ? 'bg-[#FF9800] text-white'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    ? 'bg-amber-600 text-white shadow-lg shadow-amber-700/30'
+                    : 'bg-slate-800/80 text-slate-300 hover:bg-slate-700/80 border border-white/10'
                 }`}
               >
                 내 할 일만
@@ -472,8 +478,8 @@ export default function MyTodosPage() {
                 onClick={() => setFilter('assigned')}
                 className={`px-4 py-2 rounded-lg transition-colors ${
                   filter === 'assigned' 
-                    ? 'bg-[#2196F3] text-white'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-700/30'
+                    : 'bg-slate-800/80 text-slate-300 hover:bg-slate-700/80 border border-white/10'
                 }`}
               >
                 내가 배정한 할 일
@@ -482,8 +488,8 @@ export default function MyTodosPage() {
                 onClick={() => setFilter('active')}
                 className={`px-4 py-2 rounded-lg transition-colors ${
                   filter === 'active' 
-                    ? 'bg-[#4CAF50] text-white'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    ? 'bg-green-600 text-white shadow-lg shadow-green-700/30'
+                    : 'bg-slate-800/80 text-slate-300 hover:bg-slate-700/80 border border-white/10'
                 }`}
               >
                 진행 중
@@ -492,14 +498,14 @@ export default function MyTodosPage() {
                 onClick={() => setFilter('completed')}
                 className={`px-4 py-2 rounded-lg transition-colors ${
                   filter === 'completed' 
-                    ? 'bg-[#9E9E9E] text-white'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    ? 'bg-slate-600 text-white shadow-lg shadow-slate-700/30'
+                    : 'bg-slate-800/80 text-slate-300 hover:bg-slate-700/80 border border-white/10'
                 }`}
               >
                 완료됨
               </button>
             </div>
-            <div className="text-sm text-gray-500">
+            <div className="text-sm text-slate-300">
               총 {todos.length}개의 할 일, {todos.filter(t => t.completed).length}개 완료됨
             </div>
           </div>
@@ -507,14 +513,14 @@ export default function MyTodosPage() {
         
         {/* 오류 메시지 */}
         {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 rounded-lg p-4 mb-6">
+          <div className="bg-red-900/30 border border-red-500/30 text-red-300 rounded-lg p-4 mb-6">
             <h3 className="font-medium flex items-center mb-1">
               <span className="mr-2">⚠️</span> 오류 발생
             </h3>
             <p className="text-sm">{error}</p>
             <button 
               onClick={fetchTodos} 
-              className="mt-2 text-red-700 bg-white border border-red-300 px-3 py-1 rounded-md text-sm hover:bg-red-50"
+              className="mt-2 text-red-300 bg-red-950/50 border border-red-500/30 px-3 py-1 rounded-md text-sm hover:bg-red-900/50 transition-colors"
             >
               다시 시도
             </button>
@@ -523,10 +529,10 @@ export default function MyTodosPage() {
         
         {/* 할 일 목록이 비어있는 경우 */}
         {todosByClient.isEmpty && (
-          <div className="bg-white rounded-lg shadow-sm p-8 text-center">
+          <div className="bg-[#151523] rounded-lg shadow-xl p-8 text-center border border-white/10">
             <div className="text-6xl mb-4">🔍</div>
-            <h3 className="text-xl font-medium mb-2">할 일이 없습니다</h3>
-            <p className="text-gray-500 mb-4">
+            <h3 className="text-xl font-medium mb-2 text-white">할 일이 없습니다</h3>
+            <p className="text-slate-400 mb-4">
               {filter === 'all' 
                 ? '아직 등록된 할 일이 없습니다. 광고주 페이지에서 할 일을 추가해보세요.'
                 : filter === 'active'
@@ -535,7 +541,7 @@ export default function MyTodosPage() {
             </p>
             <Link 
               href="/clients"
-              className="inline-block bg-[#2251D1] text-white px-4 py-2 rounded-lg hover:bg-[#1a3fa0] transition-all"
+              className="inline-block bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white px-4 py-2 rounded-lg transition-all duration-300 shadow-lg hover:shadow-blue-700/30 border border-blue-500/30"
             >
               광고주 목록으로 이동
             </Link>
@@ -544,23 +550,23 @@ export default function MyTodosPage() {
         
         {/* 광고주별 할 일 목록 */}
         {todosByClient.hasMyTodos && (
-          <div className="bg-white rounded-lg shadow-sm mb-6 overflow-hidden">
-            <div className="bg-[#EEF2FB] px-6 py-4 border-b border-gray-200">
-              <h3 className="text-lg font-bold flex items-center">
+          <div className="bg-[#151523] rounded-lg shadow-xl mb-6 overflow-hidden border border-white/10">
+            <div className="bg-gradient-to-r from-blue-900/30 to-purple-900/30 backdrop-blur-sm px-6 py-4 border-b border-white/10">
+              <h3 className="text-lg font-bold flex items-center text-white">
                 <span className="text-xl mr-2">👤</span>
-                <span className="text-[#2251D1]">나의 할 일</span>
+                <span>나의 할 일</span>
               </h3>
             </div>
             
-            <div className="p-4">
+            <div className="p-4 text-white">
               {Object.entries(todosByClient.myTodos).map(([clientId, clientTodos]) => (
                 <div key={clientId} className="mb-6">
-                  <div className="flex items-center mb-3 border-b pb-2">
+                  <div className="flex items-center mb-3 border-b border-white/10 pb-2">
                     <span className="text-lg mr-2">{clientTodos[0].clientIcon || '🏢'}</span>
-                    <Link href={`/clients/${clientId}`} className="text-gray-700 font-medium hover:underline">
+                    <Link href={`/clients/${clientId}`} className="text-slate-200 font-medium hover:text-blue-300 transition-colors">
                       {clientTodos[0].clientName || '광고주'}
                     </Link>
-                    <span className="ml-2 text-sm text-gray-500">
+                    <span className="ml-2 text-sm text-slate-400">
                       {clientTodos.length}개의 할 일
                     </span>
                   </div>
@@ -589,23 +595,23 @@ export default function MyTodosPage() {
         )}
         
         {todosByClient.hasAssignedByMe && (
-          <div className="bg-white rounded-lg shadow-sm mb-6 overflow-hidden">
-            <div className="bg-[#EEF2FB] px-6 py-4 border-b border-gray-200">
-              <h3 className="text-lg font-bold flex items-center">
+          <div className="bg-[#151523] rounded-lg shadow-xl mb-6 overflow-hidden border border-white/10">
+            <div className="bg-gradient-to-r from-blue-900/30 to-purple-900/30 backdrop-blur-sm px-6 py-4 border-b border-white/10">
+              <h3 className="text-lg font-bold flex items-center text-white">
                 <span className="text-xl mr-2">👥</span>
-                <span className="text-[#2251D1]">내가 배정한 할 일</span>
+                <span>내가 배정한 할 일</span>
               </h3>
             </div>
             
-            <div className="p-4">
+            <div className="p-4 text-white">
               {Object.entries(todosByClient.assignedByMe).map(([clientId, clientTodos]) => (
                 <div key={clientId} className="mb-6">
-                  <div className="flex items-center mb-3 border-b pb-2">
+                  <div className="flex items-center mb-3 border-b border-white/10 pb-2">
                     <span className="text-lg mr-2">{clientTodos[0].clientIcon || '🏢'}</span>
-                    <Link href={`/clients/${clientId}`} className="text-gray-700 font-medium hover:underline">
+                    <Link href={`/clients/${clientId}`} className="text-slate-200 font-medium hover:text-blue-300 transition-colors">
                       {clientTodos[0].clientName || '광고주'}
                     </Link>
-                    <span className="ml-2 text-sm text-gray-500">
+                    <span className="ml-2 text-sm text-slate-400">
                       {clientTodos.length}개의 할 일
                     </span>
                   </div>
@@ -635,16 +641,16 @@ export default function MyTodosPage() {
         
         {/* 담당자 변경 모달 */}
         {showAssignModal && (
-          <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-lg shadow-xl w-full max-w-md p-6 max-h-[90vh] overflow-auto">
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <div className="bg-[#151523] rounded-lg shadow-xl w-full max-w-md p-6 max-h-[90vh] overflow-auto border border-white/10">
               <div className="flex justify-between items-center mb-4">
-                <h3 className="text-lg font-bold">담당자 변경</h3>
+                <h3 className="text-lg font-bold text-white">담당자 변경</h3>
                 <button 
                   onClick={() => {
                     setShowAssignModal(false);
                     setSelectedTodoId(null);
                   }}
-                  className="bg-gray-100 hover:bg-gray-200 rounded-full w-8 h-8 flex items-center justify-center"
+                  className="bg-slate-800 hover:bg-slate-700 rounded-full w-8 h-8 flex items-center justify-center text-slate-300 hover:text-white transition-colors"
                 >
                   <X className="h-4 w-4" />
                 </button>
@@ -652,12 +658,12 @@ export default function MyTodosPage() {
               
               {isLoadingUsers ? (
                 <div className="flex justify-center py-8">
-                  <div className="animate-spin rounded-full h-8 w-8 border-2 border-blue-500 border-t-transparent"></div>
+                  <div className="animate-spin rounded-full h-10 w-10 border-4 border-blue-500 border-t-transparent"></div>
                 </div>
               ) : (
                 <>
-                  <p className="text-sm text-gray-500 mb-4">
-                    할 일을 담당할 사용자를 선택하세요. 현재 담당자도 다시 선택할 수 있습니다.
+                  <p className="text-sm text-slate-400 mb-4">
+                    할 일을 담당할 사용자를 선택하세요. <b className="text-slate-200">현재 담당자를 다시 선택하거나 다른 담당자로 변경할 수 있습니다.</b>
                   </p>
                   <div className="space-y-2">
                     {users.map(user => {
@@ -667,23 +673,23 @@ export default function MyTodosPage() {
                       return (
                         <button
                           key={user.id}
-                          className={`flex items-center p-3 border rounded-lg transition-all w-full ${
+                          className={`flex items-center p-3 rounded-lg transition-all w-full ${
                             isCurrentAssignee 
-                              ? 'border-blue-500 bg-blue-50 text-blue-700'
-                              : 'border-gray-200 hover:border-blue-300'
+                              ? 'bg-blue-900/30 text-blue-100 border border-blue-500/50 shadow-inner shadow-blue-700/20'
+                              : 'bg-[#1e1e30] text-white hover:bg-[#242438] border border-white/10'
                           }`}
                           onClick={() => handleAssignTodo(selectedTodoId!, user.id)}
                         >
                           {user.imageUrl ? (
-                            <img src={user.imageUrl} alt={user.name} className="w-8 h-8 rounded-full mr-3" />
+                            <img src={user.imageUrl} alt={user.name} className="w-8 h-8 rounded-full mr-3 border border-white/20" />
                           ) : (
-                            <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center mr-3">
-                              <User className="h-4 w-4 text-gray-500" />
+                            <div className="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center mr-3 text-slate-300">
+                              <User className="h-4 w-4" />
                             </div>
                           )}
                           <span className="font-medium">{user.name}</span>
                           {isCurrentAssignee && (
-                            <span className="ml-auto text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full">
+                            <span className="ml-auto text-xs bg-blue-950/70 text-blue-300 px-2 py-1 rounded-full border border-blue-500/30">
                               현재 담당자
                             </span>
                           )}

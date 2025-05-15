@@ -46,25 +46,25 @@ export function TodoCard({ todo, onComplete, onAssigneeChange, onDelete }: TodoC
   // 상태별 색상 및 아이콘
   const statusConfig = {
     completed: {
-      bgColor: 'bg-green-50',
-      borderColor: 'border-green-200',
+      bgColor: 'bg-green-950/40',
+      borderColor: 'border-green-600/40',
       icon: <Check className="h-4 w-4 text-green-500" />,
       label: '완료됨',
-      textColor: 'text-green-600'
+      textColor: 'text-green-500'
     },
     delayed: {
-      bgColor: 'bg-red-50',
-      borderColor: 'border-red-200',
+      bgColor: 'bg-red-950/40',
+      borderColor: 'border-red-600/40',
       icon: <AlertTriangle className="h-4 w-4 text-red-500" />,
       label: '지연됨',
-      textColor: 'text-red-600'
+      textColor: 'text-red-500'
     },
     pending: {
-      bgColor: 'bg-amber-50',
-      borderColor: 'border-amber-200',
+      bgColor: 'bg-amber-950/40',
+      borderColor: 'border-amber-600/40',
       icon: <Clock className="h-4 w-4 text-amber-500" />,
       label: '진행 중',
-      textColor: 'text-amber-600'
+      textColor: 'text-amber-500'
     }
   };
   
@@ -86,11 +86,10 @@ export function TodoCard({ todo, onComplete, onAssigneeChange, onDelete }: TodoC
   
   return (
     <div 
-      className={`p-4 border rounded-lg transition-colors mb-3 
-        ${todo.completed ? 'bg-gray-50 border-gray-200' : 'bg-white border-gray-200'}
-        ${statusConfig[status].borderColor}
-        ${statusConfig[status].bgColor}
-        hover:shadow-sm
+      className={`p-4 border rounded-lg transition-all duration-300 mb-3 
+        ${todo.completed ? 'bg-[#1E1E32] border-green-600/20' : 'bg-[#171727] border-blue-600/10'}
+        hover:border-blue-500/30 hover:bg-[#1a1a2e]
+        hover:shadow-lg hover:shadow-blue-900/10
         ${isDeleting ? 'opacity-50' : ''}
       `}
       onMouseEnter={() => setShowActions(true)}
@@ -100,10 +99,10 @@ export function TodoCard({ todo, onComplete, onAssigneeChange, onDelete }: TodoC
         <button
           onClick={() => onComplete(todo.id, todo.completed)}
           disabled={isDeleting}
-          className={`w-5 h-5 rounded-full flex-shrink-0 mt-1 ${
+          className={`w-5 h-5 rounded-full flex-shrink-0 mt-1 transition-all duration-300 ${
             todo.completed 
-              ? 'bg-[#4CAF50] text-white flex items-center justify-center'
-              : 'border-2 border-gray-300 hover:border-[#4CAF50]'
+              ? 'bg-green-600 text-white flex items-center justify-center'
+              : 'border-2 border-slate-500 hover:border-green-500 hover:scale-110'
           }`}
           aria-label={todo.completed ? "완료 취소하기" : "완료 처리하기"}
         >
@@ -113,11 +112,11 @@ export function TodoCard({ todo, onComplete, onAssigneeChange, onDelete }: TodoC
         <div className="ml-3 flex-grow">
           <div className="flex justify-between items-start">
             <div>
-              <p className={`${todo.completed ? 'line-through text-gray-500' : 'text-gray-800'}`}>
+              <p className={`${todo.completed ? 'line-through text-slate-400' : 'text-slate-100'}`}>
                 {todo.content}
               </p>
               
-              <div className="flex items-center mt-1 text-xs text-gray-500 space-x-2">
+              <div className="flex items-center mt-1 text-xs text-slate-500 space-x-2">
                 {/* 등록일 */}
                 {todo.createdAt && (
                   <span>
@@ -145,7 +144,7 @@ export function TodoCard({ todo, onComplete, onAssigneeChange, onDelete }: TodoC
             {/* 상태 뱃지 */}
             <div className="flex space-x-2">
               <span 
-                className={`px-2 py-1 text-xs rounded-full flex items-center ${statusConfig[status].textColor}`}
+                className={`px-2 py-1 text-xs rounded-full flex items-center ${statusConfig[status].textColor} ${statusConfig[status].bgColor} border ${statusConfig[status].borderColor}`}
               >
                 {statusConfig[status].icon}
                 <span className="ml-1">{statusConfig[status].label}</span>
@@ -160,23 +159,23 @@ export function TodoCard({ todo, onComplete, onAssigneeChange, onDelete }: TodoC
                 <img 
                   src={todo.assigneeAvatar} 
                   alt={todo.assigneeName || '담당자'} 
-                  className="w-6 h-6 rounded-full mr-2 border border-gray-200"
+                  className="w-6 h-6 rounded-full mr-2 border border-white/20"
                 />
               ) : (
-                <div className="w-6 h-6 rounded-full bg-gray-200 flex items-center justify-center mr-2">
-                  <User className="h-3 w-3 text-gray-500" />
+                <div className="w-6 h-6 rounded-full bg-slate-800 flex items-center justify-center mr-2 border border-slate-700">
+                  <User className="h-3 w-3 text-slate-400" />
                 </div>
               )}
               <div className="text-xs">
                 <div className="flex items-center">
-                  <span className={`font-medium ${todo.assigneeName ? 'text-blue-600' : 'text-gray-500'}`}>
+                  <span className={`font-medium ${todo.assigneeName ? 'text-blue-400' : 'text-slate-400'}`}>
                     {todo.assigneeName || '담당자 미지정'}
                   </span>
                   {onAssigneeChange && (
                     <button
                       onClick={handleAssigneeChange}
                       disabled={isDeleting}
-                      className="ml-2 text-xs bg-blue-50 hover:bg-blue-100 text-blue-600 px-2 py-0.5 rounded-full flex items-center transition-colors"
+                      className="ml-2 text-xs bg-blue-950/50 hover:bg-blue-900/60 text-blue-400 px-2 py-0.5 rounded-full flex items-center transition-all duration-300 border border-blue-700/30 hover:scale-105"
                       title="담당자 변경하기"
                     >
                       <User className="h-3 w-3 mr-1" />
@@ -185,7 +184,7 @@ export function TodoCard({ todo, onComplete, onAssigneeChange, onDelete }: TodoC
                   )}
                 </div>
                 {todo.clientName && (
-                  <div className="text-gray-500 mt-1 flex items-center">
+                  <div className="text-slate-500 mt-1 flex items-center">
                     <span className="mr-1">{todo.clientIcon || '🏢'}</span>
                     {todo.clientName}
                   </div>
@@ -198,7 +197,7 @@ export function TodoCard({ todo, onComplete, onAssigneeChange, onDelete }: TodoC
               <button
                 onClick={handleDelete}
                 disabled={isDeleting}
-                className="text-xs px-2 py-1 bg-red-50 text-red-500 rounded hover:bg-red-100 flex items-center"
+                className="text-xs px-2 py-1 bg-red-950/50 hover:bg-red-900/60 text-red-400 rounded flex items-center transition-all duration-300 border border-red-700/30 hover:scale-105"
                 aria-label="할 일 삭제"
               >
                 <Trash2 className="h-3 w-3 mr-1" />

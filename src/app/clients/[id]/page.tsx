@@ -274,10 +274,10 @@ export default function ClientDetailPage() {
   
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#F9FAFD] flex items-center justify-center">
-        <div className="animate-pulse text-[#2251D1] flex flex-col items-center">
-          <div className="w-12 h-12 rounded-full border-4 border-[#2251D1] border-t-transparent animate-spin mb-4"></div>
-          <p className="text-lg font-medium">광고주 정보를 불러오는 중...</p>
+      <div className="min-h-screen bg-[#0F0F1A] flex items-center justify-center">
+        <div className="animate-pulse flex flex-col items-center">
+          <div className="w-12 h-12 rounded-full border-4 border-blue-500 border-t-transparent animate-spin mb-4"></div>
+          <p className="text-lg font-medium text-blue-300">광고주 정보를 불러오는 중...</p>
         </div>
       </div>
     );
@@ -285,19 +285,21 @@ export default function ClientDetailPage() {
   
   if (error || !client) {
     return (
-      <div className="min-h-screen bg-[#F9FAFD] flex items-center justify-center">
-        <div className="bg-white p-8 rounded-lg shadow-md text-center max-w-md">
+      <div className="min-h-screen bg-[#0F0F1A] flex items-center justify-center">
+        <div className="bg-[#151523] p-8 rounded-lg shadow-xl text-center max-w-md border border-white/10 backdrop-blur-sm">
           <div className="text-5xl mb-4">😕</div>
-          <h2 className="text-xl font-bold mb-4">{error || '광고주 정보를 찾을 수 없습니다'}</h2>
-          <p className="text-gray-600 mb-6">
+          <h2 className="text-xl font-bold mb-4 text-white">{error || '광고주 정보를 찾을 수 없습니다'}</h2>
+          <p className="text-slate-300 mb-6">
             요청하신 광고주 정보를 찾을 수 없습니다. 광고주 목록으로 돌아가 다시 시도해주세요.
           </p>
           <div className="space-y-3">
-            <Link href="/clients" className="wiz-btn inline-block">
-              광고주 목록으로 돌아가기
+            <Link href="/clients">
+              <div className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white px-4 py-3 rounded-lg transition-all duration-300 shadow-lg hover:shadow-blue-700/50 backdrop-blur-sm text-center">
+                광고주 목록으로 돌아가기
+              </div>
             </Link>
             <div>
-              <Link href="/admin/supabase" className="text-blue-600 hover:text-blue-800 text-sm inline-block mt-4">
+              <Link href="/admin/supabase" className="text-blue-300 hover:text-blue-100 text-sm inline-block mt-4 transition-colors">
                 Supabase 연결 상태 확인 및 문제 해결
               </Link>
             </div>
@@ -308,7 +310,7 @@ export default function ClientDetailPage() {
   }
   
   return (
-    <div className="min-h-screen bg-[#F9FAFD] pb-10">
+    <div className="min-h-screen bg-[#0F0F1A] pb-10">
       <Header
         title={client.name}
         description="광고주 상세 정보 및 관리 센터"
@@ -317,13 +319,13 @@ export default function ClientDetailPage() {
           <div className="flex items-center gap-2">
             <Link 
               href="/my-todos"
-              className="bg-[#4CAF50] hover:bg-[#3d8b40] text-white py-2 px-4 rounded-lg flex items-center transition-all hover:shadow"
+              className="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-500 hover:to-green-600 text-white py-2 px-4 rounded-lg flex items-center transition-all duration-300 shadow-lg hover:shadow-green-700/30 border border-green-500/30"
             >
               <span className="mr-1">✅</span> 나의 할 일 모아보기
             </Link>
             <button
               onClick={() => setIsDeleteDialogOpen(true)}
-              className="bg-red-600 hover:bg-red-700 text-white py-2 px-4 rounded-lg flex items-center transition-all hover:shadow"
+              className="bg-gradient-to-r from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 text-white py-2 px-4 rounded-lg flex items-center transition-all duration-300 shadow-lg hover:shadow-red-700/30 border border-red-500/30"
             >
               <span className="mr-1">🗑️</span> 광고주 삭제
             </button>

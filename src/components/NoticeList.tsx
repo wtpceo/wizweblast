@@ -27,47 +27,48 @@ export function NoticeList() {
   };
 
   return (
-    <div className="wiz-card mb-8 overflow-hidden">
-      <div className="px-6 py-4 border-b border-[#EEF2FB] flex justify-between items-center">
-        <h2 className="text-lg font-bold flex items-center">
-          <span role="img" aria-label="공지사항" className="mr-2">📌</span>
+    <div className="mb-8 rounded-lg border border-white/10 bg-[#151523] overflow-hidden shadow-xl hover:shadow-blue-900/20 transition-all duration-300">
+      <div className="bg-gradient-to-r from-blue-900/30 to-purple-900/30 backdrop-blur-sm px-6 py-4 border-b border-white/10 flex justify-between items-center">
+        <h2 className="text-lg font-bold flex items-center text-white">
+          <span role="img" aria-label="공지사항" className="mr-2 text-red-400">📢</span>
           공지사항
         </h2>
-        <span className="text-xs text-[#2251D1]">새로운 업데이트를 확인하세요!</span>
+        <span className="text-xs text-blue-400 hover:text-blue-300 cursor-pointer transform hover:translate-x-1 transition-transform duration-300">새로운 업데이트를 확인하세요!</span>
       </div>
       
       <div className="max-h-64 overflow-y-auto">
         {displayedNotices.length > 0 ? (
-          <ul className="divide-y divide-[#EEF2FB]">
+          <ul className="divide-y divide-slate-800/80">
             {displayedNotices.map((notice) => (
-              <li key={notice.id} className="px-6 py-4 hover:bg-[#F9FAFD] transition-all duration-200 cursor-pointer">
-                <Link href={`/notices/${notice.id}`} className="block">
+              <li key={notice.id} className="hover:bg-gradient-to-r hover:from-slate-800/40 hover:to-slate-800/10 transition-all duration-300 group">
+                <Link href={`/notices/${notice.id}`} className="block px-6 py-4">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center flex-1 truncate">
                       {notice.isFixed && (
-                        <span className="bg-[#FFEBEE] text-[#F44336] text-xs px-2 py-0.5 rounded-full mr-2 font-medium flex-shrink-0">
+                        <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-pink-950/80 text-pink-400 text-xs group-hover:bg-pink-900 group-hover:text-pink-300 transition-colors duration-300 group-hover:animate-pulse mr-2">
                           중요
                         </span>
                       )}
-                      <span className="text-sm font-medium text-gray-900 truncate">{notice.title}</span>
+                      <span className="text-sm font-medium text-slate-200 truncate group-hover:text-white transition-colors duration-300 group-hover:translate-x-1 transform">{notice.title}</span>
                     </div>
-                    <span className="text-xs text-gray-500 ml-2 flex-shrink-0">{formatDate(notice.createdAt)}</span>
+                    <span className="text-xs text-slate-500 ml-2 flex-shrink-0 group-hover:text-slate-300 transition-colors duration-300">{formatDate(notice.createdAt)}</span>
                   </div>
                 </Link>
               </li>
             ))}
           </ul>
         ) : (
-          <div className="px-6 py-8 text-center text-gray-500 flex flex-col items-center">
-            <span role="img" aria-label="공지사항 없음" className="text-3xl mb-2">🔍</span>
+          <div className="px-6 py-8 text-center text-slate-400 flex flex-col items-center">
+            <span role="img" aria-label="공지사항 없음" className="text-3xl mb-2 animate-pulse">🔍</span>
             <p>아직 공지사항이 없어요. 곧 새로운 소식을 전해드릴게요!</p>
           </div>
         )}
       </div>
       
-      <div className="px-6 py-3 border-t border-[#EEF2FB] bg-[#F9FAFD]">
-        <Link href="/notices" className="wiz-btn flex items-center justify-center w-full bg-white text-[#2251D1] font-medium hover:bg-[#EEF2FB] transition-all py-2 rounded-md border border-[#2251D1]">
-          전체보기 <span className="ml-1">→</span>
+      <div className="px-6 py-3 border-t border-slate-800/80 bg-slate-800/30">
+        <Link href="/notices" className="flex items-center justify-center w-full py-2 rounded-md border border-slate-700 text-slate-400 hover:bg-slate-800 hover:text-white transition-all duration-300 relative overflow-hidden group">
+          <span className="relative z-10 flex items-center">전체보기 <span className="ml-1 group-hover:translate-x-1 transition-transform duration-300">→</span></span>
+          <span className="absolute inset-0 bg-gradient-to-r from-blue-600/0 via-blue-600/30 to-blue-600/0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 bg-[length:200%_100%] animate-[shimmer_2s_infinite] -translate-x-full group-hover:translate-x-full"></span>
         </Link>
       </div>
     </div>

@@ -60,8 +60,8 @@ export function TodoList({
             onClick={() => setFilter('all')}
             className={`px-3 py-1.5 text-sm rounded-lg transition-colors ${
               filter === 'all' 
-                ? 'bg-[#2251D1] text-white'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/30'
+                : 'bg-slate-800/80 text-slate-300 hover:bg-slate-700/80 border border-white/10'
             }`}
           >
             전체
@@ -70,8 +70,8 @@ export function TodoList({
             onClick={() => setFilter('active')}
             className={`px-3 py-1.5 text-sm rounded-lg transition-colors ${
               filter === 'active' 
-                ? 'bg-[#4CAF50] text-white'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                ? 'bg-green-600 text-white shadow-lg shadow-green-900/30'
+                : 'bg-slate-800/80 text-slate-300 hover:bg-slate-700/80 border border-white/10'
             }`}
           >
             진행 중
@@ -80,18 +80,18 @@ export function TodoList({
             onClick={() => setFilter('completed')}
             className={`px-3 py-1.5 text-sm rounded-lg transition-colors ${
               filter === 'completed' 
-                ? 'bg-[#9E9E9E] text-white'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                ? 'bg-slate-600 text-white shadow-lg shadow-slate-900/30'
+                : 'bg-slate-800/80 text-slate-300 hover:bg-slate-700/80 border border-white/10'
             }`}
           >
             완료됨
           </button>
         </div>
         
-        <div className="bg-white rounded-lg shadow-sm p-8 text-center">
+        <div className="bg-[#151523] rounded-lg shadow-xl p-8 text-center border border-white/10">
           <div className="text-6xl mb-4">📋</div>
-          <h3 className="text-xl font-medium mb-2">할 일이 없습니다</h3>
-          <p className="text-gray-500 mb-4">
+          <h3 className="text-xl font-medium mb-2 text-white">할 일이 없습니다</h3>
+          <p className="text-slate-400 mb-4">
             {filter === 'all' 
               ? emptyMessage
               : filter === 'active'
@@ -110,8 +110,8 @@ export function TodoList({
         onClick={() => setFilter('all')}
         className={`px-3 py-1.5 text-sm rounded-lg transition-colors ${
           filter === 'all' 
-            ? 'bg-[#2251D1] text-white'
-            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+            ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/30'
+            : 'bg-slate-800/80 text-slate-300 hover:bg-slate-700/80 border border-white/10'
         }`}
       >
         전체 ({todos.length})
@@ -120,8 +120,8 @@ export function TodoList({
         onClick={() => setFilter('active')}
         className={`px-3 py-1.5 text-sm rounded-lg transition-colors ${
           filter === 'active' 
-            ? 'bg-[#4CAF50] text-white'
-            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+            ? 'bg-green-600 text-white shadow-lg shadow-green-900/30'
+            : 'bg-slate-800/80 text-slate-300 hover:bg-slate-700/80 border border-white/10'
         }`}
       >
         진행 중 ({todos.filter(t => !t.completed).length})
@@ -130,8 +130,8 @@ export function TodoList({
         onClick={() => setFilter('completed')}
         className={`px-3 py-1.5 text-sm rounded-lg transition-colors ${
           filter === 'completed' 
-            ? 'bg-[#9E9E9E] text-white'
-            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+            ? 'bg-slate-600 text-white shadow-lg shadow-slate-900/30'
+            : 'bg-slate-800/80 text-slate-300 hover:bg-slate-700/80 border border-white/10'
         }`}
       >
         완료됨 ({todos.filter(t => t.completed).length})
@@ -170,15 +170,15 @@ export function TodoList({
         const clientInfo = clientTodos[0];
         
         return (
-          <div key={clientId} className="bg-white rounded-lg shadow-sm mb-6 overflow-hidden">
+          <div key={clientId} className="bg-[#151523] rounded-lg shadow-xl mb-6 overflow-hidden border border-white/10">
             {/* 광고주 헤더 */}
-            <div className="bg-[#EEF2FB] px-6 py-4 border-b border-gray-200">
-              <h2 className="text-lg font-bold flex items-center">
+            <div className="bg-gradient-to-r from-blue-900/30 to-purple-900/30 backdrop-blur-sm px-6 py-4 border-b border-white/10">
+              <h2 className="text-lg font-bold flex items-center text-white">
                 <span className="text-xl mr-2">{clientInfo.clientIcon || '🏢'}</span>
-                <a href={`/clients/${clientId}`} className="hover:underline text-[#2251D1]">
+                <a href={`/clients/${clientId}`} className="hover:text-blue-300 transition-colors">
                   {clientInfo.clientName || '광고주'}
                 </a>
-                <span className="ml-2 text-sm font-normal text-gray-500">
+                <span className="ml-2 text-sm font-normal text-slate-400">
                   {clientTodos.length}개의 할 일
                 </span>
               </h2>

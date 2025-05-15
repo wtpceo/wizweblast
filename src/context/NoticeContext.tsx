@@ -49,6 +49,10 @@ export function NoticeProvider({ children }: { children: React.ReactNode }) {
   // 공지사항 추가
   const addNotice = async (title: string, content: string, isFixed: boolean) => {
     try {
+      console.log('공지사항 추가 시도:', { title, content, isFixed });
+      
+      // 서버 측 API를 사용하여 공지사항 추가 요청
+      // 서버 측에서 service_role 키를 사용할 수 있음
       const response = await fetch('/api/notices', {
         method: 'POST',
         headers: {
@@ -61,9 +65,22 @@ export function NoticeProvider({ children }: { children: React.ReactNode }) {
         }),
       });
       
+      console.log('응답 상태:', response.status, response.statusText);
+      
       const data = await response.json();
+      console.log('응답 데이터:', data);
       
       if (!response.ok) {
+        console.error('공지사항 추가 실패:', data.error);
+        
+        // API 오류 메시지가 RLS 정책 관련인지 확인
+        if (data.error && data.error.includes('row-level security policy')) {
+          return { 
+            success: false, 
+            error: '권한 오류: RLS 정책으로 인해 공지사항을 추가할 수 없습니다. 관리자에게 문의하세요.'
+          };
+        }
+        
         return { success: false, error: data.error || '공지사항 추가에 실패했습니다.' };
       }
       

@@ -403,43 +403,43 @@ export function ClientInfo({ client, onContractUpdate }: ClientInfoProps) {
   };
   
   return (
-    <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+    <div className="bg-[#151523] rounded-lg shadow-xl overflow-hidden border border-white/10">
       {/* 섹션 헤더 */}
-      <div className="bg-[#EEF2FB] px-6 py-4 border-b border-gray-200">
-        <h2 className="text-lg font-bold flex items-center">
+      <div className="bg-gradient-to-r from-blue-900/30 to-purple-900/30 backdrop-blur-sm px-6 py-4 border-b border-white/10">
+        <h2 className="text-lg font-bold flex items-center text-white">
           <span className="text-xl mr-2">📋</span> 광고주 정보
         </h2>
       </div>
       
       {/* 정보 섹션 */}
-      <div className="p-6 space-y-6">
+      <div className="p-6 space-y-6 text-white">
         {/* 기본 정보 */}
         <div>
-          <h3 className="text-sm font-semibold text-gray-500 mb-3">기본 정보</h3>
+          <h3 className="text-sm font-semibold text-slate-400 mb-3">기본 정보</h3>
           
           <div className="space-y-4">
             {/* 업체명 */}
             <div className="flex justify-between">
-              <span className="text-gray-600">업체명:</span>
-              <span className="font-medium">{client.name}</span>
+              <span className="text-slate-300">업체명:</span>
+              <span className="font-medium text-white">{client.name}</span>
             </div>
             
             {/* 전화번호 */}
             <div className="flex justify-between">
-              <span className="text-gray-600">전화번호:</span>
-              <span className="font-medium">{client.phoneNumber || '정보 없음'}</span>
+              <span className="text-slate-300">전화번호:</span>
+              <span className="font-medium text-white">{client.phoneNumber || '정보 없음'}</span>
             </div>
             
             {/* 네이버 플레이스 */}
             <div className="flex justify-between">
-              <span className="text-gray-600">네이버 플레이스:</span>
+              <span className="text-slate-300">네이버 플레이스:</span>
               <span className="font-medium">
                 {client.naverPlaceUrl ? (
                   <a 
                     href={client.naverPlaceUrl} 
                     target="_blank" 
                     rel="noopener noreferrer"
-                    className="text-blue-500 hover:underline"
+                    className="text-blue-300 hover:text-blue-100 transition-colors"
                   >
                     바로가기
                   </a>
@@ -451,7 +451,7 @@ export function ClientInfo({ client, onContractUpdate }: ClientInfoProps) {
             
             {/* 최근 활동일 */}
             <div className="flex justify-between">
-              <span className="text-gray-600">최근 활동일:</span>
+              <span className="text-slate-300">최근 활동일:</span>
               {client.last_activity_at ? (
                 (() => {
                   const date = new Date(client.last_activity_at);
@@ -464,14 +464,14 @@ export function ClientInfo({ client, onContractUpdate }: ClientInfoProps) {
                   const minutes = String(date.getMinutes()).padStart(2, '0');
                   
                   return (
-                    <span className={`font-medium ${diffDays >= 5 ? 'text-[#FF9800]' : ''}`}>
+                    <span className={`font-medium ${diffDays >= 5 ? 'text-amber-300' : 'text-white'}`}>
                       {`${date.getFullYear()}.${String(date.getMonth() + 1).padStart(2, '0')}.${String(date.getDate()).padStart(2, '0')} ${hours}:${minutes}`}
                       {diffDays >= 5 ? ` (${diffDays}일 전)` : ''}
                     </span>
                   );
                 })()
               ) : (
-                <span className="text-gray-400">정보 없음</span>
+                <span className="text-slate-400">정보 없음</span>
               )}
             </div>
           </div>
@@ -480,11 +480,11 @@ export function ClientInfo({ client, onContractUpdate }: ClientInfoProps) {
         {/* 계약 정보 */}
         <div>
           <div className="flex justify-between items-center mb-3">
-            <h3 className="text-sm font-semibold text-gray-500">계약 정보</h3>
+            <h3 className="text-sm font-semibold text-slate-400">계약 정보</h3>
             {!isEditing ? (
               <button 
                 onClick={() => setIsEditing(true)} 
-                className="text-xs bg-[#EEF2FB] text-[#2251D1] px-2 py-1 rounded hover:bg-[#DCE4F9] transition-colors"
+                className="text-xs bg-blue-900/30 text-blue-300 px-2 py-1 rounded hover:bg-blue-800/40 transition-colors border border-blue-500/30"
                 aria-label="계약 정보 수정"
                 title="수정하기 (편집 모드에서 Alt+S로 저장, Esc로 취소)"
               >
@@ -494,7 +494,7 @@ export function ClientInfo({ client, onContractUpdate }: ClientInfoProps) {
               <div className="flex space-x-2">
                 <button 
                   onClick={() => setIsEditing(false)} 
-                  className="text-xs bg-gray-200 text-gray-700 px-2 py-1 rounded hover:bg-gray-300 transition-colors"
+                  className="text-xs bg-white/10 text-white px-2 py-1 rounded hover:bg-white/20 transition-colors"
                   aria-label="계약 정보 수정 취소"
                   title="취소 (Esc)"
                 >
@@ -502,7 +502,7 @@ export function ClientInfo({ client, onContractUpdate }: ClientInfoProps) {
                 </button>
                 <button 
                   onClick={handleSaveContract} 
-                  className="text-xs bg-[#2251D1] text-white px-2 py-1 rounded hover:bg-[#1A41B6] transition-colors"
+                  className="text-xs bg-blue-600 text-white px-2 py-1 rounded hover:bg-blue-500 transition-colors"
                   aria-label="계약 정보 저장"
                   title="저장 (Alt+S)"
                 >
@@ -516,7 +516,7 @@ export function ClientInfo({ client, onContractUpdate }: ClientInfoProps) {
             <div className="space-y-4 mt-4">
               {/* 계약 시작일 (편집 모드) */}
               <div>
-                <label htmlFor="contractStart" className="block text-sm text-gray-600 mb-1">
+                <label htmlFor="contractStart" className="block text-sm text-slate-300 mb-1">
                   계약 시작일
                 </label>
                 <div className="flex">
@@ -526,36 +526,37 @@ export function ClientInfo({ client, onContractUpdate }: ClientInfoProps) {
                     value={startDateInput}
                     onChange={handleStartDateInputChange}
                     placeholder="YYYY-MM-DD"
-                    className={`flex-1 border ${startDateInvalid ? 'border-red-500' : 'border-gray-300'} rounded-l-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#2251D1]`}
+                    className={`flex-1 border ${startDateInvalid ? 'border-red-500' : 'border-slate-600'} rounded-l-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-[#1e1e30] text-white`}
                   />
                   <Popover>
                     <PopoverTrigger asChild>
                       <button
                         type="button"
-                        className="bg-[#EEF2FB] p-2 rounded-r-lg border border-l-0 border-gray-300"
+                        className="bg-blue-900/30 p-2 rounded-r-lg border border-l-0 border-slate-600 text-blue-300"
                         aria-label="달력에서 날짜 선택"
                       >
-                        <CalendarIcon className="h-5 w-5 text-[#2251D1]" />
+                        <CalendarIcon className="h-5 w-5" />
                       </button>
                     </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0">
+                    <PopoverContent className="w-auto p-0 bg-[#1e1e30] border border-slate-600">
                       <Calendar
                         mode="single"
                         selected={startDate}
                         onSelect={handleStartDateSelect}
                         locale={ko}
+                        className="bg-[#1e1e30] text-white"
                       />
                     </PopoverContent>
                   </Popover>
                 </div>
                 {startDateInvalid && (
-                  <p className="text-red-500 text-xs mt-1">유효한 날짜 형식이 아닙니다 (YYYY-MM-DD)</p>
+                  <p className="text-red-400 text-xs mt-1">유효한 날짜 형식이 아닙니다 (YYYY-MM-DD)</p>
                 )}
               </div>
               
               {/* 계약 종료일 (편집 모드) */}
               <div>
-                <label htmlFor="contractEnd" className="block text-sm text-gray-600 mb-1">
+                <label htmlFor="contractEnd" className="block text-sm text-slate-300 mb-1">
                   계약 종료일
                 </label>
                 <div className="flex">
@@ -565,30 +566,31 @@ export function ClientInfo({ client, onContractUpdate }: ClientInfoProps) {
                     value={endDateInput}
                     onChange={handleEndDateInputChange}
                     placeholder="YYYY-MM-DD"
-                    className={`flex-1 border ${endDateInvalid ? 'border-red-500' : 'border-gray-300'} rounded-l-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#2251D1]`}
+                    className={`flex-1 border ${endDateInvalid ? 'border-red-500' : 'border-slate-600'} rounded-l-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-[#1e1e30] text-white`}
                   />
                   <Popover>
                     <PopoverTrigger asChild>
                       <button
                         type="button"
-                        className="bg-[#EEF2FB] p-2 rounded-r-lg border border-l-0 border-gray-300"
+                        className="bg-blue-900/30 p-2 rounded-r-lg border border-l-0 border-slate-600 text-blue-300"
                         aria-label="달력에서 날짜 선택"
                       >
-                        <CalendarIcon className="h-5 w-5 text-[#2251D1]" />
+                        <CalendarIcon className="h-5 w-5" />
                       </button>
                     </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0">
+                    <PopoverContent className="w-auto p-0 bg-[#1e1e30] border border-slate-600">
                       <Calendar
                         mode="single"
                         selected={endDate}
                         onSelect={handleEndDateSelect}
                         locale={ko}
+                        className="bg-[#1e1e30] text-white"
                       />
                     </PopoverContent>
                   </Popover>
                 </div>
                 {endDateInvalid && (
-                  <p className="text-red-500 text-xs mt-1">유효한 날짜 형식이 아닙니다 (YYYY-MM-DD)</p>
+                  <p className="text-red-400 text-xs mt-1">유효한 날짜 형식이 아닙니다 (YYYY-MM-DD)</p>
                 )}
               </div>
             </div>
@@ -596,8 +598,8 @@ export function ClientInfo({ client, onContractUpdate }: ClientInfoProps) {
             <div className="space-y-4">
               {/* 계약 기간 (보기 모드) */}
               <div className="flex justify-between">
-                <span className="text-gray-600">계약 기간:</span>
-                <span className="font-medium">
+                <span className="text-slate-300">계약 기간:</span>
+                <span className="font-medium text-white">
                   {client.contractStart && client.contractEnd
                     ? `${format(new Date(client.contractStart), 'yyyy.MM.dd')} ~ ${format(new Date(client.contractEnd), 'yyyy.MM.dd')}`
                     : '정보 없음'}
@@ -610,10 +612,10 @@ export function ClientInfo({ client, onContractUpdate }: ClientInfoProps) {
                   <span
                     className={`text-xs px-3 py-1.5 rounded-full ${
                       daysRemaining <= 7 
-                        ? 'bg-[#FFEBEE] text-[#F44336]' 
+                        ? 'bg-red-900/30 text-red-300 border border-red-500/30' 
                         : daysRemaining <= 30 
-                          ? 'bg-[#FFF8E1] text-[#FFC107]' 
-                          : 'bg-[#E8F5E9] text-[#4CAF50]'
+                          ? 'bg-amber-900/30 text-amber-300 border border-amber-500/30' 
+                          : 'bg-green-900/30 text-green-300 border border-green-500/30'
                     }`}
                   >
                     {daysRemaining > 0 
@@ -629,11 +631,11 @@ export function ClientInfo({ client, onContractUpdate }: ClientInfoProps) {
         {/* 서비스 이용 현황 */}
         <div>
           <div className="flex justify-between items-center mb-3">
-            <h3 className="text-sm font-semibold text-gray-500">서비스 이용 현황</h3>
+            <h3 className="text-sm font-semibold text-slate-400">서비스 이용 현황</h3>
             {!isServiceEditing ? (
               <button 
                 onClick={() => setIsServiceEditing(true)} 
-                className="text-xs bg-[#EEF2FB] text-[#2251D1] px-2 py-1 rounded hover:bg-[#DCE4F9] transition-colors"
+                className="text-xs bg-blue-900/30 text-blue-300 px-2 py-1 rounded hover:bg-blue-800/40 transition-colors border border-blue-500/30"
                 aria-label="서비스 이용 현황 수정"
                 title="수정하기 (편집 모드에서 Alt+S로 저장, Esc로 취소)"
               >
@@ -643,7 +645,7 @@ export function ClientInfo({ client, onContractUpdate }: ClientInfoProps) {
               <div className="flex space-x-2">
                 <button 
                   onClick={() => setIsServiceEditing(false)} 
-                  className="text-xs bg-gray-200 text-gray-700 px-2 py-1 rounded hover:bg-gray-300 transition-colors"
+                  className="text-xs bg-white/10 text-white px-2 py-1 rounded hover:bg-white/20 transition-colors"
                   aria-label="서비스 이용 현황 수정 취소"
                   title="취소 (Esc)"
                 >
@@ -651,7 +653,7 @@ export function ClientInfo({ client, onContractUpdate }: ClientInfoProps) {
                 </button>
                 <button 
                   onClick={handleSaveServices} 
-                  className="text-xs bg-[#2251D1] text-white px-2 py-1 rounded hover:bg-[#1A41B6] transition-colors"
+                  className="text-xs bg-blue-600 text-white px-2 py-1 rounded hover:bg-blue-500 transition-colors"
                   aria-label="서비스 이용 현황 저장"
                   title="저장 (Alt+S)"
                 >
@@ -665,7 +667,7 @@ export function ClientInfo({ client, onContractUpdate }: ClientInfoProps) {
             <div className="space-y-4 mb-4">
               {/* 업종 정보 */}
               <div>
-                <label htmlFor="category" className="block text-sm text-gray-600 mb-1">
+                <label htmlFor="category" className="block text-sm text-slate-300 mb-1">
                   업종 정보
                 </label>
                 <input
@@ -674,9 +676,9 @@ export function ClientInfo({ client, onContractUpdate }: ClientInfoProps) {
                   value={category}
                   onChange={(e) => setCategory(e.target.value)}
                   placeholder="예: 요리주점, 한식, 카페 등"
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#2251D1]"
+                  className="w-full border border-slate-600 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-[#1e1e30] text-white"
                 />
-                <p className="text-xs text-gray-500 mt-1">
+                <p className="text-xs text-slate-400 mt-1">
                   업체의 카테고리를 입력하세요 (예: 요리주점, 한식, 카페 등)
                 </p>
               </div>
@@ -688,9 +690,9 @@ export function ClientInfo({ client, onContractUpdate }: ClientInfoProps) {
                   id="usesCoupon"
                   checked={services.usesCoupon}
                   onChange={(e) => setServices({...services, usesCoupon: e.target.checked})}
-                  className="h-4 w-4 text-[#2251D1] rounded border-gray-300 focus:ring-[#2251D1]"
+                  className="h-4 w-4 text-blue-500 rounded border-slate-600 focus:ring-blue-500 bg-[#1e1e30]"
                 />
-                <label htmlFor="usesCoupon" className="text-sm text-gray-600">
+                <label htmlFor="usesCoupon" className="text-sm text-slate-300">
                   쿠폰 사용
                 </label>
               </div>
@@ -702,9 +704,9 @@ export function ClientInfo({ client, onContractUpdate }: ClientInfoProps) {
                   id="publishesNews"
                   checked={services.publishesNews}
                   onChange={(e) => setServices({...services, publishesNews: e.target.checked})}
-                  className="h-4 w-4 text-[#2251D1] rounded border-gray-300 focus:ring-[#2251D1]"
+                  className="h-4 w-4 text-blue-500 rounded border-slate-600 focus:ring-blue-500 bg-[#1e1e30]"
                 />
-                <label htmlFor="publishesNews" className="text-sm text-gray-600">
+                <label htmlFor="publishesNews" className="text-sm text-slate-300">
                   소식 발행
                 </label>
               </div>
@@ -716,9 +718,9 @@ export function ClientInfo({ client, onContractUpdate }: ClientInfoProps) {
                   id="usesReservation"
                   checked={services.usesReservation}
                   onChange={(e) => setServices({...services, usesReservation: e.target.checked})}
-                  className="h-4 w-4 text-[#2251D1] rounded border-gray-300 focus:ring-[#2251D1]"
+                  className="h-4 w-4 text-blue-500 rounded border-slate-600 focus:ring-blue-500 bg-[#1e1e30]"
                 />
-                <label htmlFor="usesReservation" className="text-sm text-gray-600">
+                <label htmlFor="usesReservation" className="text-sm text-slate-300">
                   예약 시스템 사용
                 </label>
               </div>
@@ -728,21 +730,21 @@ export function ClientInfo({ client, onContractUpdate }: ClientInfoProps) {
               {/* 업종 표시 */}
               {existingCategory && (
                 <div className="mb-3">
-                  <span className="text-gray-600">업종:</span>
-                  <span className="font-medium ml-2">{category}</span>
+                  <span className="text-slate-300">업종:</span>
+                  <span className="font-medium ml-2 text-white">{category}</span>
                 </div>
               )}
               
               <div className="flex flex-wrap gap-2">
-                <div className={`text-xs px-3 py-1.5 rounded-full flex items-center ${client.usesCoupon ? 'bg-[#E3F2FD] text-[#2196F3]' : 'bg-gray-100 text-gray-500'}`}>
+                <div className={`text-xs px-3 py-1.5 rounded-full flex items-center ${client.usesCoupon ? 'bg-blue-900/30 text-blue-300 border border-blue-500/30' : 'bg-slate-800/50 text-slate-400 border border-slate-700'}`}>
                   <span className="mr-1">🎟️</span>
                   {client.usesCoupon ? '쿠폰 사용중' : '쿠폰 미사용'}
                 </div>
-                <div className={`text-xs px-3 py-1.5 rounded-full flex items-center ${client.publishesNews ? 'bg-[#E8F5E9] text-[#4CAF50]' : 'bg-gray-100 text-gray-500'}`}>
+                <div className={`text-xs px-3 py-1.5 rounded-full flex items-center ${client.publishesNews ? 'bg-green-900/30 text-green-300 border border-green-500/30' : 'bg-slate-800/50 text-slate-400 border border-slate-700'}`}>
                   <span className="mr-1">📰</span>
                   {client.publishesNews ? '소식 발행중' : '소식 미발행'}
                 </div>
-                <div className={`text-xs px-3 py-1.5 rounded-full flex items-center ${client.usesReservation ? 'bg-[#F3E5F5] text-[#9C27B0]' : 'bg-gray-100 text-gray-500'}`}>
+                <div className={`text-xs px-3 py-1.5 rounded-full flex items-center ${client.usesReservation ? 'bg-purple-900/30 text-purple-300 border border-purple-500/30' : 'bg-slate-800/50 text-slate-400 border border-slate-700'}`}>
                   <span className="mr-1">📅</span>
                   {client.usesReservation ? '예약 사용중' : '예약 미사용'}
                 </div>
@@ -754,29 +756,29 @@ export function ClientInfo({ client, onContractUpdate }: ClientInfoProps) {
         {/* 상태 태그 */}
         {client.statusTags.length > 0 && (
           <div>
-            <h3 className="text-sm font-semibold text-gray-500 mb-3">상태</h3>
+            <h3 className="text-sm font-semibold text-slate-400 mb-3">상태</h3>
             
             <div data-status-tags-container className="flex flex-wrap gap-2">
               {client.statusTags.includes('종료 임박') && (
-                <div className="bg-[#FFF8E1] text-[#FFC107] border border-[#FFC107] text-xs px-3 py-1.5 rounded-full flex items-center">
+                <div className="bg-amber-900/30 text-amber-300 border border-amber-500/30 text-xs px-3 py-1.5 rounded-full flex items-center">
                   <span className="mr-1">⏰</span>
                   종료 임박
                 </div>
               )}
               {client.statusTags.includes('관리 소홀') && (
-                <div className="bg-[#FFF3E0] text-[#FF9800] border border-[#FF9800] text-xs px-3 py-1.5 rounded-full flex items-center">
+                <div className="bg-orange-900/30 text-orange-300 border border-orange-500/30 text-xs px-3 py-1.5 rounded-full flex items-center">
                   <span className="mr-1">⚠️</span>
                   관리 소홀
                 </div>
               )}
               {client.statusTags.includes('민원 중') && (
-                <div className="bg-[#FFEBEE] text-[#F44336] border border-[#F44336] text-xs px-3 py-1.5 rounded-full flex items-center">
+                <div className="bg-red-900/30 text-red-300 border border-red-500/30 text-xs px-3 py-1.5 rounded-full flex items-center">
                   <span className="mr-1">🔔</span>
                   민원 중
                 </div>
               )}
               {client.statusTags.includes('크롤링 완료') && (
-                <div className="bg-[#E3F2FD] text-[#2196F3] border border-[#2196F3] text-xs px-3 py-1.5 rounded-full flex items-center">
+                <div className="bg-blue-900/30 text-blue-300 border border-blue-500/30 text-xs px-3 py-1.5 rounded-full flex items-center">
                   <span className="mr-1">🔄</span>
                   크롤링 완료
                 </div>
@@ -786,10 +788,10 @@ export function ClientInfo({ client, onContractUpdate }: ClientInfoProps) {
         )}
         
         {/* 정보 가져오기 버튼 (향후 확장용) */}
-        <div className="pt-4 border-t border-gray-200">
+        <div className="pt-4 border-t border-white/10">
           <button 
             data-scrape-button
-            className="w-full py-2 bg-[#EEF2FB] text-[#2251D1] rounded-lg font-medium hover:bg-[#DCE4F9] transition-colors flex items-center justify-center"
+            className="w-full py-2 bg-gradient-to-r from-blue-800/40 to-indigo-800/40 text-blue-300 rounded-lg font-medium hover:from-blue-800/60 hover:to-indigo-800/60 transition-all duration-300 flex items-center justify-center border border-blue-500/30"
             onClick={handleScrapeInfo}
           >
             <span className="mr-2">🔄</span>

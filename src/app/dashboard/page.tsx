@@ -1,204 +1,172 @@
-'use client';
+"use client"
 
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { useUser, SignInButton, SignUpButton } from '@clerk/nextjs';
-import { DashboardStats } from "@/components/DashboardStats";
-import { NoticeList } from "@/components/NoticeList";
-import { DashboardActions } from "@/components/DashboardActions";
-import { EmailVerification } from "@/components/EmailVerification";
-import { type DashboardStats as DashboardStatsType } from "@/lib/mock-data";
-import { Header } from '@/components/Header';
-import Link from 'next/link';
+import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
+import { useUser } from "@clerk/nextjs"
+import { AnimatedBackground } from "@/components/dashboard/AnimatedBackground"
+import { DashboardHeader } from "@/components/dashboard/DashboardHeader"
+import { StatsCards } from "@/components/dashboard/StatsCards"
+import { Announcements } from "@/components/dashboard/Announcements"
+import { FeatureCards } from "@/components/dashboard/FeatureCards"
+import { TipSection } from "@/components/dashboard/TipSection"
 
 export default function Dashboard() {
-  const router = useRouter();
-  const { isSignedIn, isLoaded } = useUser();
-  const [stats, setStats] = useState<DashboardStatsType>({
-    totalClients: 0,
-    nearExpiry: 0,
-    poorManaged: 0,
-    complaintsOngoing: 0
-  });
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const router = useRouter()
+  const { isSignedIn, isLoaded } = useUser()
+  const [progress, setProgress] = useState(13)
+  const [isPageLoaded, setIsPageLoaded] = useState(false)
 
-  // 임의의 재미있는 인사말 목록
-  const greetings = [
-    "오늘도 위즈하게 시작해볼까요? ✨",
-    "새로운 하루, 새로운 성과를 만들어보세요! 🚀",
-    "업무가 즐거워지는 마법, WIZ와 함께! 🪄",
-    "우리의 협업이 멋진 결과를 만들어요! 🤝",
-    "오늘의 업무, 게임처럼 즐겁게! 🎮"
-  ];
-
-  // 통계 데이터 가져오기
-  const fetchDashboardStats = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      
-      const response = await fetch('/api/dashboard/stats');
-      
-      if (!response.ok) {
-        throw new Error('통계 데이터를 불러오는데 실패했습니다.');
-      }
-      
-      const data = await response.json();
-      setStats(data);
-      
-      // 관리 소홀 광고주 ID 목록을 로컬 스토리지에 저장
-      if (data.poorManagedClientIds && Array.isArray(data.poorManagedClientIds)) {
-        try {
-          localStorage.setItem('wizweblast_poor_managed_clients', JSON.stringify(data.poorManagedClientIds));
-          console.log('관리 소홀 광고주 ID 목록을 로컬 스토리지에 저장했습니다:', data.poorManagedClientIds.length + '개');
-        } catch (storageErr) {
-          console.error('로컬 스토리지 저장 오류:', storageErr);
-        }
-      }
-    } catch (err) {
-      console.error('대시보드 통계 로드 오류:', err);
-      setError('통계 데이터를 불러오는데 문제가 발생했습니다.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // 페이지 로드 시 데이터 가져오기
+  // 인증 확인 및 리다이렉트
   useEffect(() => {
-    if (isSignedIn) {
-      fetchDashboardStats();
+    if (isLoaded && !isSignedIn) {
+      router.push('/')
     }
-  }, [isSignedIn]);
+  }, [isSignedIn, isLoaded, router])
 
-  // 랜덤 인사말 선택
-  const randomGreeting = greetings[Math.floor(Math.random() * greetings.length)];
+  useEffect(() => {
+    // 프로그레스 업데이트
+    const timer = setTimeout(() => setProgress(66), 500)
+    
+    // 페이지 로드 애니메이션
+    const loadTimer = setTimeout(() => setIsPageLoaded(true), 100)
+    
+    return () => {
+      clearTimeout(timer)
+      clearTimeout(loadTimer)
+    }
+  }, [])
 
   // 로딩 중일 때 표시할 화면
   if (!isLoaded) {
     return (
-      <div className="min-h-screen bg-[#F9FAFD] flex items-center justify-center">
+      <div className="min-h-screen bg-[#0F0F19] flex items-center justify-center">
         <div className="text-center">
-          <div className="w-12 h-12 rounded-full border-4 border-[#2251D1] border-t-transparent animate-spin mb-4 mx-auto"></div>
-          <p className="text-lg text-[#2251D1] font-medium">로딩 중...</p>
+          <div className="w-12 h-12 rounded-full border-4 border-blue-500 border-t-transparent animate-spin mb-4 mx-auto"></div>
+          <p className="text-lg text-blue-400 font-medium">로딩 중...</p>
         </div>
       </div>
-    );
-  }
-
-  // 로그인되지 않은 사용자를 위한 화면
-  if (!isSignedIn) {
-    return (
-      <div className="min-h-screen bg-[#F9FAFD]">
-        <Header
-          title="WIZ WORKS"
-          description="광고주 관리 시스템"
-          icon="🚀"
-          actions={
-            <div className="flex items-center gap-2">
-              <SignInButton mode="modal">
-                <button className="bg-white text-[#2251D1] px-4 py-2 rounded-lg hover:bg-opacity-90 transition-all duration-200 flex items-center text-sm font-medium shadow-sm hover:shadow">
-                  <span className="mr-2">🔑</span> 로그인
-                </button>
-              </SignInButton>
-              <SignUpButton mode="modal">
-                <button className="bg-[#2251D1] text-white px-4 py-2 rounded-lg hover:bg-[#1A41B6] transition-all duration-200 flex items-center text-sm font-medium shadow-sm hover:shadow">
-                  <span className="mr-2">✨</span> 회원가입
-                </button>
-              </SignUpButton>
-            </div>
-          }
-        />
-
-        <div className="container mx-auto px-4 py-12">
-          <div className="max-w-3xl mx-auto text-center">
-            <h2 className="text-4xl font-bold text-gray-900 mb-6">
-              대시보드에 접근하려면 로그인이 필요합니다
-            </h2>
-            <p className="text-xl text-gray-600 mb-8">
-              WIZ WORKS의 모든 기능을 이용하려면 로그인해주세요.
-              아직 계정이 없다면 지금 바로 회원가입하세요!
-            </p>
-            
-            <div className="flex justify-center gap-4">
-              <SignInButton mode="modal">
-                <button className="bg-[#2251D1] text-white px-8 py-3 rounded-lg hover:bg-[#1A41B6] transition-all duration-200 flex items-center text-lg font-medium shadow-sm hover:shadow">
-                  <span className="mr-2">🔑</span> 로그인하기
-                </button>
-              </SignInButton>
-              <SignUpButton mode="modal">
-                <button className="bg-white text-[#2251D1] px-8 py-3 rounded-lg hover:bg-opacity-90 transition-all duration-200 flex items-center text-lg font-medium shadow-sm hover:shadow border border-[#2251D1]">
-                  <span className="mr-2">✨</span> 회원가입하기
-                </button>
-              </SignUpButton>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
+    )
   }
 
   // 로그인된 사용자를 위한 대시보드
   return (
-    <div className="min-h-screen bg-[#F9FAFD]">
-      <Header
-        title="WIZ WORKS 대시보드"
-        description={randomGreeting}
-        icon="🌟"
-        actions={
-          <Link 
-            href="/my-todos"
-            className="bg-white text-[#2251D1] px-4 py-2 rounded-lg hover:bg-opacity-90 transition-all duration-200 flex items-center text-sm font-medium shadow-sm hover:shadow"
-          >
-            <span className="mr-2">✅</span> 나의 할 일 모아보기
-          </Link>
-        }
-      />
-      
-      <div className="container mx-auto px-4 py-8">
-        {/* 이메일 검증 알림 */}
-        <EmailVerification />
-        
-        {/* 오류 메시지 표시 */}
-        {error && (
-          <div className="my-4 p-4 bg-red-50 border-l-4 border-red-500 text-red-700 rounded">
-            <p>{error}</p>
-            <button 
-              onClick={fetchDashboardStats}
-              className="text-sm underline mt-2"
-            >
-              다시 시도하기
-            </button>
-          </div>
-        )}
-        
-        {/* 상단 통계 카드 */}
-        {loading ? (
-          <div className="h-32 flex items-center justify-center my-6">
-            <div className="w-10 h-10 rounded-full border-4 border-[#2251D1] border-t-transparent animate-spin"></div>
-          </div>
-        ) : (
-          <DashboardStats stats={stats} />
-        )}
-        
-        {/* 공지사항 */}
-        <NoticeList />
-        
-        {/* 기능 바로가기 */}
-        <DashboardActions />
-        
-        {/* 하단 팁 섹션 */}
-        <div className="mt-8 bg-[#EEF2FB] rounded-lg p-4 flex items-start border-l-4 border-[#2251D1]">
-          <span role="img" aria-label="팁" className="text-2xl mr-3 mt-1">💡</span>
-          <div>
-            <h3 className="font-medium mb-1">오늘의 팁</h3>
-            <p className="text-sm text-gray-600">
-              종료 임박 고객에게 미리 연락하면 재계약률이 30% 높아진다는 사실, 알고 계셨나요?
-              <a href="#" className="text-[#2251D1] ml-2 hover:underline">더 많은 팁 보기 →</a>
-            </p>
+    <div className="flex min-h-screen flex-col bg-[#0F0F19] text-slate-200 relative overflow-hidden">
+      {/* 페이지 로드 애니메이션 */}
+      <div className={`fixed inset-0 z-50 bg-[#0F0F19] flex items-center justify-center transition-opacity duration-1000 ${isPageLoaded ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
+        <div className="relative">
+          <div className="w-20 h-20 rounded-full border-4 border-purple-500/30 border-t-purple-500 animate-spin"></div>
+          <div className="absolute inset-0 flex items-center justify-center">
+            <span className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-purple-400 to-pink-400">WIZ</span>
           </div>
         </div>
       </div>
+      
+      {/* 애니메이션 배경 */}
+      <AnimatedBackground />
+      
+      {/* 헤더 */}
+      <DashboardHeader />
+
+      {/* 메인 컨텐츠 */}
+      <main className={`flex-1 p-6 pt-4 relative z-1 transform transition-all duration-1000 ${isPageLoaded ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0'}`}>
+        {/* 이메일 인증 상태 */}
+        <div className="mb-6 rounded-lg border border-slate-800 bg-[#151523] p-4 shadow-lg relative overflow-hidden group hover:border-purple-500/30 transition-all duration-500 hover:shadow-lg hover:shadow-purple-500/10">
+          <div className="absolute inset-0 bg-gradient-to-r from-slate-900/80 to-slate-900/20 group-hover:from-slate-900/70 group-hover:to-purple-900/10 transition-all duration-500"></div>
+          <div className="absolute -right-24 -bottom-24 w-64 h-64 bg-purple-500/5 rounded-full blur-3xl group-hover:bg-purple-500/10 group-hover:scale-110 transition-all duration-700"></div>
+          
+          <div className="relative flex items-center justify-between">
+            <div className="flex flex-col gap-2">
+              <div className="flex items-center gap-2">
+                <span className="relative">
+                  <span className="absolute -inset-2 bg-gradient-to-r from-green-500 to-emerald-500 rounded-full opacity-0 group-hover:opacity-70 group-hover:animate-pulse blur transition-all duration-700"></span>
+                  <span className="relative inline-flex items-center justify-center w-8 h-8 rounded-full bg-gradient-to-br from-green-500 to-emerald-500 text-white shadow-inner shadow-white/10">
+                    ✓
+                  </span>
+                </span>
+                <h2 className="text-lg font-semibold text-slate-200 group-hover:text-white transition-colors duration-300">이메일 인증</h2>
+              </div>
+              <p className="text-sm text-slate-400 group-hover:text-slate-300 transition-colors duration-300 ml-10">
+                현재 상태: <span className="text-green-400 font-medium group-hover:text-green-300 transition-colors duration-300">인증됨</span>
+              </p>
+            </div>
+            
+            <div className="relative">
+              <div className="w-full h-2 bg-slate-700/50 rounded-full overflow-hidden">
+                <div 
+                  className="h-full bg-gradient-to-r from-green-500 to-emerald-400 rounded-full transition-all duration-1000"
+                  style={{ width: `${progress}%` }}
+                ></div>
+              </div>
+              <span className="absolute right-0 -bottom-6 text-xs text-slate-500 group-hover:text-slate-400 transition-colors duration-300">{progress}% 완료</span>
+            </div>
+          </div>
+        </div>
+
+        {/* 통계 카드 */}
+        <StatsCards />
+
+        {/* 공지사항 섹션 */}
+        <Announcements />
+
+        {/* 기능 카드 */}
+        <FeatureCards />
+
+        {/* 팁 섹션 */}
+        <TipSection />
+      </main>
+
+      {/* 글로벌 애니메이션 스타일 */}
+      <style jsx global>{`
+        @keyframes float {
+          0% { transform: translateY(0px) rotate(0deg); }
+          50% { transform: translateY(-20px) rotate(2deg); }
+          100% { transform: translateY(0px) rotate(0deg); }
+        }
+
+        @keyframes floatReverse {
+          0% { transform: translateY(0px) rotate(0deg); }
+          50% { transform: translateY(-15px) rotate(-2deg); }
+          100% { transform: translateY(0px) rotate(0deg); }
+        }
+
+        @keyframes pulse {
+          0% { box-shadow: 0 0 0 0 rgba(147, 51, 234, 0.7); }
+          70% { box-shadow: 0 0 0 15px rgba(147, 51, 234, 0); }
+          100% { box-shadow: 0 0 0 0 rgba(147, 51, 234, 0); }
+        }
+
+        @keyframes borderGlow {
+          0% { border-color: rgba(124, 58, 237, 0.5); box-shadow: 0 0 5px rgba(124, 58, 237, 0.5); }
+          50% { border-color: rgba(236, 72, 153, 0.8); box-shadow: 0 0 15px rgba(236, 72, 153, 0.8); }
+          100% { border-color: rgba(124, 58, 237, 0.5); box-shadow: 0 0 5px rgba(124, 58, 237, 0.5); }
+        }
+
+        @keyframes shimmer {
+          0% { background-position: -200% 0; }
+          100% { background-position: 200% 0; }
+        }
+
+        @keyframes aurora {
+          0% { background-position: 0% 50%; }
+          50% { background-position: 100% 50%; }
+          100% { background-position: 0% 50%; }
+        }
+
+        @keyframes bounce {
+          0%, 100% { transform: translateY(0); }
+          50% { transform: translateY(-10px); }
+        }
+
+        @keyframes ripple {
+          0% { transform: scale(0.8); opacity: 1; }
+          100% { transform: scale(2.4); opacity: 0; }
+        }
+
+        @keyframes rotate {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+      `}</style>
     </div>
-  );
+  )
 } 

@@ -782,15 +782,15 @@ export function ClientTabs({ client, onClientUpdate, activeTab: externalActiveTa
   }, [client.id]);
   
   return (
-    <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+    <div className="bg-[#151523] rounded-lg shadow-xl overflow-hidden border border-white/10">
       {/* 탭 헤더 */}
-      <div className="border-b border-gray-200">
+      <div className="border-b border-white/10 bg-gradient-to-r from-blue-900/20 to-purple-900/20 backdrop-blur-sm">
         <nav className="flex">
           <button
             className={`px-4 py-4 font-medium text-sm flex items-center border-b-2 ${
               currentActiveTab === 'info'
-                ? 'border-[#2251D1] text-[#2251D1]'
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                ? 'border-blue-500 text-blue-300'
+                : 'border-transparent text-slate-400 hover:text-white hover:border-white/30'
             }`}
             onClick={() => handleTabChange('info')}
           >
@@ -801,8 +801,8 @@ export function ClientTabs({ client, onClientUpdate, activeTab: externalActiveTa
           <button
             className={`px-4 py-4 font-medium text-sm flex items-center border-b-2 ${
               currentActiveTab === 'todos'
-                ? 'border-[#2251D1] text-[#2251D1]'
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                ? 'border-green-500 text-green-300'
+                : 'border-transparent text-slate-400 hover:text-white hover:border-white/30'
             }`}
             onClick={() => handleTabChange('todos')}
           >
@@ -813,8 +813,8 @@ export function ClientTabs({ client, onClientUpdate, activeTab: externalActiveTa
           <button
             className={`px-4 py-4 font-medium text-sm flex items-center border-b-2 ${
               currentActiveTab === 'notes'
-                ? 'border-[#2251D1] text-[#2251D1]'
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                ? 'border-amber-500 text-amber-300'
+                : 'border-transparent text-slate-400 hover:text-white hover:border-white/30'
             }`}
             onClick={() => handleTabChange('notes')}
           >
@@ -825,8 +825,8 @@ export function ClientTabs({ client, onClientUpdate, activeTab: externalActiveTa
           <button
             className={`px-4 py-4 font-medium text-sm flex items-center border-b-2 ${
               currentActiveTab === 'analytics'
-                ? 'border-[#2251D1] text-[#2251D1]'
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                ? 'border-purple-500 text-purple-300'
+                : 'border-transparent text-slate-400 hover:text-white hover:border-white/30'
             }`}
             onClick={() => handleTabChange('analytics')}
           >
@@ -837,78 +837,78 @@ export function ClientTabs({ client, onClientUpdate, activeTab: externalActiveTa
       </div>
       
       {/* 탭 컨텐츠 */}
-      <div className="p-6">
+      <div className="p-6 text-white">
         {/* 상세 정보 탭 */}
         {currentActiveTab === 'info' && (
           <div>
             <div className="flex justify-between items-center mb-6">
-              <h3 className="font-medium text-lg">네이버 플레이스 정보</h3>
+              <h3 className="font-medium text-lg text-white">네이버 플레이스 정보</h3>
               <button 
                 data-refresh-button
                 onClick={handleRefreshInfo}
-                className="text-[#2251D1] text-sm hover:underline flex items-center"
+                className="text-blue-300 text-sm hover:text-blue-100 flex items-center transition-colors"
               >
                 <span className="mr-1">🔄</span> 정보 갱신하기
               </button>
             </div>
             
-            <div className="mb-6 p-4 bg-[#F9FAFD] rounded-lg">
+            <div className="mb-6 p-4 bg-[#1e1e30] rounded-lg border border-white/10">
               <div className="flex justify-between mb-2">
-                <span className="text-gray-500">마지막 갱신일:</span>
-                <span className="font-medium">{formatDate(crawledInfo.lastUpdated)}</span>
+                <span className="text-slate-400">마지막 갱신일:</span>
+                <span className="font-medium text-white">{formatDate(crawledInfo.lastUpdated)}</span>
               </div>
               
               <div className="flex justify-between items-center">
-                <span className="text-gray-500">업종:</span>
-                <span className="font-medium">{crawledInfo.category}</span>
+                <span className="text-slate-400">업종:</span>
+                <span className="font-medium text-white">{crawledInfo.category}</span>
               </div>
             </div>
             
             <div className="mb-6">
-              <h4 className="text-sm font-semibold text-gray-500 mb-3">서비스 현황</h4>
+              <h4 className="text-sm font-semibold text-slate-400 mb-3">서비스 현황</h4>
               
               <div className="grid grid-cols-1 gap-4">
-                <div className="flex justify-between items-center p-3 border border-gray-200 rounded-lg">
+                <div className="flex justify-between items-center p-3 border border-white/10 bg-[#1e1e30] rounded-lg">
                   <div className="flex items-center">
-                    <span className="w-8 h-8 rounded-full bg-[#E3F2FD] flex items-center justify-center text-lg mr-3">🎟️</span>
+                    <span className="w-8 h-8 rounded-full bg-blue-900/30 flex items-center justify-center text-lg mr-3">🎟️</span>
                     <div>
                       <div className="font-medium">쿠폰</div>
-                      <div className="text-xs text-gray-500">
+                      <div className="text-xs text-slate-400">
                         {client.usesCoupon ? '사용 중' : '미사용'}
                       </div>
                     </div>
                   </div>
-                  <span className={`px-2 py-1 rounded-full text-xs ${client.usesCoupon ? 'bg-[#E3F2FD] text-[#2196F3]' : 'bg-gray-100 text-gray-500'}`}>
+                  <span className={`px-2 py-1 rounded-full text-xs ${client.usesCoupon ? 'bg-blue-900/30 text-blue-300 border border-blue-500/30' : 'bg-slate-800/50 text-slate-400 border border-slate-700'}`}>
                     {client.usesCoupon ? '활성' : '비활성'}
                   </span>
                 </div>
                 
-                <div className="flex justify-between items-center p-3 border border-gray-200 rounded-lg">
+                <div className="flex justify-between items-center p-3 border border-white/10 bg-[#1e1e30] rounded-lg">
                   <div className="flex items-center">
-                    <span className="w-8 h-8 rounded-full bg-[#E8F5E9] flex items-center justify-center text-lg mr-3">📰</span>
+                    <span className="w-8 h-8 rounded-full bg-green-900/30 flex items-center justify-center text-lg mr-3">📰</span>
                     <div>
                       <div className="font-medium">소식</div>
-                      <div className="text-xs text-gray-500">
+                      <div className="text-xs text-slate-400">
                         {client.publishesNews ? '발행 중' : '미발행'}
                       </div>
                     </div>
                   </div>
-                  <span className={`px-2 py-1 rounded-full text-xs ${client.publishesNews ? 'bg-[#E8F5E9] text-[#4CAF50]' : 'bg-gray-100 text-gray-500'}`}>
+                  <span className={`px-2 py-1 rounded-full text-xs ${client.publishesNews ? 'bg-green-900/30 text-green-300 border border-green-500/30' : 'bg-slate-800/50 text-slate-400 border border-slate-700'}`}>
                     {client.publishesNews ? '활성' : '비활성'}
                   </span>
                 </div>
                 
-                <div className="flex justify-between items-center p-3 border border-gray-200 rounded-lg">
+                <div className="flex justify-between items-center p-3 border border-white/10 bg-[#1e1e30] rounded-lg">
                   <div className="flex items-center">
-                    <span className="w-8 h-8 rounded-full bg-[#F3E5F5] flex items-center justify-center text-lg mr-3">📅</span>
+                    <span className="w-8 h-8 rounded-full bg-purple-900/30 flex items-center justify-center text-lg mr-3">📅</span>
                     <div>
                       <div className="font-medium">예약</div>
-                      <div className="text-xs text-gray-500">
+                      <div className="text-xs text-slate-400">
                         {client.usesReservation ? '사용 중' : '미사용'}
                       </div>
                     </div>
                   </div>
-                  <span className={`px-2 py-1 rounded-full text-xs ${client.usesReservation ? 'bg-[#F3E5F5] text-[#9C27B0]' : 'bg-gray-100 text-gray-500'}`}>
+                  <span className={`px-2 py-1 rounded-full text-xs ${client.usesReservation ? 'bg-purple-900/30 text-purple-300 border border-purple-500/30' : 'bg-slate-800/50 text-slate-400 border border-slate-700'}`}>
                     {client.usesReservation ? '활성' : '비활성'}
                   </span>
                 </div>
@@ -916,9 +916,9 @@ export function ClientTabs({ client, onClientUpdate, activeTab: externalActiveTa
             </div>
             
             <div className="mb-6">
-              <h4 className="text-sm font-semibold text-gray-500 mb-3">대표 키워드</h4>
+              <h4 className="text-sm font-semibold text-slate-400 mb-3">대표 키워드</h4>
               
-              <div className="mb-4 p-4 border border-gray-200 rounded-lg">
+              <div className="mb-4 p-4 bg-[#1e1e30] border border-white/10 rounded-lg">
                 <div className="flex flex-col space-y-3">
                   <div className="flex items-center">
                     <input
@@ -926,7 +926,7 @@ export function ClientTabs({ client, onClientUpdate, activeTab: externalActiveTa
                       value={keywordInput}
                       onChange={(e) => setKeywordInput(e.target.value)}
                       placeholder="새 키워드 입력..."
-                      className="flex-1 border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#2251D1]"
+                      className="flex-1 border border-slate-600 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-[#151523] text-white"
                       onKeyPress={(e) => {
                         if (e.key === 'Enter') {
                           handleAddKeyword();
@@ -938,15 +938,15 @@ export function ClientTabs({ client, onClientUpdate, activeTab: externalActiveTa
                       disabled={!keywordInput.trim() || isSavingKeywords}
                       className={`ml-2 px-4 py-2 rounded-lg ${
                         keywordInput.trim() && !isSavingKeywords
-                          ? 'bg-[#2251D1] text-white hover:bg-[#1A41B6]'
-                          : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                          ? 'bg-blue-600 text-white hover:bg-blue-500'
+                          : 'bg-slate-800 text-slate-500 cursor-not-allowed'
                       }`}
                     >
                       {isSavingKeywords ? '저장 중...' : '추가'}
                     </button>
                   </div>
                   
-                  <div className="text-xs text-gray-500">
+                  <div className="text-xs text-slate-400">
                     Enter 키를 누르거나 추가 버튼을 클릭하여 키워드를 추가하세요.
                   </div>
                 </div>
@@ -956,12 +956,12 @@ export function ClientTabs({ client, onClientUpdate, activeTab: externalActiveTa
                 {keywords.map((keyword, index) => (
                   <div 
                     key={index} 
-                    className="px-3 py-1.5 bg-[#EEF2FB] text-[#2251D1] rounded-full text-sm flex items-center group"
+                    className="px-3 py-1.5 bg-blue-900/30 text-blue-300 rounded-full text-sm flex items-center group border border-blue-500/30"
                   >
                     {keyword}
                     <button
                       onClick={() => handleRemoveKeyword(keyword)}
-                      className="ml-2 text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                      className="ml-2 text-slate-400 hover:text-red-300 opacity-0 group-hover:opacity-100 transition-opacity"
                     >
                       <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -970,7 +970,7 @@ export function ClientTabs({ client, onClientUpdate, activeTab: externalActiveTa
                   </div>
                 ))}
                 {keywords.length === 0 && (
-                  <div className="text-gray-500 text-sm italic">
+                  <div className="text-slate-400 text-sm italic">
                     등록된 키워드가 없습니다. 위 입력창에서 키워드를 추가해보세요.
                   </div>
                 )}
@@ -978,15 +978,15 @@ export function ClientTabs({ client, onClientUpdate, activeTab: externalActiveTa
             </div>
             
             <div className="mt-6">
-              <h4 className="text-sm font-semibold text-gray-500 mb-3">민원 상태 관리</h4>
+              <h4 className="text-sm font-semibold text-slate-400 mb-3">민원 상태 관리</h4>
               
-              <div className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
+              <div className="flex items-center justify-between p-4 bg-[#1e1e30] border border-white/10 rounded-lg">
                 <div>
-                  <div className="font-medium flex items-center">
+                  <div className="font-medium flex items-center text-white">
                     <span className="mr-2">🔔</span>
                     민원 상태
                   </div>
-                  <div className="text-sm text-gray-500 mt-1">
+                  <div className="text-sm text-slate-400 mt-1">
                     민원이 접수된 광고주는 대시보드에 별도 표시됩니다.
                   </div>
                 </div>
@@ -995,8 +995,8 @@ export function ClientTabs({ client, onClientUpdate, activeTab: externalActiveTa
                   onClick={toggleComplaint}
                   className={`px-4 py-2 rounded-lg ${
                     hasComplaint
-                      ? 'bg-[#FFEBEE] text-[#F44336] hover:bg-red-100'
-                      : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                      ? 'bg-red-900/30 text-red-300 hover:bg-red-800/50 border border-red-500/30'
+                      : 'bg-slate-800/50 text-slate-400 hover:bg-slate-700/50 border border-slate-700'
                   }`}
                 >
                   {hasComplaint ? '민원 중' : '정상'}
@@ -1013,15 +1013,15 @@ export function ClientTabs({ client, onClientUpdate, activeTab: externalActiveTa
         {currentActiveTab === 'notes' && (
           <div>
             <div className="mb-6">
-              <h3 className="font-medium text-lg mb-4">메모</h3>
+              <h3 className="font-medium text-lg mb-4 text-white">메모</h3>
               
-              <div className="mb-4 p-4 border border-gray-200 rounded-lg">
+              <div className="mb-4 p-4 bg-[#1e1e30] border border-white/10 rounded-lg">
                 <div className="flex flex-col space-y-3">
                   <textarea
                     value={noteInput}
                     onChange={(e) => setNoteInput(e.target.value)}
                     placeholder="새 메모를 입력하세요..."
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#2251D1] min-h-[100px] resize-none"
+                    className="w-full border border-slate-600 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[100px] resize-none bg-[#151523] text-white"
                   />
                   
                   <div className="flex justify-end">
@@ -1030,8 +1030,8 @@ export function ClientTabs({ client, onClientUpdate, activeTab: externalActiveTa
                       disabled={!noteInput.trim() || isSavingNote}
                       className={`px-4 py-2 rounded-lg ${
                         noteInput.trim() && !isSavingNote
-                          ? 'bg-[#FFC107] text-white hover:bg-[#e6ac00]'
-                          : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                          ? 'bg-amber-500 text-white hover:bg-amber-400 transition-colors'
+                          : 'bg-slate-800 text-slate-500 cursor-not-allowed'
                       }`}
                     >
                       {isSavingNote ? (
@@ -1048,7 +1048,7 @@ export function ClientTabs({ client, onClientUpdate, activeTab: externalActiveTa
               </div>
               
               {notesLoadError && (
-                <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg text-yellow-800 text-sm">
+                <div className="mb-4 p-3 bg-amber-900/30 border border-amber-500/30 rounded-lg text-amber-300 text-sm">
                   <div className="flex items-center">
                     <span className="mr-2">⚠️</span>
                     <span>{notesLoadError}</span>
@@ -1057,7 +1057,7 @@ export function ClientTabs({ client, onClientUpdate, activeTab: externalActiveTa
               )}
               
               {notesSource === 'local' && (
-                <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg text-blue-800 text-sm">
+                <div className="mb-4 p-3 bg-blue-900/30 border border-blue-500/30 rounded-lg text-blue-300 text-sm">
                   <div className="flex items-center">
                     <span className="mr-2">💾</span>
                     <span>로컬 스토리지에서 불러온 메모를 표시하고 있습니다.</span>
@@ -1069,7 +1069,7 @@ export function ClientTabs({ client, onClientUpdate, activeTab: externalActiveTa
                 {isLoadingNotes ? (
                   <div className="text-center py-8">
                     <div className="inline-block animate-spin text-3xl mb-2">⏳</div>
-                    <p className="text-gray-500">메모를 불러오는 중입니다...</p>
+                    <p className="text-slate-400">메모를 불러오는 중입니다...</p>
                   </div>
                 ) : notes.length > 0 ? (
                   notes.map(note => (
@@ -1077,25 +1077,25 @@ export function ClientTabs({ client, onClientUpdate, activeTab: externalActiveTa
                       key={note.id}
                       className={`p-4 rounded-lg relative ${
                         typeof note.id === 'string' && note.id.toString().startsWith('local-')
-                          ? 'bg-[#E3F2FD]' // 로컬 저장 메모는 파란색 배경
-                          : 'bg-[#FFF8E1]'  // API에서 불러온 메모는 노란색 배경
+                          ? 'bg-blue-900/30 border border-blue-500/30' // 로컬 저장 메모는 파란색 배경
+                          : 'bg-amber-900/30 border border-amber-500/30'  // API에서 불러온 메모는 노란색 배경
                       }`}
                     >
                       <div className="flex justify-between mb-2">
                         <div className="flex items-center">
-                          <span className="w-8 h-8 rounded-full bg-[#FFC107] bg-opacity-20 flex items-center justify-center text-lg mr-2">
+                          <span className="w-8 h-8 rounded-full bg-amber-500/20 flex items-center justify-center text-lg mr-2">
                             📝
                           </span>
-                          <span className="font-medium">{note.user}</span>
+                          <span className="font-medium text-white">{note.user}</span>
                         </div>
-                        <span className="text-xs text-gray-500">{formatDate(note.date)}</span>
+                        <span className="text-xs text-slate-400">{formatDate(note.date)}</span>
                       </div>
                       
-                      <p className="pl-10 text-gray-700 whitespace-pre-wrap">{note.content}</p>
+                      <p className="pl-10 text-slate-300 whitespace-pre-wrap">{note.content}</p>
                       
                       <button
                         onClick={() => deleteNote(note.id)}
-                        className="absolute top-4 right-4 text-gray-400 hover:text-red-500"
+                        className="absolute top-4 right-4 text-slate-400 hover:text-red-300"
                       >
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -1106,7 +1106,7 @@ export function ClientTabs({ client, onClientUpdate, activeTab: externalActiveTa
                 ) : (
                   <div className="text-center py-8">
                     <div className="text-3xl mb-2">📝</div>
-                    <p className="text-gray-500">등록된 메모가 없습니다.</p>
+                    <p className="text-slate-400">등록된 메모가 없습니다.</p>
                   </div>
                 )}
               </div>
@@ -1117,50 +1117,50 @@ export function ClientTabs({ client, onClientUpdate, activeTab: externalActiveTa
         {currentActiveTab === 'analytics' && (
           <div>
             <div className="mb-6">
-              <h3 className="font-medium text-lg mb-4">서비스 사용 현황</h3>
+              <h3 className="font-medium text-lg mb-4 text-white">서비스 사용 현황</h3>
               
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="bg-[#EEF2FB] rounded-lg p-4">
-                  <div className="text-xs text-gray-500 mb-1">쿠폰 사용</div>
-                  <div className="text-2xl font-bold">{client.usesCoupon ? '사용중' : '미사용'}</div>
-                  <div className="text-sm text-gray-600 mt-1">최근 30일</div>
+                <div className="bg-blue-900/30 rounded-lg p-4 border border-blue-500/30">
+                  <div className="text-xs text-slate-400 mb-1">쿠폰 사용</div>
+                  <div className="text-2xl font-bold text-blue-300">{client.usesCoupon ? '사용중' : '미사용'}</div>
+                  <div className="text-sm text-slate-400 mt-1">최근 30일</div>
                 </div>
                 
-                <div className="bg-[#F3E5F5] rounded-lg p-4">
-                  <div className="text-xs text-gray-500 mb-1">소식 발행</div>
-                  <div className="text-2xl font-bold">{client.publishesNews ? '발행중' : '미발행'}</div>
-                  <div className="text-sm text-gray-600 mt-1">최근 30일</div>
+                <div className="bg-green-900/30 rounded-lg p-4 border border-green-500/30">
+                  <div className="text-xs text-slate-400 mb-1">소식 발행</div>
+                  <div className="text-2xl font-bold text-green-300">{client.publishesNews ? '발행중' : '미발행'}</div>
+                  <div className="text-sm text-slate-400 mt-1">최근 30일</div>
                 </div>
                 
-                <div className="bg-[#E8F5E9] rounded-lg p-4">
-                  <div className="text-xs text-gray-500 mb-1">예약 시스템</div>
-                  <div className="text-2xl font-bold">{client.usesReservation ? '사용중' : '미사용'}</div>
-                  <div className="text-sm text-gray-600 mt-1">최근 30일</div>
+                <div className="bg-purple-900/30 rounded-lg p-4 border border-purple-500/30">
+                  <div className="text-xs text-slate-400 mb-1">예약 시스템</div>
+                  <div className="text-2xl font-bold text-purple-300">{client.usesReservation ? '사용중' : '미사용'}</div>
+                  <div className="text-sm text-slate-400 mt-1">최근 30일</div>
                 </div>
               </div>
             </div>
             
             <div className="mb-6">
-              <h3 className="font-medium text-lg mb-4">업무 진행 현황</h3>
+              <h3 className="font-medium text-lg mb-4 text-white">업무 진행 현황</h3>
               
-              <div className="bg-white rounded-lg border border-gray-200 p-4">
-                <div className="text-center py-4 text-gray-500">
+              <div className="bg-[#1e1e30] rounded-lg border border-white/10 p-4">
+                <div className="text-center py-4 text-slate-400">
                   <p>진행 상황 데이터를 불러오는 중입니다...</p>
                 </div>
               </div>
             </div>
             
             <div className="mb-6">
-              <h3 className="font-medium text-lg mb-4">부서별 할 일 현황</h3>
+              <h3 className="font-medium text-lg mb-4 text-white">부서별 할 일 현황</h3>
               
               <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
                 {['디자인', '콘텐츠', '미디어', '고객관리', '관리자'].map((dept, index) => (
-                  <div key={index} className="bg-white rounded-lg border border-gray-200 p-4 text-center">
-                    <div className="w-10 h-10 rounded-full mx-auto mb-2 flex items-center justify-center bg-gray-100">
+                  <div key={index} className="bg-[#1e1e30] rounded-lg border border-white/10 p-4 text-center">
+                    <div className="w-10 h-10 rounded-full mx-auto mb-2 flex items-center justify-center bg-slate-800">
                       <span className="text-xl">📊</span>
                     </div>
-                    <div className="font-medium text-sm mb-1">{dept}</div>
-                    <div className="text-xs text-gray-500">데이터 로딩 중...</div>
+                    <div className="font-medium text-sm mb-1 text-white">{dept}</div>
+                    <div className="text-xs text-slate-400">데이터 로딩 중...</div>
                   </div>
                 ))}
               </div>
@@ -1168,7 +1168,7 @@ export function ClientTabs({ client, onClientUpdate, activeTab: externalActiveTa
             
             <div className="mt-8 text-center">
               <button 
-                className="bg-[#2251D1] text-white px-4 py-2 rounded-lg hover:bg-[#1A41B6] transition-colors"
+                className="bg-gradient-to-r from-purple-600 to-indigo-600 text-white px-4 py-2 rounded-lg hover:from-purple-500 hover:to-indigo-500 transition-all duration-300 shadow-lg border border-purple-500/30"
                 onClick={() => alert('상세 분석 기능은 개발 예정입니다!')}
               >
                 상세 분석 보기

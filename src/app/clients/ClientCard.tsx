@@ -262,73 +262,70 @@ export function ClientCard({ client, onAddTodo, onAddNote }: ClientCardProps) {
     };
   }, [client.id]);
   
-  // 계약 기간 포맷팅 함수
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
-    return `${date.getFullYear()}.${String(date.getMonth() + 1).padStart(2, '0')}.${String(date.getDate()).padStart(2, '0')}`;
+    return new Intl.DateTimeFormat('ko-KR', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    }).format(date);
   };
   
-  // 최근 활동일 포맷팅 및 경과일 계산
   const formatActivityDate = (dateString?: string) => {
-    if (!dateString) return { formatted: '정보 없음', daysAgo: 0 };
+    if (!dateString) return '활동 없음';
     
     const date = new Date(dateString);
-    const today = new Date();
-    const diffTime = today.getTime() - date.getTime();
+    const now = new Date();
+    const diffTime = Math.abs(now.getTime() - date.getTime());
     const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
     
-    // 시간 포맷팅 추가 (24시간제)
-    const hours = String(date.getHours()).padStart(2, '0');
-    const minutes = String(date.getMinutes()).padStart(2, '0');
-    
-    return {
-      formatted: `${date.getFullYear()}.${String(date.getMonth() + 1).padStart(2, '0')}.${String(date.getDate()).padStart(2, '0')} ${hours}:${minutes}`,
-      daysAgo: diffDays
-    };
+    if (diffDays === 0) {
+      // 당일
+      const hours = date.getHours();
+      const minutes = date.getMinutes();
+      return `오늘 ${hours}시 ${minutes}분`;
+    } else if (diffDays === 1) {
+      return '어제';
+    } else if (diffDays < 7) {
+      return `${diffDays}일 전`;
+    } else if (diffDays < 30) {
+      const weeks = Math.floor(diffDays / 7);
+      return `${weeks}주 전`;
+    } else {
+      return formatDate(dateString);
+    }
   };
   
-  // 계약 종료까지 남은 일수 계산
   const getDaysRemaining = () => {
-    const endDate = new Date(client.contractEnd);
     const today = new Date();
+    const endDate = new Date(client.contractEnd);
+    
     const diffTime = endDate.getTime() - today.getTime();
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
     return diffDays;
   };
   
-  const daysRemaining = getDaysRemaining();
-  
-  // 상태 태그별 색상 및 아이콘 매핑
   const getStatusTagStyles = (tag: string) => {
-    switch(tag) {
+    switch (tag) {
+      case '정상':
+        return 'bg-green-900/30 text-green-300 border border-green-500/30';
       case '종료 임박':
-        return {
-          bg: 'bg-[#FFF8E1]',
-          text: 'text-[#FFC107]',
-          border: 'border-[#FFC107]',
-          icon: '⏰'
-        };
+        return 'bg-amber-900/30 text-amber-300 border border-amber-500/30';
       case '관리 소홀':
-        return {
-          bg: 'bg-[#FFF3E0]',
-          text: 'text-[#FF9800]',
-          border: 'border-[#FF9800]',
-          icon: '⚠️'
-        };
+        return 'bg-orange-900/30 text-orange-300 border border-orange-500/30';
       case '민원 중':
-        return {
-          bg: 'bg-[#FFEBEE]',
-          text: 'text-[#F44336]',
-          border: 'border-[#F44336]',
-          icon: '🔔'
-        };
+        return 'bg-red-900/30 text-red-300 border border-red-500/30';
+      case '계약 종료':
+        return 'bg-slate-700/30 text-slate-300 border border-slate-500/30';
+      case '신규':
+        return 'bg-blue-900/30 text-blue-300 border border-blue-500/30';
+      case 'VIP':
+        return 'bg-purple-900/30 text-purple-300 border border-purple-500/30';
+      case '모의 데이터':
+        return 'bg-pink-900/30 text-pink-300 border border-pink-500/30';
       default:
-        return {
-          bg: 'bg-gray-100',
-          text: 'text-gray-600',
-          border: 'border-gray-300',
-          icon: '📝'
-        };
+        return 'bg-gray-900/30 text-gray-300 border border-gray-500/30';
     }
   };
   
@@ -342,346 +339,254 @@ export function ClientCard({ client, onAddTodo, onAddNote }: ClientCardProps) {
     }
   };
   
-  // 메모 날짜 포맷팅
+  // 메모 날짜 포맷
   const formatNoteDate = (dateString: string) => {
     const date = new Date(dateString);
     const now = new Date();
-    const diffDays = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
+    const diffTime = Math.abs(now.getTime() - date.getTime());
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
     
     if (diffDays === 0) {
       return '오늘';
     } else if (diffDays === 1) {
       return '어제';
-    } else if (diffDays < 7) {
-      return `${diffDays}일 전`;
     } else {
-      return `${date.getFullYear()}.${String(date.getMonth() + 1).padStart(2, '0')}.${String(date.getDate()).padStart(2, '0')}`;
+      return `${diffDays}일 전`;
     }
   };
-
-  // 네이버 플레이스 URL 포맷팅
+  
+  // 네이버 URL 간소화
   const formatNaverUrl = (url?: string) => {
     if (!url) return '';
     
-    // URL이 'http'로 시작하지 않으면 'https://'를 추가
-    if (!url.startsWith('http')) {
-      return `https://${url}`;
+    try {
+      const urlObj = new URL(url);
+      const hostname = urlObj.hostname;
+      const pathname = urlObj.pathname;
+      
+      if (hostname.includes('naver.com')) {
+        if (pathname.length > 15) {
+          return `${hostname}${pathname.substring(0, 15)}...`;
+        } else {
+          return `${hostname}${pathname}`;
+        }
+      }
+      
+      return url;
+    } catch (e) {
+      return url;
     }
-    return url;
   };
   
-  // 카드 하단 버튼 - 할 일/메모 추가
-  const bottomControls = (
-    <div className="absolute -bottom-10 left-0 right-0 flex justify-between px-2">
-      <button
-        onClick={(e) => { e.stopPropagation(); onAddTodo(client.id); }}
-        className="bg-white hover:bg-gray-50 text-blue-600 flex items-center gap-1 py-1.5 px-3 rounded-lg shadow-sm border border-gray-100 transition-all hover:shadow"
-      >
-        <span className="text-blue-500 text-sm">✓</span>
-        <span className="text-sm font-medium">할 일</span>
-        {todoCount > 0 && (
-          <span className="ml-1 bg-blue-100 text-blue-800 text-xs rounded-full w-5 h-5 flex items-center justify-center">
-            {todoCount > 9 ? '9+' : todoCount}
-          </span>
-        )}
-      </button>
-      
-      <button
-        onClick={(e) => { e.stopPropagation(); onAddNote(client.id); }}
-        className="bg-white hover:bg-gray-50 text-violet-600 flex items-center gap-1 py-1.5 px-3 rounded-lg shadow-sm border border-gray-100 transition-all hover:shadow"
-      >
-        <span className="text-violet-500 text-sm">✎</span>
-        <span className="text-sm font-medium">메모</span>
-        {noteCount > 0 && (
-          <span className="ml-1 bg-violet-100 text-violet-800 text-xs rounded-full w-5 h-5 flex items-center justify-center">
-            {noteCount > 9 ? '9+' : noteCount}
-          </span>
-        )}
-      </button>
-    </div>
-  );
-  
   return (
-    <div className="relative mb-14">
-      <div 
-        className={`wiz-card p-0 overflow-hidden transition-all duration-200 flex flex-col h-[340px] ${
-          isHovered ? 'shadow-md transform scale-[1.01]' : 'shadow-sm'
-        }`}
-        onMouseEnter={() => setIsHovered(true)}
-        onMouseLeave={() => setIsHovered(false)}
-      >
-        {/* 광고주 헤더 */}
-        <div className={`p-4 flex items-center ${client.statusTags.includes('민원 중') ? 'bg-[#FFEBEE]' : client.statusTags.includes('관리 소홀') ? 'bg-[#FFF3E0]' : client.statusTags.includes('종료 임박') ? 'bg-[#FFF8E1]' : 'bg-[#EEF2FB]'}`}>
-          <div className="w-12 h-12 rounded-full bg-white flex items-center justify-center text-3xl shadow-sm">
-            <span role="img" aria-label={client.name}>{client.icon}</span>
-          </div>
-          <div className="ml-4">
-            <h3 className="font-bold text-lg">{client.name}</h3>
-            <div className="text-xs text-gray-600">ID: {client.id}</div>
+    <div 
+      className="relative overflow-hidden bg-[#151523] rounded-lg shadow-xl group transition-all duration-300 hover:shadow-blue-900/30 hover:scale-[1.02] flex flex-col h-full"
+      onMouseEnter={() => setIsHovered(true)} 
+      onMouseLeave={() => setIsHovered(false)}
+    >
+      {/* 카드 그라데이션 배경 */}
+      <div className="absolute inset-0 bg-gradient-to-br from-blue-800/20 to-purple-800/20 opacity-50 group-hover:opacity-80 transition-all duration-500"></div>
+      
+      {/* 카드 배경 블러 */}
+      <div className="absolute inset-0 bg-[#151523]/80 backdrop-blur-sm z-0"></div>
+      
+      {/* 카드 테두리 */}
+      <div className="absolute inset-0 border border-white/10 rounded-lg z-10"></div>
+      
+      {/* 종료 임박 표시 (남은 일수가 30일 이하이면 표시) */}
+      {getDaysRemaining() <= 30 && getDaysRemaining() >= 0 && (
+        <div className="absolute top-0 right-0 bg-amber-900/60 px-2 py-1 rounded-bl-lg z-20 backdrop-blur-sm">
+          <div className="flex items-center space-x-1">
+            <span className="text-white text-xs font-bold animate-pulse">⏰</span>
+            <span className="text-white text-xs">{getDaysRemaining()}일 남음</span>
           </div>
         </div>
-        
-        <div className="p-5 flex-1 flex flex-col">
-          {/* 계약 기간 */}
-          <div className="mb-3 text-sm">
-            <div className="flex justify-between items-center">
-              <span className="text-gray-600">계약기간:</span>
-              <span className="font-medium">{formatDate(client.contractStart)} ~ {formatDate(client.contractEnd)}</span>
+      )}
+      
+      {/* 종료된 계약 표시 */}
+      {getDaysRemaining() < 0 && (
+        <div className="absolute top-0 right-0 bg-gray-800/60 px-2 py-1 rounded-bl-lg z-20 backdrop-blur-sm">
+          <span className="text-white text-xs">종료됨</span>
+        </div>
+      )}
+      
+      {/* 카드 콘텐츠 */}
+      <div className="relative p-5 z-10 flex flex-col h-full">
+        {/* 상단 정보 - 클릭 가능한 부분 */}
+        <div onClick={() => window.location.href = `/clients/${client.id}`} className="cursor-pointer">
+          <div className="flex items-center mb-4">
+            <div className="w-10 h-10 rounded-full flex items-center justify-center bg-white/10 mr-3 group-hover:scale-110 transition-all duration-300 shadow-inner shadow-black/10">
+              <span className="text-xl">{client.icon || '🏢'}</span>
             </div>
-            {/* 남은 일수 표시 */}
-            {daysRemaining <= 30 && (
-              <div className="mt-1 flex justify-end">
-                <span className={`text-xs px-2 py-1 rounded-full ${daysRemaining <= 7 ? 'bg-[#FFEBEE] text-[#F44336]' : 'bg-[#FFF8E1] text-[#FFC107]'}`}>
-                  {daysRemaining > 0 ? `계약 종료까지 ${daysRemaining}일 남음` : '계약이 만료되었습니다!'}
-                </span>
+            <div className="flex-1">
+              <h3 className="text-lg font-bold text-white group-hover:text-blue-300 transition-colors duration-300 truncate">{client.name}</h3>
+              <div className="flex items-center text-xs text-slate-400">
+                <span className="mr-1">계약:</span>
+                <span className="text-slate-300">{formatDate(client.contractStart)} ~ {formatDate(client.contractEnd)}</span>
               </div>
-            )}
-          </div>
-          
-          {/* 최근 활동일 */}
-          <div className="mb-3 text-sm">
-            <div className="flex justify-between items-center">
-              <span className="text-gray-600">최근 활동일:</span>
-              {lastActivityDate ? (
-                (() => {
-                  const { formatted, daysAgo } = formatActivityDate(lastActivityDate);
-                  return (
-                    <span className={`font-medium ${daysAgo >= 5 ? 'text-[#FF9800]' : ''}`}>
-                      {formatted}
-                    </span>
-                  );
-                })()
-              ) : (
-                <span className="text-gray-400">정보 없음</span>
-              )}
             </div>
-            {lastActivityDate && (() => {
-              const { daysAgo } = formatActivityDate(lastActivityDate);
-              if (daysAgo >= 5) {
-                return (
-                  <div className="mt-1 flex justify-end">
-                    <span className="text-xs px-2 py-1 rounded-full bg-[#FFF3E0] text-[#FF9800]">
-                      {daysAgo}일 동안 활동 없음
-                    </span>
-                  </div>
-                );
-              }
-              return null;
-            })()}
-          </div>
-          
-          {/* 서비스 사용 현황 */}
-          <div className="mb-4 flex flex-wrap gap-2">
-            <Link 
-              href={`/clients/${client.id}?tab=info`} 
-              className={`text-xs px-2.5 py-1 rounded-full flex items-center cursor-pointer hover:shadow-sm transition-shadow ${client.usesCoupon ? 'bg-[#E3F2FD] text-[#2196F3]' : 'bg-gray-100 text-gray-500'}`}
-            >
-              <span className="mr-1">🎟️</span>
-              {client.usesCoupon ? '쿠폰 사용중' : '쿠폰 미사용'}
-            </Link>
-            <Link 
-              href={`/clients/${client.id}?tab=info`} 
-              className={`text-xs px-2.5 py-1 rounded-full flex items-center cursor-pointer hover:shadow-sm transition-shadow ${client.publishesNews ? 'bg-[#E8F5E9] text-[#4CAF50]' : 'bg-gray-100 text-gray-500'}`}
-            >
-              <span className="mr-1">📰</span>
-              {client.publishesNews ? '소식 발행중' : '소식 미발행'}
-            </Link>
-            <Link 
-              href={`/clients/${client.id}?tab=info`} 
-              className={`text-xs px-2.5 py-1 rounded-full flex items-center cursor-pointer hover:shadow-sm transition-shadow ${client.usesReservation ? 'bg-[#F3E5F5] text-[#9C27B0]' : 'bg-gray-100 text-gray-500'}`}
-            >
-              <span className="mr-1">📅</span>
-              {client.usesReservation ? '예약 사용중' : '예약 미사용'}
-            </Link>
           </div>
           
           {/* 상태 태그 */}
-          {client.statusTags.length > 0 && (
-            <div className="flex flex-wrap gap-2 mb-4">
-              {client.statusTags.map(tag => {
-                const style = getStatusTagStyles(tag);
-                return (
-                  <div 
-                    key={tag} 
-                    className={`${style.bg} ${style.text} text-xs px-2.5 py-1 rounded-full border ${style.border} flex items-center`}
-                  >
-                    <span className="mr-1">{style.icon}</span>
-                    {tag}
-                  </div>
-                );
-              })}
-            </div>
-          )}
-          
-          {/* 상태별 짧은 설명 */}
-          {client.statusTags.includes('관리 소홀') && (
-            <p className="text-xs text-[#FF9800] mb-4">
-              📊 지난 2주간 업데이트가 없었어요. 확인이 필요해요!
-            </p>
-          )}
-          {client.statusTags.includes('민원 중') && (
-            <p className="text-xs text-[#F44336] mb-4">
-              ⚡ 고객 불만 접수! 빠른 대응이 필요합니다.
-            </p>
-          )}
-          
-          {/* 메모 미리보기 버튼 */}
-          {clientNotes.length > 0 && (
-            <div className="mb-3">
-              <button 
-                onClick={toggleNotes}
-                className="text-xs flex items-center text-[#FFC107] hover:underline cursor-pointer"
+          <div className="flex flex-wrap gap-2 mb-3">
+            {client.statusTags && client.statusTags.map((tag, index) => (
+              <span
+                key={index}
+                className={`inline-block px-2 py-1 text-xs rounded-md ${getStatusTagStyles(tag)}`}
               >
-                <span className="mr-1">📝</span> 
-                {showNotes ? "메모 숨기기" : `${clientNotes.length}개의 메모 보기`}
-              </button>
-            </div>
-          )}
+                {tag}
+              </span>
+            ))}
+          </div>
           
-          {/* 할 일 미리보기 버튼 */}
-          {clientTodos.length > 0 && (
-            <div className="mb-3">
-              <button 
-                onClick={toggleTodos}
-                className="text-xs flex items-center text-[#4CAF50] hover:underline cursor-pointer"
-              >
-                <span className="mr-1">✓</span> 
-                {showTodos ? "할 일 숨기기" : `${clientTodos.length}개의 할 일 보기`}
-              </button>
+          {/* 정보 아이콘 */}
+          <div className="grid grid-cols-3 gap-2 mb-4">
+            <div className={`flex flex-col items-center justify-center py-2 rounded-lg ${client.usesCoupon ? 'bg-blue-900/30 text-blue-300 border border-blue-500/30' : 'bg-white/5 text-slate-400 border border-white/10'}`}>
+              <span>🎟️</span>
+              <span className="text-xs mt-1">{client.usesCoupon ? '쿠폰' : '쿠폰 X'}</span>
             </div>
-          )}
-          
-          {/* 네이버 플레이스 링크 */}
-          {client.naverPlaceUrl && (
-            <div className="mb-3">
+            <div className={`flex flex-col items-center justify-center py-2 rounded-lg ${client.publishesNews ? 'bg-green-900/30 text-green-300 border border-green-500/30' : 'bg-white/5 text-slate-400 border border-white/10'}`}>
+              <span>📰</span>
+              <span className="text-xs mt-1">{client.publishesNews ? '소식' : '소식 X'}</span>
+            </div>
+            <div className={`flex flex-col items-center justify-center py-2 rounded-lg ${client.usesReservation ? 'bg-purple-900/30 text-purple-300 border border-purple-500/30' : 'bg-white/5 text-slate-400 border border-white/10'}`}>
+              <span>📅</span>
+              <span className="text-xs mt-1">{client.usesReservation ? '예약' : '예약 X'}</span>
+            </div>
+          </div>
+        </div>
+        
+        {/* 추가 정보 - 독립된 링크들 */}
+        <div className="space-y-2 mb-4">
+          {client.phoneNumber && (
+            <div className="flex items-center text-sm">
+              <span className="mr-2 text-slate-400">📞</span>
               <a 
-                href={formatNaverUrl(client.naverPlaceUrl)} 
+                href={`tel:${client.phoneNumber}`} 
+                className="text-slate-300 hover:text-blue-300 transition-colors"
+                onClick={(e) => e.stopPropagation()}
+              >
+                {client.phoneNumber}
+              </a>
+            </div>
+          )}
+          
+          {client.naverPlaceUrl && (
+            <div className="flex items-center text-sm">
+              <span className="mr-2 text-slate-400">🔗</span>
+              <a 
+                href={client.naverPlaceUrl} 
                 target="_blank" 
                 rel="noopener noreferrer" 
-                className="text-xs flex items-center text-[#03C75A] hover:underline"
+                className="text-slate-300 hover:text-blue-300 transition-colors truncate"
+                onClick={(e) => e.stopPropagation()}
               >
-                <span className="mr-1">🔗</span>
-                네이버 플레이스 바로가기
+                {formatNaverUrl(client.naverPlaceUrl)}
               </a>
             </div>
           )}
           
-          <div className="flex-grow"></div>
-          
-          {/* 액션 버튼 */}
-          <div className="flex gap-2 mt-auto">
-            <Link 
-              href={`/clients/${client.id}`} 
-              className="wiz-btn flex-1 py-1.5 text-center text-sm flex items-center justify-center hover:translate-y-[-1px]"
-            >
-              상세 보기
-            </Link>
-            {client.naverPlaceUrl && (
-              <a 
-                href={formatNaverUrl(client.naverPlaceUrl)}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="bg-[#03C75A] hover:bg-[#02B14F] text-white py-1.5 px-3 rounded-lg shadow transition-all duration-200 text-sm flex items-center hover:translate-y-[-1px]"
-              >
-                <span className="mr-1">N</span>
-              </a>
-            )}
+          <div className="flex items-center text-sm">
+            <span className="mr-2 text-slate-400">🕒</span>
+            <span className="text-slate-300">최근 활동: {formatActivityDate(lastActivityDate)}</span>
+          </div>
+        </div>
+        
+        {/* 메모 섹션 */}
+        <div className="mb-4">
+          <div 
+            className="mb-2 flex items-center cursor-pointer text-slate-300 hover:text-blue-300 transition-colors" 
+            onClick={toggleNotes}
+          >
+            <span className="mr-2">📝</span>
+            <span className="text-sm font-medium">메모 ({noteCount})</span>
+            <span className="ml-auto">{showNotes ? '▲' : '▼'}</span>
           </div>
           
-          {/* 재미있는 미세 카피 */}
-          <div className="mt-3 text-center">
-            <span className="text-xs text-gray-400 italic">
-              {isHovered ? '👆 액션을 선택해보세요!' : '이 고객의 성공을 돕고 있어요!'}
-            </span>
+          {showNotes && clientNotes.length > 0 && (
+            <div className="ml-6 space-y-2 animate-fadeIn">
+              {clientNotes.map(note => (
+                <div key={String(note.id)} className="bg-white/5 rounded-lg p-2 border border-white/10">
+                  <p className="text-sm text-slate-300 mb-1">{note.content}</p>
+                  <p className="text-xs text-slate-400 text-right">{formatNoteDate(note.date)}</p>
+                </div>
+              ))}
+            </div>
+          )}
+          
+          {showNotes && clientNotes.length === 0 && (
+            <div className="ml-6 text-sm text-slate-400">
+              메모가 없습니다.
+            </div>
+          )}
+        </div>
+        
+        {/* 할 일 섹션 */}
+        <div className="mb-4">
+          <div 
+            className="mb-2 flex items-center cursor-pointer text-slate-300 hover:text-blue-300 transition-colors" 
+            onClick={toggleTodos}
+          >
+            <span className="mr-2">✅</span>
+            <span className="text-sm font-medium">할 일 ({todoCount})</span>
+            <span className="ml-auto">{showTodos ? '▲' : '▼'}</span>
           </div>
+          
+          {showTodos && clientTodos.length > 0 && (
+            <div className="ml-6 space-y-2 animate-fadeIn">
+              {clientTodos.map(todo => (
+                <div key={String(todo.id)} className={`rounded-lg p-2 border ${todo.completed ? 'bg-green-900/20 border-green-500/30' : 'bg-white/5 border-white/10'}`}>
+                  <p className={`text-sm ${todo.completed ? 'text-green-300 line-through' : 'text-slate-300'} mb-1`}>{todo.content}</p>
+                  <p className="text-xs text-slate-400 text-right">{formatNoteDate(todo.date)}</p>
+                </div>
+              ))}
+            </div>
+          )}
+          
+          {showTodos && clientTodos.length === 0 && (
+            <div className="ml-6 text-sm text-slate-400">
+              할 일이 없습니다.
+            </div>
+          )}
+        </div>
+        
+        {/* 상세 페이지로 이동하는 링크 버튼 */}
+        <div className="mt-2 mb-4">
+          <Link href={`/clients/${client.id}`}>
+            <div className="text-center py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg transition-all duration-300 text-sm border border-white/10">
+              상세 정보 보기
+            </div>
+          </Link>
+        </div>
+        
+        {/* 액션 버튼 */}
+        <div className="flex mt-auto justify-between">
+          <button
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              onAddNote(client.id);
+            }}
+            className="px-3 py-2 bg-blue-900/30 text-blue-300 rounded-lg hover:bg-blue-800/50 transition-all duration-300 text-sm flex items-center border border-blue-500/30"
+          >
+            <span className="mr-1">📝</span> 메모 추가
+          </button>
+          
+          <button
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              onAddTodo(client.id);
+            }}
+            className="px-3 py-2 bg-green-900/30 text-green-300 rounded-lg hover:bg-green-800/50 transition-all duration-300 text-sm flex items-center border border-green-500/30"
+          >
+            <span className="mr-1">✅</span> 할 일 추가
+          </button>
         </div>
       </div>
       
-      {/* 카드 바깥에 위치한 액션 버튼 */}
-      {bottomControls}
-      
-      {/* 메모 미리보기 */}
-      {showNotes && clientNotes.length > 0 && (
-        <div className="absolute top-0 right-0 left-0 mt-16 bg-white shadow-lg rounded-b-lg z-20 p-3 border-t border-gray-100 overflow-hidden max-h-48 overflow-y-auto">
-          {clientNotes.map(note => (
-            <div key={note.id} className="text-sm mb-2 bg-orange-50 rounded-lg p-2 relative hover:bg-orange-100 transition-colors">
-              <div className="text-xs text-gray-500 mb-1">
-                {new Date(note.date).toLocaleDateString('ko-KR', {
-                  year: 'numeric',
-                  month: 'long',
-                  day: 'numeric',
-                  hour: '2-digit',
-                  minute: '2-digit'
-                })}
-              </div>
-              <div className="whitespace-pre-wrap break-words">{note.content}</div>
-            </div>
-          ))}
-          {noteCount > 3 && (
-            <div className="text-xs text-center mt-2 text-blue-600 font-medium">
-              <Link href={`/clients/${client.id}?tab=notes`} className="hover:underline">
-                + {noteCount - 3}개 더 보기
-              </Link>
-            </div>
-          )}
-        </div>
-      )}
-      
-      {/* 할 일 미리보기 */}
-      {showTodos && clientTodos.length > 0 && (
-        <div className="absolute top-0 right-0 left-0 mt-16 bg-white shadow-lg rounded-b-lg z-20 p-3 border-t border-gray-100 overflow-hidden max-h-48 overflow-y-auto">
-          {clientTodos.map(todo => (
-            <div key={todo.id} className={`text-sm mb-2 ${todo.completed ? 'bg-green-50' : 'bg-blue-50'} rounded-lg p-2 relative hover:bg-blue-100 transition-colors`}>
-              <div className="text-xs text-gray-500 mb-1 flex justify-between">
-                <div className={`${todo.completed ? 'text-green-600' : 'text-blue-600'} font-medium flex items-center`}>
-                  <span className="mr-1">{todo.completed ? '✅' : '⏳'}</span>
-                  {todo.completed ? '완료됨' : '진행 중'}
-                </div>
-                <span>
-                  {new Date(todo.date).toLocaleDateString('ko-KR', {
-                    month: 'short',
-                    day: 'numeric'
-                  })}
-                </span>
-              </div>
-              <div className={`whitespace-pre-wrap break-words ${todo.completed ? 'line-through text-gray-500' : ''}`}>{todo.content}</div>
-            </div>
-          ))}
-          {todoCount > 3 && (
-            <div className="text-xs text-center mt-2 text-blue-600 font-medium">
-              <Link href={`/clients/${client.id}?tab=todos`} className="hover:underline">
-                + {todoCount - 3}개 더 보기
-              </Link>
-            </div>
-          )}
-        </div>
-      )}
-      
-      {/* 메모 버튼 */}
-      {clientNotes.length > 0 && (
-        <button
-          className="absolute top-2 right-2 bg-white hover:bg-violet-50 shadow-sm p-1.5 rounded-full border border-gray-200 focus:outline-none transition-colors"
-          onClick={toggleNotes}
-          title={showNotes ? "메모 숨기기" : "메모 보기"}
-        >
-          <span className={`text-xs inline-flex items-center justify-center h-5 w-5 ${showNotes ? 'text-violet-700 bg-violet-100' : 'text-violet-500 bg-violet-50'} rounded-full transition-colors`}>
-            {showNotes ? "✕" : clientNotes.length}
-          </span>
-        </button>
-      )}
-      
-      {/* 할 일 버튼 */}
-      {clientTodos.length > 0 && (
-        <button
-          className="absolute top-2 right-10 bg-white hover:bg-blue-50 shadow-sm p-1.5 rounded-full border border-gray-200 focus:outline-none transition-colors"
-          onClick={toggleTodos}
-          title={showTodos ? "할 일 숨기기" : "할 일 보기"}
-        >
-          <span className={`text-xs inline-flex items-center justify-center h-5 w-5 ${showTodos ? 'text-blue-700 bg-blue-100' : 'text-blue-500 bg-blue-50'} rounded-full transition-colors`}>
-            {showTodos ? "✕" : clientTodos.length}
-          </span>
-        </button>
-      )}
+      {/* 반짝이는 효과 */}
+      <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/10 to-white/0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 -translate-x-full group-hover:translate-x-full animate-[shimmer_3s_infinite] pointer-events-none z-20"></div>
     </div>
   );
 } 

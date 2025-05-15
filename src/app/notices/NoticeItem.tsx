@@ -29,20 +29,20 @@ export function NoticeItem({ notice }: NoticeItemProps) {
   
   return (
     <Link href={`/notices/${notice.id}`}>
-      <div className="border border-gray-200 rounded-md p-4 mb-4 hover:bg-[#F9FAFD] hover:border-[#2251D1] transition-all duration-300 cursor-pointer">
+      <div className="border border-white/10 rounded-lg p-4 mb-4 bg-[#151523] hover:bg-[#1a1a2e] hover:border-blue-600/30 transition-all duration-300 cursor-pointer hover:shadow-lg hover:shadow-blue-900/10">
         <div className="flex justify-between items-start">
           <div>
             <div className="flex items-center mb-2">
               {notice.isFixed && (
-                <span className="bg-[#EEF2FB] text-[#2251D1] text-xs font-medium mr-2 px-2 py-1 rounded-full flex items-center">
+                <span className="bg-blue-950/50 text-blue-400 text-xs font-medium mr-2 px-2 py-1 rounded-full flex items-center border border-blue-700/30">
                   <span className="mr-1">📌</span> 
                   고정
                 </span>
               )}
-              <h3 className="text-base font-medium text-gray-800">{notice.title}</h3>
+              <h3 className="text-base font-medium text-white">{notice.title}</h3>
             </div>
           </div>
-          <span className="text-xs text-gray-500">{formattedDate}</span>
+          <span className="text-xs text-slate-500">{formattedDate}</span>
         </div>
       </div>
     </Link>

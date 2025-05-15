@@ -661,9 +661,6 @@ export default function ClientsPage() {
         console.error('로컬 스토리지 저장 오류:', storageErr);
       }
       
-      // API 응답에서 할일 데이터 추출
-      // const data = await response.json();
-      
       // 광고주 목록에서 해당 광고주 데이터 업데이트
       const updatedClients = clients.map(client => {
         if (client.id === clientId) {
@@ -905,17 +902,17 @@ export default function ClientsPage() {
   };
   
   return (
-    <div className="min-h-screen bg-[#F9FAFD] pb-10">
+    <div className="min-h-screen bg-[#0F0F1A] pb-10 text-slate-200 dark">
       <Header
         title="광고주 관리"
         description="광고주 정보를 확인하고 할 일이나 메모를 관리하세요."
         icon="👥"
         actions={
           <>
-            <Link href="/my-todos" className="bg-white text-[#FF9800] px-4 py-2 rounded-lg hover:bg-opacity-90 transition-all duration-200 flex items-center text-sm font-medium shadow-sm hover:shadow mr-2">
+            <Link href="/my-todos" className="bg-[#242436] text-amber-400 px-4 py-2 rounded-lg hover:bg-[#2A2A40] transition-all duration-200 flex items-center text-sm font-medium shadow-md hover:shadow-lg border border-amber-700/20 mr-2 backdrop-blur-sm">
               <span className="mr-2">✅</span> 나의 할 일 모아보기
             </Link>
-            <Link href="/dashboard" className="bg-white text-[#2251D1] px-4 py-2 rounded-lg hover:bg-opacity-90 transition-all duration-200 flex items-center text-sm font-medium shadow-sm hover:shadow">
+            <Link href="/dashboard" className="bg-[#242436] text-blue-400 px-4 py-2 rounded-lg hover:bg-[#2A2A40] transition-all duration-200 flex items-center text-sm font-medium shadow-md hover:shadow-lg border border-blue-700/20 backdrop-blur-sm">
               <span className="mr-2">📊</span> 대시보드로 돌아가기
             </Link>
           </>
@@ -924,36 +921,38 @@ export default function ClientsPage() {
       
       <div className="container mx-auto px-4 py-6">
         {/* 팁 메시지 */}
-        <div className={`bg-[#EEF2FB] rounded-lg p-4 mb-6 flex items-start transition-all duration-500 delay-100 ${animateIn ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-5'}`}>
-          <span className="text-2xl mr-3 mt-1">💡</span>
+        <div className={`bg-gradient-to-r from-blue-800/20 to-purple-800/20 backdrop-blur-sm rounded-lg p-4 mb-6 flex items-start transition-all duration-500 delay-100 border border-white/10 shadow-xl ${animateIn ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-5'}`}>
+          <span className="text-2xl mr-3 mt-1 animate-pulse">💡</span>
           <div>
-            <h3 className="font-medium mb-1">오늘의 팁</h3>
-            <p className="text-sm text-gray-700">{tipMessage}</p>
+            <h3 className="font-medium mb-1 text-white">오늘의 팁</h3>
+            <p className="text-sm text-slate-300">{tipMessage}</p>
           </div>
         </div>
         
         {/* 로딩 상태 표시 */}
         {isLoading && (
-          <div className="bg-white rounded-lg shadow-sm p-8 mb-6 text-center">
+          <div className="bg-[#151523]/80 rounded-lg shadow-md border border-white/10 p-8 mb-6 text-center backdrop-blur-sm">
             <div className="animate-pulse flex flex-col items-center">
-              <div className="h-12 w-12 bg-blue-200 rounded-full mb-4"></div>
-              <div className="h-4 bg-blue-100 rounded w-1/3 mb-2"></div>
-              <div className="h-3 bg-blue-50 rounded w-1/4"></div>
+              <div className="h-12 w-12 bg-blue-800/30 rounded-full mb-4 flex items-center justify-center">
+                <div className="h-6 w-6 bg-blue-500/50 rounded-full animate-ping"></div>
+              </div>
+              <div className="h-4 bg-blue-800/20 rounded w-1/3 mb-2"></div>
+              <div className="h-3 bg-blue-800/10 rounded w-1/4"></div>
             </div>
-            <p className="mt-4 text-gray-500">광고주 데이터 로드 중...</p>
+            <p className="mt-4 text-slate-400">광고주 데이터 로드 중...</p>
           </div>
         )}
         
         {/* 오류 메시지 */}
         {error && (
-          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4 relative">
+          <div className="bg-red-900/20 border border-red-500/30 text-red-300 px-4 py-3 rounded-lg mb-4 relative backdrop-blur-sm">
             <span className="block sm:inline">{error}</span>
           </div>
         )}
         
         {/* 성공 메시지 */}
         {success && (
-          <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4 relative">
+          <div className="bg-green-900/20 border border-green-500/30 text-green-300 px-4 py-3 rounded-lg mb-4 relative backdrop-blur-sm">
             <span className="block sm:inline">{success}</span>
           </div>
         )}
@@ -961,59 +960,62 @@ export default function ClientsPage() {
         {/* 검색 및 필터 */}
         {!isLoading && !error && (
           <>
-            <div className={`bg-white rounded-lg shadow-sm p-4 mb-6 transition-all duration-500 delay-200 ${animateIn ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-5'}`}>
+            <div className={`bg-[#151523]/80 rounded-lg border border-white/10 shadow-md p-6 mb-6 transition-all duration-500 delay-200 backdrop-blur-sm ${animateIn ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-5'}`}>
               <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                 {/* 검색 */}
                 <div className="relative flex-1">
-                  <div className="mb-6">
-                    <div className="relative">
-                      <input
-                        type="text"
-                        ref={searchInputRef}
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        placeholder="광고주 이름 검색... (/ 키로 포커스)"
-                        className="w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        aria-label="광고주 검색"
-                      />
-                      {searchTerm && (
-                        <button
-                          onClick={() => setSearchTerm('')}
-                          className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
-                          aria-label="검색어 지우기"
-                          title="검색어 지우기 (Esc)"
-                        >
-                          ✕
-                        </button>
-                      )}
+                  <div className="mb-6 relative">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <svg className="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                      </svg>
                     </div>
+                    <input
+                      type="text"
+                      ref={searchInputRef}
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      placeholder="광고주 이름 검색... (/ 키로 포커스)"
+                      className="w-full pl-10 pr-10 py-2 border border-white/10 bg-white/5 rounded-md shadow-inner focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-white placeholder-slate-400"
+                      aria-label="광고주 검색"
+                    />
+                    {searchTerm && (
+                      <button
+                        onClick={() => setSearchTerm('')}
+                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-white"
+                        aria-label="검색어 지우기"
+                        title="검색어 지우기 (Esc)"
+                      >
+                        ✕
+                      </button>
+                    )}
                   </div>
                 </div>
                 
                 {/* 필터 */}
                 <div className="flex items-center gap-2">
-                  <span className="text-sm text-gray-600">상태:</span>
+                  <span className="text-sm text-slate-400">상태:</span>
                   <div className="flex flex-wrap gap-2">
                     <button
-                      className={`px-3 py-2 rounded-lg text-sm transition-all ${statusFilter === 'all' ? 'bg-[#2251D1] text-white' : 'bg-gray-100 hover:bg-gray-200'}`}
+                      className={`px-3 py-2 rounded-lg text-sm transition-all ${statusFilter === 'all' ? 'bg-blue-900/50 text-white border border-blue-500/30' : 'bg-white/5 hover:bg-white/10 border border-white/10'}`}
                       onClick={() => setStatusFilter('all')}
                     >
                       전체 보기
                     </button>
                     <button
-                      className={`px-3 py-2 rounded-lg text-sm transition-all flex items-center ${statusFilter === '종료 임박' ? 'bg-[#FFF8E1] text-[#FFC107] border border-[#FFC107]' : 'bg-gray-100 hover:bg-gray-200'}`}
+                      className={`px-3 py-2 rounded-lg text-sm transition-all flex items-center ${statusFilter === '종료 임박' ? 'bg-amber-900/20 text-amber-300 border border-amber-500/30' : 'bg-white/5 hover:bg-white/10 border border-white/10'}`}
                       onClick={() => setStatusFilter('종료 임박')}
                     >
                       <span className="mr-1">⏰</span> 종료 임박
                     </button>
                     <button
-                      className={`px-3 py-2 rounded-lg text-sm transition-all flex items-center ${statusFilter === '관리 소홀' ? 'bg-[#FFF3E0] text-[#FF9800] border border-[#FF9800]' : 'bg-gray-100 hover:bg-gray-200'}`}
+                      className={`px-3 py-2 rounded-lg text-sm transition-all flex items-center ${statusFilter === '관리 소홀' ? 'bg-orange-900/20 text-orange-300 border border-orange-500/30' : 'bg-white/5 hover:bg-white/10 border border-white/10'}`}
                       onClick={() => setStatusFilter('관리 소홀')}
                     >
                       <span className="mr-1">⚠️</span> 관리 소홀
                     </button>
                     <button
-                      className={`px-3 py-2 rounded-lg text-sm transition-all flex items-center ${statusFilter === '민원 중' ? 'bg-[#FFEBEE] text-[#F44336] border border-[#F44336]' : 'bg-gray-100 hover:bg-gray-200'}`}
+                      className={`px-3 py-2 rounded-lg text-sm transition-all flex items-center ${statusFilter === '민원 중' ? 'bg-red-900/20 text-red-300 border border-red-500/30' : 'bg-white/5 hover:bg-white/10 border border-white/10'}`}
                       onClick={() => setStatusFilter('민원 중')}
                     >
                       <span className="mr-1">🔔</span> 민원 중
@@ -1024,34 +1026,34 @@ export default function ClientsPage() {
               
               {/* 추가 필터 (쿠폰/소식/예약) */}
               <div className="mt-4 flex flex-wrap gap-3">
-                <span className="text-sm text-gray-600 self-center">추가 필터:</span>
+                <span className="text-sm text-slate-400 self-center">추가 필터:</span>
                 <button
-                  className={`px-3 py-2 rounded-lg text-sm transition-all flex items-center ${showExpired ? 'bg-[#EFEBE9] text-[#795548] border border-[#795548]' : 'bg-gray-100 hover:bg-gray-200'}`}
+                  className={`px-3 py-2 rounded-lg text-sm transition-all flex items-center ${showExpired ? 'bg-slate-700/30 text-slate-300 border border-slate-500/30' : 'bg-white/5 hover:bg-white/10 border border-white/10'}`}
                   onClick={() => setShowExpired(!showExpired)}
                 >
                   <span className="mr-1">📅</span> 종료 업체 ({statusCounts.expired})
                 </button>
                 <button
-                  className={`px-3 py-2 rounded-lg text-sm transition-all flex items-center ${filterNoCoupon ? 'bg-[#E3F2FD] text-[#2196F3] border border-[#2196F3]' : 'bg-gray-100 hover:bg-gray-200'}`}
+                  className={`px-3 py-2 rounded-lg text-sm transition-all flex items-center ${filterNoCoupon ? 'bg-blue-900/20 text-blue-300 border border-blue-500/30' : 'bg-white/5 hover:bg-white/10 border border-white/10'}`}
                   onClick={() => toggleFilter('coupon')}
                 >
                   <span className="mr-1">🎟️</span> 쿠폰 미사용 ({statusCounts.noCoupon})
                 </button>
                 <button
-                  className={`px-3 py-2 rounded-lg text-sm transition-all flex items-center ${filterNoNews ? 'bg-[#E8F5E9] text-[#4CAF50] border border-[#4CAF50]' : 'bg-gray-100 hover:bg-gray-200'}`}
+                  className={`px-3 py-2 rounded-lg text-sm transition-all flex items-center ${filterNoNews ? 'bg-green-900/20 text-green-300 border border-green-500/30' : 'bg-white/5 hover:bg-white/10 border border-white/10'}`}
                   onClick={() => toggleFilter('news')}
                 >
                   <span className="mr-1">📰</span> 소식 미발행 ({statusCounts.noNews})
                 </button>
                 <button
-                  className={`px-3 py-2 rounded-lg text-sm transition-all flex items-center ${filterNoReservation ? 'bg-[#F3E5F5] text-[#9C27B0] border border-[#9C27B0]' : 'bg-gray-100 hover:bg-gray-200'}`}
+                  className={`px-3 py-2 rounded-lg text-sm transition-all flex items-center ${filterNoReservation ? 'bg-purple-900/20 text-purple-300 border border-purple-500/30' : 'bg-white/5 hover:bg-white/10 border border-white/10'}`}
                   onClick={() => toggleFilter('reservation')}
                 >
                   <span className="mr-1">📅</span> 예약 미사용 ({statusCounts.noReservation})
                 </button>
                 {(filterNoCoupon || filterNoNews || filterNoReservation || showExpired) && (
                   <button
-                    className="px-3 py-2 rounded-lg text-sm transition-all bg-gray-200 hover:bg-gray-300 flex items-center"
+                    className="px-3 py-2 rounded-lg text-sm transition-all bg-white/10 hover:bg-white/20 flex items-center border border-white/10"
                     onClick={() => {
                       setFilterNoCoupon(false);
                       setFilterNoNews(false);
@@ -1068,9 +1070,10 @@ export default function ClientsPage() {
               <div className="mt-4 flex justify-center">
                 <button
                   onClick={() => setRegisterDialogOpen(true)}
-                  className="px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg transition-colors w-full max-w-md flex items-center justify-center"
+                  className="px-4 py-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white rounded-lg transition-all duration-300 w-full max-w-md flex items-center justify-center shadow-lg hover:shadow-emerald-700/50 font-medium"
                 >
                   <span className="mr-2">➕</span> 광고주 등록
+                  <span className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/20 to-white/0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 -translate-x-full group-hover:translate-x-full"></span>
                 </button>
               </div>
             </div>
@@ -1089,10 +1092,10 @@ export default function ClientsPage() {
                   ))}
                 </div>
               ) : (
-                <div className="bg-white rounded-lg shadow-sm p-8 text-center">
-                  <div className="text-6xl mb-4">🔍</div>
-                  <h3 className="text-xl font-medium mb-2">검색 결과가 없습니다</h3>
-                  <p className="text-gray-500 mb-4">다른 검색어나 필터를 사용해 보세요.</p>
+                <div className="bg-[#151523]/80 rounded-lg border border-white/10 shadow-md p-8 text-center backdrop-blur-sm">
+                  <div className="text-6xl mb-4 animate-bounce">🔍</div>
+                  <h3 className="text-xl font-medium mb-2 text-white">검색 결과가 없습니다</h3>
+                  <p className="text-slate-400 mb-4">다른 검색어나 필터를 사용해 보세요.</p>
                   <button
                     onClick={() => {
                       setSearchTerm('');
@@ -1102,7 +1105,7 @@ export default function ClientsPage() {
                       setFilterNoReservation(false);
                       setShowExpired(false);
                     }}
-                    className="bg-[#2251D1] text-white px-4 py-2 rounded-lg hover:bg-[#1a3fa0] transition-all"
+                    className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white px-4 py-2 rounded-lg transition-all duration-300 shadow-lg hover:shadow-blue-700/50"
                   >
                     모두 보기
                   </button>
