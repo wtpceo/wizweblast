@@ -14,7 +14,7 @@ const formatNoticeDate = (dateString: string) => {
 
 export default function NoticeDetailPage({ params }: { params: { id: string } }) {
   const router = useRouter();
-  const { notices, deleteNotice } = useNoticeContext();
+  const { notices, deleteNotice, refreshNotices } = useNoticeContext();
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [noticeDetail, setNoticeDetail] = useState<any>(null);
@@ -33,7 +33,15 @@ export default function NoticeDetailPage({ params }: { params: { id: string } })
     const fetchNoticeDetail = async () => {
       try {
         setIsLoading(true);
-        const response = await fetch(`/api/notices/${noticeId}`);
+        // 캐시 방지를 위한 타임스탬프 추가
+        const timestamp = new Date().getTime();
+        const response = await fetch(`/api/notices/${noticeId}?t=${timestamp}`, {
+          headers: {
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache',
+            'Expires': '0'
+          }
+        });
         
         if (!response.ok) {
           throw new Error('공지사항을 불러오는데 실패했습니다.');
@@ -116,17 +124,25 @@ export default function NoticeDetailPage({ params }: { params: { id: string } })
       const result = await deleteNotice(noticeDetail.id);
       
       if (result.success) {
+        // 데이터 새로고침 확인
+        await refreshNotices();
+        
         // 목록 페이지로 이동
         router.push('/notices');
+        router.refresh(); // Next.js 라우터 캐시 새로고침
       } else {
         alert(result.error || '삭제 중 오류가 발생했습니다.');
         setIsDeleting(false);
         setShowDeleteConfirm(false);
       }
     } catch (err) {
+      console.error('공지사항 삭제 오류:', err);
       alert('삭제 중 오류가 발생했습니다.');
       setIsDeleting(false);
       setShowDeleteConfirm(false);
+      
+      // 오류 발생 시에도 데이터 다시 로드 시도
+      await refreshNotices();
     }
   };
   

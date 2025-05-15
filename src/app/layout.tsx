@@ -17,6 +17,28 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "WIZ WORKS",
   description: "광고주 관리 플랫폼",
+  openGraph: {
+    title: "WIZ WORKS - 광고주 관리 플랫폼",
+    description: "광고주 관리를 위한 최적의 솔루션, WIZ WORKS에서 시작하세요!",
+    type: "website",
+    url: "https://wizweblast.vercel.app",
+    images: [
+      {
+        url: "https://wizweblast.vercel.app/api/og",
+        width: 1200,
+        height: 630,
+        alt: "WIZ WORKS 대시보드 이미지",
+      },
+    ],
+    siteName: "WIZ WORKS",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "WIZ WORKS - 광고주 관리 플랫폼",
+    description: "광고주 관리를 위한 최적의 솔루션, WIZ WORKS에서 시작하세요!",
+    images: ["https://wizweblast.vercel.app/api/og"],
+    creator: "@wizworks",
+  },
 };
 
 export default function RootLayout({

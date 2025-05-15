@@ -152,7 +152,7 @@ export default function Dashboard() {
               </div>
               <div className="ml-4">
                 <p className="text-sm text-gray-600 dark:text-slate-400 group-hover:text-gray-900 dark:group-hover:text-slate-300 transition-colors duration-300">
-                  민웢 중
+                  민원 중
                 </p>
                 <div className="flex items-baseline">
                   <p className="text-2xl font-bold text-gray-900 dark:text-slate-200 group-hover:text-green-500 dark:group-hover:text-green-400 transition-colors duration-300">

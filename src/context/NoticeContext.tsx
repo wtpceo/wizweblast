@@ -24,7 +24,15 @@ export function NoticeProvider({ children }: { children: React.ReactNode }) {
   const fetchNotices = async () => {
     try {
       setIsLoading(true);
-      const response = await fetch('/api/notices');
+      // 캐시 방지를 위한 타임스탬프 추가
+      const timestamp = new Date().getTime();
+      const response = await fetch(`/api/notices?t=${timestamp}`, {
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0'
+        }
+      });
       
       if (!response.ok) {
         throw new Error('공지사항을 불러오는데 실패했습니다.');
@@ -52,11 +60,12 @@ export function NoticeProvider({ children }: { children: React.ReactNode }) {
       console.log('공지사항 추가 시도:', { title, content, isFixed });
       
       // 서버 측 API를 사용하여 공지사항 추가 요청
-      // 서버 측에서 service_role 키를 사용할 수 있음
       const response = await fetch('/api/notices', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache'
         },
         body: JSON.stringify({
           title,
@@ -85,7 +94,13 @@ export function NoticeProvider({ children }: { children: React.ReactNode }) {
       }
       
       // 새 공지사항 추가
-      setNotices(prevNotices => [data.notice, ...prevNotices]);
+      if (data.notice) {
+        setNotices(prevNotices => [data.notice, ...prevNotices]);
+      } else {
+        // 데이터가 올바르지 않은 경우 전체 새로고침
+        await fetchNotices();
+      }
+      
       return { success: true };
     } catch (err) {
       console.error('공지사항 추가 오류:', err);
@@ -98,6 +113,10 @@ export function NoticeProvider({ children }: { children: React.ReactNode }) {
     try {
       const response = await fetch(`/api/notices/${id}`, {
         method: 'DELETE',
+        headers: {
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache'
+        }
       });
       
       if (!response.ok) {
@@ -107,6 +126,10 @@ export function NoticeProvider({ children }: { children: React.ReactNode }) {
       
       // 공지사항 목록에서 삭제
       setNotices(prevNotices => prevNotices.filter(notice => notice.id !== id));
+      
+      // 전체 목록 새로고침하여 동기화 확인
+      setTimeout(() => fetchNotices(), 300);
+      
       return { success: true };
     } catch (err) {
       console.error('공지사항 삭제 오류:', err);
@@ -121,6 +144,8 @@ export function NoticeProvider({ children }: { children: React.ReactNode }) {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache'
         },
         body: JSON.stringify({
           title,
@@ -137,11 +162,17 @@ export function NoticeProvider({ children }: { children: React.ReactNode }) {
       const data = await response.json();
       
       // 공지사항 목록 업데이트
-      setNotices(prevNotices => 
-        prevNotices.map(notice => 
-          notice.id === id ? data.notice : notice
-        )
-      );
+      if (data.notice) {
+        setNotices(prevNotices => 
+          prevNotices.map(notice => 
+            notice.id === id ? data.notice : notice
+          )
+        );
+      } else {
+        // 데이터가 올바르지 않은 경우 전체 새로고침
+        await fetchNotices();
+      }
+      
       return { success: true };
     } catch (err) {
       console.error('공지사항 수정 오류:', err);

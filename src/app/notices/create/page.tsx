@@ -7,7 +7,7 @@ import { useNoticeContext } from '@/context/NoticeContext';
 
 export default function CreateNoticePage() {
   const router = useRouter();
-  const { addNotice } = useNoticeContext();
+  const { addNotice, refreshNotices } = useNoticeContext();
   
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
@@ -39,8 +39,12 @@ export default function CreateNoticePage() {
       console.log('공지사항 등록 결과:', result);
       
       if (result.success) {
+        // 데이터 새로 고침 확인
+        await refreshNotices();
+        
         // 목록 페이지로 이동
         router.push('/notices');
+        router.refresh(); // Next.js 라우터 캐시 새로고침
       } else {
         console.error('공지사항 등록 실패:', result.error);
         setError(result.error || '공지사항 등록에 실패했습니다.');
@@ -50,6 +54,9 @@ export default function CreateNoticePage() {
       console.error('공지사항 등록 중 오류 발생:', err);
       setError('공지사항 등록 중 오류가 발생했습니다.');
       setIsSubmitting(false);
+      
+      // 오류 발생 시에도 데이터 다시 로드 시도
+      await refreshNotices();
     }
   };
   

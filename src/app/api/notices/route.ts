@@ -30,7 +30,12 @@ export async function GET(request: Request) {
     
     if (error) {
       console.error('공지사항 목록 조회 오류:', error);
-      return NextResponse.json({ error: '공지사항 목록 조회에 실패했습니다.' }, { status: 500 });
+      return NextResponse.json({ error: '공지사항 목록 조회에 실패했습니다.' }, { 
+        status: 500,
+        headers: {
+          'Cache-Control': 'no-store, max-age=0',
+        }
+      });
     }
     
     // 응답 데이터 형식 변환
@@ -42,17 +47,26 @@ export async function GET(request: Request) {
       createdAt: notice.created_at
     }));
     
-    return NextResponse.json(formattedNotices);
+    return NextResponse.json(formattedNotices, {
+      headers: {
+        'Cache-Control': 'no-store, max-age=0',
+      }
+    });
   } catch (error) {
     console.error('공지사항 목록 API 오류:', error);
-    return NextResponse.json({ error: '서버 오류가 발생했습니다.' }, { status: 500 });
+    return NextResponse.json({ error: '서버 오류가 발생했습니다.' }, { 
+      status: 500,
+      headers: {
+        'Cache-Control': 'no-store, max-age=0',
+      }
+    });
   }
 }
 
 // 공지사항 추가 API
 export async function POST(request: Request) {
   try {
-    // 인증 확인 - 디버그 로그 추가
+    // 인증 확인
     const authResult = await auth();
     const { userId } = authResult;
     
@@ -61,7 +75,12 @@ export async function POST(request: Request) {
     // 인증 체크를 간소화 - 개발 환경에서는 인증 체크를 건너뛸 수 있음
     if (!userId && process.env.NODE_ENV === 'production') {
       console.error('공지사항 추가 API - 인증 실패');
-      return NextResponse.json({ error: '인증이 필요합니다.' }, { status: 401 });
+      return NextResponse.json({ error: '인증이 필요합니다.' }, { 
+        status: 401,
+        headers: {
+          'Cache-Control': 'no-store, max-age=0',
+        }
+      });
     }
     
     const body = await request.json();
@@ -73,120 +92,116 @@ export async function POST(request: Request) {
     if (!title || !content) {
       return NextResponse.json(
         { error: '제목과 내용은 필수 입력 항목입니다.' },
-        { status: 400 }
+        { 
+          status: 400,
+          headers: {
+            'Cache-Control': 'no-store, max-age=0',
+          }
+        }
       );
     }
     
     // 현재 시간 생성
     const now = new Date().toISOString();
     
-    try {
-      // 서비스 롤 Supabase 클라이언트 생성
-      // RLS를 우회하여 공지사항 추가
-      const adminSupabase = createServerClient();
+    // 서비스 롤 Supabase 클라이언트 생성
+    const adminSupabase = createServerClient();
+    
+    console.log('서비스 롤 클라이언트로 공지사항 추가 시도');
+    
+    // 공지사항 추가
+    const { data, error } = await adminSupabase
+      .from('notices')
+      .insert([{
+        title,
+        content,
+        is_fixed: isFixed,
+        created_at: now,
+        updated_at: now,
+      }])
+      .select()
+      .single();
+    
+    if (error) {
+      console.error('공지사항 추가 오류:', error);
       
-      console.log('서비스 롤 클라이언트로 공지사항 추가 시도');
-      
-      // 공지사항 추가
-      const { data, error } = await adminSupabase
+      // 일반 클라이언트로 시도
+      console.log('일반 클라이언트로 추가 시도');
+      const { data: fallbackData, error: fallbackError } = await supabase
         .from('notices')
         .insert([{
           title,
           content,
           is_fixed: isFixed,
           created_at: now,
+          updated_at: now,
         }])
         .select()
         .single();
       
-      if (error) {
-        console.error('공지사항 추가 오류:', error);
+      if (fallbackError) {
+        console.error('일반 클라이언트로 추가 시도 실패:', fallbackError);
         return NextResponse.json({ 
-          error: '공지사항 추가에 실패했습니다. 오류: ' + error.message,
-          details: error
-        }, { status: 500 });
+          error: '공지사항 추가에 실패했습니다. 오류: ' + fallbackError.message,
+          details: fallbackError
+        }, { 
+          status: 500,
+          headers: {
+            'Cache-Control': 'no-store, max-age=0',
+          }
+        });
       }
       
-      // 응답 데이터 형식 변환
+      // 성공 응답
       const formattedNotice = {
-        id: data.id,
-        title: data.title,
-        content: data.content,
-        isFixed: data.is_fixed,
-        createdAt: data.created_at
+        id: fallbackData.id,
+        title: fallbackData.title,
+        content: fallbackData.content,
+        isFixed: fallbackData.is_fixed,
+        createdAt: fallbackData.created_at
       };
       
-      console.log('공지사항 추가 성공:', formattedNotice);
+      console.log('일반 클라이언트로 공지사항 추가 성공:', formattedNotice);
       
       return NextResponse.json({ 
         success: true, 
         notice: formattedNotice
-      });
-    } catch (insertError: any) {
-      console.error('서비스 롤로 공지사항 추가 중 오류:', insertError);
-      
-      // 일반 Supabase 클라이언트로 추가 시도 (RLS 실패 가능성 있음)
-      try {
-        console.log('일반 클라이언트로 공지사항 추가 대체 시도');
-        
-        const { data, error } = await supabase
-          .from('notices')
-          .insert([{
-            title,
-            content,
-            is_fixed: isFixed,
-            created_at: now,
-          }])
-          .select()
-          .single();
-        
-        if (error) {
-          console.error('일반 클라이언트로 공지사항 추가 오류:', error);
-          
-          // RLS 정책 오류인 경우
-          if (error.message && error.message.includes('policy')) {
-            return NextResponse.json({ 
-              error: 'RLS 정책으로 인해 공지사항을 추가할 수 없습니다. 관리자에게 문의하세요.',
-              code: 'RLS_POLICY_ERROR',
-              details: error
-            }, { status: 403 });
-          }
-          
-          return NextResponse.json({ 
-            error: '공지사항 추가에 실패했습니다. 오류: ' + error.message,
-            details: error
-          }, { status: 500 });
+      }, {
+        headers: {
+          'Cache-Control': 'no-store, max-age=0',
         }
-        
-        // 응답 데이터 형식 변환
-        const formattedNotice = {
-          id: data.id,
-          title: data.title,
-          content: data.content,
-          isFixed: data.is_fixed,
-          createdAt: data.created_at
-        };
-        
-        console.log('일반 클라이언트로 공지사항 추가 성공:', formattedNotice);
-        
-        return NextResponse.json({ 
-          success: true, 
-          notice: formattedNotice
-        });
-      } catch (fallbackError: any) {
-        console.error('모든 공지사항 추가 시도 실패:', fallbackError);
-        return NextResponse.json({ 
-          error: '공지사항 추가를 위한 모든 시도가 실패했습니다.',
-          originalError: insertError?.message,
-          fallbackError: fallbackError?.message
-        }, { status: 500 });
-      }
+      });
     }
+    
+    // 응답 데이터 형식 변환
+    const formattedNotice = {
+      id: data.id,
+      title: data.title,
+      content: data.content,
+      isFixed: data.is_fixed,
+      createdAt: data.created_at
+    };
+    
+    console.log('공지사항 추가 성공:', formattedNotice);
+    
+    return NextResponse.json({ 
+      success: true, 
+      notice: formattedNotice
+    }, {
+      headers: {
+        'Cache-Control': 'no-store, max-age=0',
+      }
+    });
   } catch (error: any) {
     console.error('공지사항 추가 API 오류:', error);
     return NextResponse.json({ 
       error: '서버 오류가 발생했습니다.', 
       details: error?.message || '알 수 없는 오류'
-    }, { status: 500 });
+    }, { 
+      status: 500,
+      headers: {
+        'Cache-Control': 'no-store, max-age=0',
+      }
+    });
   }
 } 
