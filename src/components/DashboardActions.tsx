@@ -55,26 +55,35 @@ export function DashboardActions() {
           <Link 
             href={action.href} 
             key={index} 
-            className={`group relative overflow-hidden rounded-lg border border-slate-800 transition-all duration-500 ${action.hoverEffect} hover:shadow-xl hover:shadow-${action.color.split(' ')[0]}/20`}
+            className={`group relative overflow-hidden rounded-xl border border-slate-800/50 transition-all duration-500 ${action.hoverEffect} hover:shadow-xl hover:shadow-${action.color.split(' ')[0]}/20`}
           >
             <div className={`absolute inset-0 bg-gradient-to-br ${action.color} opacity-90 group-hover:${action.hoverColor} transition-colors duration-300`}></div>
             <div className="absolute inset-0 bg-[url('https://v0.blob.com/pattern-dots.png')] opacity-10 group-hover:opacity-20 transition-opacity duration-500 bg-blend-overlay"></div>
-            <div className="p-6 relative z-10">
-              <div className="flex items-center gap-3 mb-4">
-                <div className={`rounded-full ${action.iconBg} p-2 group-hover:bg-white/30 group-hover:scale-110 transition-all duration-300`}>
+            
+            <div className="relative z-10 p-6">
+              {/* 헤더 영역 */}
+              <div className="flex items-center gap-3 mb-3">
+                <div className={`rounded-full ${action.iconBg} p-2.5 group-hover:bg-white/30 group-hover:scale-110 transition-all duration-300`}>
                   <span className="text-white text-xl">{action.icon}</span>
                 </div>
                 <h3 className="text-lg font-bold text-white">{action.title}</h3>
               </div>
-              <p className={`text-sm ${action.textColor} mb-6 group-hover:text-white transition-colors duration-300`}>
+              
+              {/* 설명 텍스트 */}
+              <p className={`text-sm ${action.textColor} mb-8 group-hover:text-white/90 transition-colors duration-300`}>
                 {action.description}
               </p>
-              <div className="flex justify-between items-center">
-                <button className="text-sm bg-white/20 hover:bg-white/40 text-white py-1.5 px-3 rounded-md transition-all duration-300 hover:scale-105 hover:shadow-lg hover:shadow-white/30 relative overflow-hidden group-hover:translate-x-1">
-                  <span className="relative z-10">{action.caption}</span>
-                  <span className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/20 to-white/0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 bg-[length:200%_100%] animate-[shimmer_2s_infinite] -translate-x-full group-hover:translate-x-full"></span>
-                </button>
-                <span className="text-white group-hover:translate-x-1 transition-transform duration-300">→</span>
+              
+              {/* 하단 버튼 영역 */}
+              <div className="flex items-center justify-between mt-auto">
+                <div className="flex-1">
+                  <span className="inline-flex items-center text-sm bg-white/20 hover:bg-white/30 text-white px-4 py-2 rounded-lg transition-all duration-300 group-hover:translate-x-1">
+                    {action.caption}
+                  </span>
+                </div>
+                <div className="flex items-center justify-center w-8 h-8 rounded-full bg-white/10 group-hover:bg-white/20 transition-all duration-300">
+                  <span className="text-white text-lg group-hover:translate-x-0.5 transition-transform duration-300">→</span>
+                </div>
               </div>
             </div>
           </Link>

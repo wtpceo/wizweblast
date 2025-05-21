@@ -323,45 +323,45 @@ export function ClientTodoDialog({ client, isOpen, onClose, onSave }: ClientTodo
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 animate-fade-in">
+    <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 animate-fade-in">
       <div 
-        className="bg-white rounded-xl shadow-xl p-6 w-full max-w-md transform transition-all animate-scale-up max-h-[90vh] flex flex-col"
+        className="bg-gray-950/90 rounded-xl shadow-xl p-6 w-full max-w-md transform transition-all animate-scale-up max-h-[90vh] flex flex-col border border-gray-800 text-gray-100"
         onClick={(e) => e.stopPropagation()}
       >
         {/* 헤더 부분 */}
-        <div className="flex justify-between items-center mb-4 pb-3 border-b border-gray-100">
+        <div className="flex justify-between items-center mb-4">
           <h3 className="text-lg font-bold flex items-center">
-            <div className="mr-3 w-8 h-8 rounded-full bg-[#4CAF50] bg-opacity-20 flex items-center justify-center">
+            <div className="mr-3 w-8 h-8 rounded-full bg-blue-900/30 flex items-center justify-center">
               <span className="text-xl">{client.icon}</span>
             </div>
             <div>
-              <div>{client.name}</div>
-              <div className="text-xs text-gray-500">할 일 관리</div>
+              <span>{client.name}</span>
+              <div className="text-xs text-blue-300">할 일 관리</div>
             </div>
           </h3>
           <button 
             onClick={onClose}
-            className="bg-gray-100 hover:bg-gray-200 rounded-full w-8 h-8 flex items-center justify-center transition-colors"
+            className="bg-blue-900 hover:bg-blue-800 rounded-full w-8 h-8 flex items-center justify-center transition-colors text-white"
           >
             ✕
           </button>
         </div>
         
         {/* 팁 메시지 */}
-        <div className="mb-4 bg-[#E8F5E9] rounded-lg p-3 text-sm text-[#4CAF50] flex items-start">
+        <div className="mb-4 bg-blue-900/20 border border-blue-900/30 rounded-lg p-3 text-sm text-green-400 flex items-start">
           <span className="mr-2 mt-1">✅</span>
           <p>{randomTip}</p>
         </div>
         
         <form onSubmit={handleSubmit} className="mb-4">
           <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center">
+            <label className="block text-sm font-medium text-blue-300 mb-1 flex items-center">
               <span className="mr-2">✏️</span> 할 일 내용
             </label>
             <input
               type="text"
               ref={contentInputRef}
-              className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-[#4CAF50] focus:border-transparent transition-all"
+              className="w-full bg-gray-900 border border-blue-900/50 rounded-lg p-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-white placeholder-gray-500"
               placeholder="할 일을 입력한 후 Enter 키를 눌러 등록하세요"
               value={content}
               onChange={(e) => setContent(e.target.value)}
@@ -371,17 +371,17 @@ export function ClientTodoDialog({ client, isOpen, onClose, onSave }: ClientTodo
           </div>
           
           <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center">
+            <label className="block text-sm font-medium text-blue-300 mb-1 flex items-center">
               <span className="mr-2">👤</span> 담당자
             </label>
             
             {isLoading ? (
               <div className="text-center py-4">
-                <div className="w-8 h-8 rounded-full border-4 border-[#4CAF50] border-t-transparent animate-spin mx-auto mb-2"></div>
-                <p className="text-sm text-gray-500">담당자 목록을 불러오는 중...</p>
+                <div className="w-8 h-8 rounded-full border-4 border-green-400 border-t-transparent animate-spin mx-auto mb-2"></div>
+                <p className="text-sm text-blue-300">담당자 목록을 불러오는 중...</p>
               </div>
             ) : error ? (
-              <div className="text-center py-4 text-red-500">
+              <div className="text-center py-4 text-red-400">
                 <p>{error}</p>
               </div>
             ) : (
@@ -392,8 +392,8 @@ export function ClientTodoDialog({ client, isOpen, onClose, onSave }: ClientTodo
                     key={member.id}
                     className={`flex items-center p-2 border rounded-lg transition-all ${
                       assignedTo === member.id 
-                        ? 'border-[#4CAF50] bg-[#E8F5E9] text-[#4CAF50]'
-                        : 'border-gray-300 hover:border-gray-400'
+                        ? 'border-green-500 bg-blue-900/50 text-green-400'
+                        : 'border-blue-900/30 hover:border-blue-700 bg-gray-900 text-gray-300'
                     }`}
                     onClick={() => setAssignedTo(member.id)}
                   >
@@ -407,19 +407,19 @@ export function ClientTodoDialog({ client, isOpen, onClose, onSave }: ClientTodo
           
           {/* 선택된 담당자 요약 */}
           {selectedMember && (
-            <div className="mb-4 bg-[#F9FAFD] rounded-lg p-3 flex justify-between items-center">
+            <div className="mb-4 bg-gray-900 p-3 rounded-lg border border-blue-900/30 flex justify-between items-center">
               <div className="flex items-center">
                 <span className="text-xl mr-2">{getUserEmoji(selectedMember.role)}</span>
-                <span className="font-medium">{selectedMember.name}</span>
+                <span className="font-medium text-gray-300">{selectedMember.name}</span>
               </div>
-              <span className="text-xs text-[#2251D1]">담당자로 지정됨</span>
+              <span className="text-xs text-green-400">담당자로 지정됨</span>
             </div>
           )}
           
           <div className="flex justify-end gap-2">
             <button
               type="submit"
-              className="wiz-btn bg-[#4CAF50] hover:bg-[#3d8b40] hover:translate-y-[-1px] flex items-center"
+              className="px-4 py-2 rounded-lg transition-colors flex items-center bg-blue-700 text-white hover:bg-blue-600"
               disabled={!content.trim() || !assignedTo}
             >
               <span className="mr-1">✓</span> 할 일 추가
@@ -428,15 +428,15 @@ export function ClientTodoDialog({ client, isOpen, onClose, onSave }: ClientTodo
         </form>
         
         {/* 할 일 목록 */}
-        <div className="border-t border-gray-200 pt-3 mt-2">
-          <h4 className="text-sm font-medium mb-3 flex items-center">
+        <div className="border-t border-gray-800 pt-3 mt-2">
+          <h4 className="text-sm font-medium mb-3 flex items-center text-blue-300">
             <span className="mr-1">📋</span> 
             진행 중인 할 일 ({clientTodos.filter(t => !t.completed).length}개)
           </h4>
           
           <div className="overflow-y-auto max-h-[30vh]">
             {isLoadingTodos ? (
-              <div className="text-center py-4 text-gray-500">
+              <div className="text-center py-4 text-blue-300">
                 <div className="inline-block animate-spin text-xl mb-2">⏳</div>
                 <p className="text-sm">할 일을 불러오는 중...</p>
               </div>
@@ -445,21 +445,21 @@ export function ClientTodoDialog({ client, isOpen, onClose, onSave }: ClientTodo
                 {clientTodos.map((todoItem) => (
                   <div 
                     key={todoItem.id} 
-                    className={`p-3 rounded-lg ${todoItem.completed ? 'bg-[#E8F5E9]' : 'bg-[#E3F2FD]'}`}
+                    className={`p-3 rounded-lg ${todoItem.completed ? 'bg-blue-900/30 border border-green-500/30' : 'bg-gray-900 border border-blue-900/20'}`}
                   >
                     <div className="flex justify-between items-center mb-1 text-xs">
                       <div className="font-medium flex items-center">
                         <span className="mr-1">{todoItem.completed ? '✅' : '⏳'}</span>
-                        <span className={`${todoItem.completed ? 'text-green-600' : 'text-blue-600'}`}>
+                        <span className={`${todoItem.completed ? 'text-green-400' : 'text-blue-300'}`}>
                           {todoItem.completed ? '완료됨' : '진행 중'}
                         </span>
                       </div>
-                      <span className="text-gray-500">{formatTodoDate(todoItem.date)}</span>
+                      <span className="text-gray-400">{formatTodoDate(todoItem.date)}</span>
                     </div>
-                    <p className={`text-sm whitespace-pre-wrap break-words ${todoItem.completed ? 'line-through text-gray-500' : ''}`}>
+                    <p className={`text-sm whitespace-pre-wrap break-words ${todoItem.completed ? 'line-through text-gray-400' : 'text-gray-100'}`}>
                       {todoItem.content}
                     </p>
-                    <div className="mt-1 text-xs text-gray-500 flex items-center">
+                    <div className="mt-1 text-xs text-blue-300 flex items-center">
                       <span className="mr-1">👤</span>
                       담당: {todoItem.assigneeName}
                     </div>
@@ -467,18 +467,18 @@ export function ClientTodoDialog({ client, isOpen, onClose, onSave }: ClientTodo
                 ))}
               </div>
             ) : (
-              <div className="text-center py-4 text-gray-500">
+              <div className="text-center py-4 text-blue-300">
                 <p className="text-sm">등록된 할 일이 없습니다.</p>
               </div>
             )}
           </div>
         </div>
         
-        <div className="mt-4 pt-3 border-t border-gray-200">
+        <div className="mt-4 pt-3 border-t border-gray-800">
           <button
             type="button"
             onClick={onClose}
-            className="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 py-2 rounded-lg transition-all text-sm"
+            className="w-full bg-gray-800 hover:bg-gray-700 text-gray-300 py-2 rounded-lg transition-all text-sm"
           >
             닫기
           </button>

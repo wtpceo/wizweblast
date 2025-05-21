@@ -184,7 +184,7 @@ export function TodoModal({ client, isOpen, onClose, onSave }: TodoModalProps) {
     
     for (let i = firstDayOfMonth - 1; i >= 0; i--) {
       days.push(
-        <div key={`prev-${i}`} className="text-gray-300 text-center p-2">
+        <div key={`prev-${i}`} className="text-gray-600 text-center p-2">
           {prevMonthDays - i}
         </div>
       );
@@ -196,13 +196,16 @@ export function TodoModal({ client, isOpen, onClose, onSave }: TodoModalProps) {
       const dateString = format(date, 'yyyy-MM-dd');
       const isSelected = dueDate === dateString;
       const isPast = date < new Date(new Date().setHours(0, 0, 0, 0));
+      const isToday = format(date, 'yyyy-MM-dd') === format(new Date(), 'yyyy-MM-dd');
       
       days.push(
         <div 
           key={`current-${i}`}
-          className={`text-center p-2 rounded-full cursor-pointer hover:bg-blue-50 
-            ${isSelected ? 'bg-blue-500 text-white hover:bg-blue-600' : ''}
-            ${isPast && !isSelected ? 'text-gray-400' : 'text-gray-700'}
+          className={`text-center p-2 cursor-pointer rounded-full transition-colors
+            ${isSelected ? 'bg-blue-700 text-white hover:bg-blue-600' : ''}
+            ${isToday && !isSelected ? 'bg-blue-950 text-green-400 border border-green-500' : ''}
+            ${isPast && !isSelected && !isToday ? 'text-gray-500' : ''}
+            ${!isPast && !isSelected && !isToday ? 'text-gray-300 hover:bg-blue-900/50 hover:text-white' : ''}
           `}
           onClick={() => {
             setDueDate(dateString);
@@ -220,7 +223,7 @@ export function TodoModal({ client, isOpen, onClose, onSave }: TodoModalProps) {
     
     for (let i = 1; i <= nextMonthDays; i++) {
       days.push(
-        <div key={`next-${i}`} className="text-gray-300 text-center p-2">
+        <div key={`next-${i}`} className="text-gray-600 text-center p-2">
           {i}
         </div>
       );
@@ -265,9 +268,9 @@ export function TodoModal({ client, isOpen, onClose, onSave }: TodoModalProps) {
   const selectedMember = assignedTo ? teamMembers.find(m => m.id === assignedTo) : null;
   
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 animate-fade-in">
+    <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 animate-fade-in">
       <div 
-        className="bg-white rounded-xl shadow-xl p-6 w-full max-w-lg transform transition-all animate-scale-up"
+        className="bg-gray-950/90 rounded-xl shadow-xl p-6 w-full max-w-lg transform transition-all animate-scale-up border border-gray-800 text-gray-100"
         onClick={e => e.stopPropagation()}
       >
         {/* 헤더 */}
@@ -283,7 +286,7 @@ export function TodoModal({ client, isOpen, onClose, onSave }: TodoModalProps) {
           </h3>
           <button 
             onClick={onClose}
-            className="bg-gray-100 hover:bg-gray-200 rounded-full w-8 h-8 flex items-center justify-center transition-colors"
+            className="bg-blue-900 hover:bg-blue-800 rounded-full w-8 h-8 flex items-center justify-center transition-colors text-white"
             aria-label="닫기"
           >
             <X className="h-4 w-4" />
@@ -293,7 +296,7 @@ export function TodoModal({ client, isOpen, onClose, onSave }: TodoModalProps) {
         <form onSubmit={handleSubmit}>
           {/* 할 일 내용 */}
           <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-blue-300 mb-1">
               할 일 내용
             </label>
             <input
@@ -302,31 +305,31 @@ export function TodoModal({ client, isOpen, onClose, onSave }: TodoModalProps) {
               value={content}
               onChange={e => setContent(e.target.value)}
               placeholder="할 일 내용을 입력하세요"
-              className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full bg-gray-900 border border-blue-900/50 rounded-lg p-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent text-white placeholder-gray-500"
               required
             />
           </div>
           
           {/* 담당자 선택 */}
           <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-blue-300 mb-1">
               담당자 선택
             </label>
             
             {isLoadingUsers ? (
               <div className="flex justify-center py-3">
-                <div className="animate-spin rounded-full h-5 w-5 border-2 border-blue-500 border-t-transparent"></div>
+                <div className="animate-spin rounded-full h-5 w-5 border-2 border-green-400 border-t-transparent"></div>
               </div>
             ) : (
-              <div className="max-h-48 overflow-y-auto rounded-lg border border-gray-200">
+              <div className="max-h-48 overflow-y-auto rounded-lg border border-blue-900/50 bg-gray-900">
                 {teamMembers.map(member => (
                   <div
                     key={member.id}
                     onClick={() => setAssignedTo(member.id)}
                     className={`flex items-center p-3 cursor-pointer transition-colors ${
                       assignedTo === member.id
-                        ? 'bg-blue-50 border-l-4 border-l-blue-500 border-t-0 border-r-0 border-b border-b-gray-100'
-                        : 'hover:bg-gray-50 border-b border-gray-100'
+                        ? 'bg-blue-900/50 border-l-4 border-l-green-400 border-t-0 border-r-0 border-b border-b-gray-800'
+                        : 'hover:bg-gray-800 border-b border-gray-800'
                     }`}
                   >
                     {member.imageUrl ? (
@@ -336,16 +339,16 @@ export function TodoModal({ client, isOpen, onClose, onSave }: TodoModalProps) {
                         className="w-8 h-8 rounded-full mr-3"
                       />
                     ) : (
-                      <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center mr-3">
-                        <User className="h-4 w-4 text-gray-500" />
+                      <div className="w-8 h-8 bg-blue-900 rounded-full flex items-center justify-center mr-3">
+                        <User className="h-4 w-4 text-green-400" />
                       </div>
                     )}
                     <div className="flex-1">
-                      <div className={`${assignedTo === member.id ? 'font-medium text-blue-600' : 'text-gray-700'}`}>
+                      <div className={`${assignedTo === member.id ? 'font-medium text-green-400' : 'text-gray-300'}`}>
                         {member.name}
                       </div>
                       {member.department && (
-                        <div className="text-xs text-gray-500">
+                        <div className="text-xs text-blue-300">
                           {member.department}
                         </div>
                       )}
@@ -365,22 +368,24 @@ export function TodoModal({ client, isOpen, onClose, onSave }: TodoModalProps) {
           
           {/* 마감일 선택 */}
           <div className="mb-6">
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-blue-300 mb-1">
               마감일 (선택사항)
             </label>
             <div className="relative">
               <div 
-                className="flex items-center border border-gray-300 rounded-lg p-3 cursor-pointer hover:border-blue-300"
+                className="flex items-center bg-gray-900 border border-blue-900/50 rounded-lg p-3 cursor-pointer hover:border-blue-700"
                 onClick={() => setShowCalendar(!showCalendar)}
               >
-                <Calendar className="h-5 w-5 text-gray-400 mr-2" />
+                <Calendar className="h-5 w-5 text-green-400 mr-2" />
+                <span className="text-gray-300">
                 {dueDate 
                   ? format(new Date(dueDate), 'yyyy년 MM월 dd일 (EEEE)', { locale: ko })
                   : '마감일을 선택하세요'}
+                </span>
                 {dueDate && (
                   <button
                     type="button"
-                    className="ml-auto text-gray-400 hover:text-gray-600"
+                    className="ml-auto text-blue-400 hover:text-blue-300"
                     onClick={e => {
                       e.stopPropagation();
                       setDueDate(null);
@@ -393,31 +398,31 @@ export function TodoModal({ client, isOpen, onClose, onSave }: TodoModalProps) {
               
               {/* 날짜 선택 캘린더 */}
               {showCalendar && (
-                <div className="absolute z-10 mt-1 w-full bg-white rounded-lg shadow-lg border border-gray-200 p-3 animate-fade-in">
+                <div className="absolute z-10 mt-1 w-full bg-gray-950/90 rounded-lg shadow-lg border border-gray-800 p-3 animate-fade-in">
                   <div className="flex justify-between items-center mb-2">
                     <button
                       type="button"
                       onClick={goToPreviousMonth}
-                      className="p-1 rounded-full hover:bg-gray-100"
+                      className="h-7 w-7 bg-blue-900 border border-blue-800 p-0 opacity-100 hover:bg-blue-800 text-green-400 rounded-md"
                     >
-                      <ChevronLeft className="h-5 w-5" />
+                      <ChevronLeft className="h-4 w-4 m-auto" />
                     </button>
-                    <div className="font-medium">
+                    <div className="font-medium text-white">
                       {format(new Date(currentYear, currentMonth), 'yyyy년 MM월', { locale: ko })}
                     </div>
                     <button
                       type="button"
                       onClick={goToNextMonth}
-                      className="p-1 rounded-full hover:bg-gray-100"
+                      className="h-7 w-7 bg-blue-900 border border-blue-800 p-0 opacity-100 hover:bg-blue-800 text-green-400 rounded-md"
                     >
-                      <ChevronRight className="h-5 w-5" />
+                      <ChevronRight className="h-4 w-4 m-auto" />
                     </button>
                   </div>
                   
                   <div className="grid grid-cols-7 gap-1">
                     {/* 요일 헤더 */}
                     {['일', '월', '화', '수', '목', '금', '토'].map(day => (
-                      <div key={day} className="text-center font-medium p-2">
+                      <div key={day} className="text-center font-bold text-sm text-blue-300 p-2 border-b border-gray-800">
                         {day}
                       </div>
                     ))}
@@ -429,7 +434,7 @@ export function TodoModal({ client, isOpen, onClose, onSave }: TodoModalProps) {
                   <div className="mt-2 flex justify-end">
                     <button
                       type="button"
-                      className="text-sm text-blue-500 hover:text-blue-700"
+                      className="text-sm text-green-400 hover:text-green-300"
                       onClick={() => setShowCalendar(false)}
                     >
                       닫기
@@ -442,19 +447,19 @@ export function TodoModal({ client, isOpen, onClose, onSave }: TodoModalProps) {
           
           {/* 요약 정보 */}
           {(assignedTo || dueDate) && (
-            <div className="mb-4 bg-gray-50 p-3 rounded-lg">
-              <div className="text-sm text-gray-700 font-medium mb-2">등록 정보</div>
+            <div className="mb-4 bg-gray-900 p-3 rounded-lg border border-blue-900/30">
+              <div className="text-sm text-blue-300 font-medium mb-2">등록 정보</div>
               <div className="space-y-2">
                 {selectedMember && (
                   <div className="flex items-center text-sm">
-                    <User className="h-4 w-4 mr-2 text-gray-500" />
-                    <span>담당자: {selectedMember.name}</span>
+                    <User className="h-4 w-4 mr-2 text-green-400" />
+                    <span className="text-gray-300">담당자: {selectedMember.name}</span>
                   </div>
                 )}
                 {dueDate && (
                   <div className="flex items-center text-sm">
-                    <Calendar className="h-4 w-4 mr-2 text-gray-500" />
-                    <span>마감일: {format(new Date(dueDate), 'yyyy년 MM월 dd일', { locale: ko })}</span>
+                    <Calendar className="h-4 w-4 mr-2 text-green-400" />
+                    <span className="text-gray-300">마감일: {format(new Date(dueDate), 'yyyy년 MM월 dd일', { locale: ko })}</span>
                   </div>
                 )}
               </div>
@@ -463,7 +468,7 @@ export function TodoModal({ client, isOpen, onClose, onSave }: TodoModalProps) {
           
           {/* 액션 버튼 */}
           <div className="flex justify-between items-center">
-            <div className="text-xs text-gray-500">
+            <div className="text-xs text-blue-300">
               {content.length > 0 && assignedTo
                 ? "필수 정보가 모두 입력되었습니다."
                 : "내용과 담당자는 필수 입력사항입니다."}
@@ -473,7 +478,7 @@ export function TodoModal({ client, isOpen, onClose, onSave }: TodoModalProps) {
               <button
                 type="button"
                 onClick={onClose}
-                className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
+                className="px-4 py-2 bg-gray-800 text-gray-300 rounded-lg hover:bg-gray-700 transition-colors"
               >
                 취소
               </button>
@@ -482,8 +487,8 @@ export function TodoModal({ client, isOpen, onClose, onSave }: TodoModalProps) {
                 disabled={!content.trim() || !assignedTo || isSubmitting}
                 className={`px-4 py-2 rounded-lg transition-colors flex items-center ${
                   content.trim() && assignedTo && !isSubmitting
-                    ? 'bg-blue-500 text-white hover:bg-blue-600'
-                    : 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                    ? 'bg-blue-700 text-white hover:bg-blue-600'
+                    : 'bg-gray-800 text-gray-500 cursor-not-allowed'
                 }`}
               >
                 {isSubmitting ? '저장 중...' : '저장'}

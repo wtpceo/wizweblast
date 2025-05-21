@@ -247,27 +247,14 @@ export async function POST(request: Request) {
   try {
     console.log("[광고주 등록 API] 요청 받음");
     
-    // 인증 확인 (임시로 비활성화)
-    /*
-    const { userId } = await auth();
-    
-    if (!userId) {
-      console.log("[광고주 등록 API] 인증되지 않은 사용자");
-      return NextResponse.json(
-        { error: '인증되지 않은 사용자입니다.' },
-        { status: 401 }
-      );
-    }
-    */
-
     const body = await request.json();
     console.log("[광고주 등록 API] 요청 데이터:", body);
     
     // snake_case 변수로 변환
     const name = body.name;
-    const contractStart = body.contractStart || body.contract_start;
-    const contractEnd = body.contractEnd || body.contract_end;
-    const statusTags = body.statusTags || body.status_tags || ['정상'];
+    const contractStart = body.contractStart || body.contract_start || new Date().toISOString();
+    const contractEnd = body.contractEnd || body.contract_end || new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString();
+    const statusTags = body.statusTags || body.status_tags || ['신규'];
     const icon = body.icon || '🏢';
     const usesCoupon = body.usesCoupon !== undefined ? body.usesCoupon : (body.uses_coupon || false);
     const publishesNews = body.publishesNews !== undefined ? body.publishesNews : (body.publishes_news || false);
@@ -281,57 +268,23 @@ export async function POST(request: Request) {
       naverPlaceUrl = `https://${naverPlaceUrl}`;
     }
 
-    // 필수 필드 검증
-    if (!name || !contractStart || !contractEnd) {
-      console.log("[광고주 등록 API] 필수 정보 누락:", { name, contractStart, contractEnd });
+    // 필수 필드 검증 (이름만 필수)
+    if (!name) {
+      console.log("[광고주 등록 API] 필수 정보(이름) 누락");
       return NextResponse.json(
-        { error: '필수 정보가 누락되었습니다.' },
+        { error: '업체명은 필수 입력 사항입니다.' },
         { status: 400 }
       );
     }
 
     console.log("[광고주 등록 API] 데이터 유효성 검사 통과, DB 저장 시도");
-    
-    // 날짜 형식 변환 (ISO 문자열 -> Date 객체)
-    let startDate: Date;
-    let endDate: Date;
-    
-    try {
-      startDate = new Date(contractStart);
-      if (isNaN(startDate.getTime())) {
-        throw new Error('계약 시작일이 유효한 날짜 형식이 아닙니다.');
-      }
-    } catch (dateError) {
-      console.error('[광고주 등록 API] 계약 시작일 형식 오류:', dateError);
-      return NextResponse.json(
-        { error: '계약 시작일이 유효한 날짜 형식이 아닙니다.' },
-        { status: 400 }
-      );
-    }
-    
-    try {
-      endDate = new Date(contractEnd);
-      if (isNaN(endDate.getTime())) {
-        throw new Error('계약 종료일이 유효한 날짜 형식이 아닙니다.');
-      }
-    } catch (dateError) {
-      console.error('[광고주 등록 API] 계약 종료일 형식 오류:', dateError);
-      return NextResponse.json(
-        { error: '계약 종료일이 유효한 날짜 형식이 아닙니다.' },
-        { status: 400 }
-      );
-    }
 
     // Supabase에 광고주 추가
     console.log("[광고주 등록 API] DB 삽입 시작:", { 
-      name, startDate, endDate
+      name, contractStart, contractEnd
     });
     
     try {
-      // 날짜를 ISO 문자열로 변환
-      const formattedStartDate = startDate.toISOString().split('T')[0];
-      const formattedEndDate = endDate.toISOString().split('T')[0]; 
-      
       const supabase = createServerClient();
       
       // snake_case로 저장
@@ -340,8 +293,8 @@ export async function POST(request: Request) {
         .insert({
           name,
           icon,
-          contract_start: formattedStartDate,
-          contract_end: formattedEndDate,
+          contract_start: contractStart,
+          contract_end: contractEnd,
           status_tags: statusTags,
           uses_coupon: usesCoupon,
           publishes_news: publishesNews,
@@ -367,7 +320,7 @@ export async function POST(request: Request) {
         icon: newClient.icon || '🏢',
         contractStart: String(newClient.contract_start),
         contractEnd: String(newClient.contract_end),
-        statusTags: newClient.status_tags || ['정상'],
+        statusTags: newClient.status_tags || ['신규'],
         usesCoupon: newClient.uses_coupon || false,
         publishesNews: newClient.publishes_news || false,
         usesReservation: newClient.uses_reservation || false,

@@ -34,6 +34,11 @@ export function ClientInfo({ client, onContractUpdate }: ClientInfoProps) {
     client.contractEnd ? format(new Date(client.contractEnd), 'yyyy-MM-dd') : ''
   );
   
+  // 기본 정보 수정 관련 상태 추가
+  const [clientName, setClientName] = useState<string>(client.name || '');
+  const [clientPhone, setClientPhone] = useState<string>(client.phoneNumber || '');
+  const [clientNaverUrl, setClientNaverUrl] = useState<string>(client.naverPlaceUrl || '');
+  
   // 입력 유효성 상태
   const [startDateInvalid, setStartDateInvalid] = useState(false);
   const [endDateInvalid, setEndDateInvalid] = useState(false);
@@ -112,6 +117,194 @@ export function ClientInfo({ client, onContractUpdate }: ClientInfoProps) {
     setIsEditing(false);
   };
   
+  // 기본 정보 저장 함수
+  const handleSaveBasicInfo = async () => {
+    try {
+      if (!clientName.trim()) {
+        alert('업체명은 필수 입력 사항입니다.');
+        return;
+      }
+
+      // 업데이트할 클라이언트 정보
+      const updatedClient = {
+        ...client,
+        name: clientName,
+        phoneNumber: clientPhone,
+        naverPlaceUrl: clientNaverUrl
+      };
+
+      // API 요청
+      const response = await fetch(`/api/clients/${client.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(updatedClient)
+      });
+
+      if (!response.ok) {
+        throw new Error('API 저장에 실패했습니다.');
+      }
+
+      // 로컬 스토리지 업데이트
+      localStorage.setItem(`wizweblast_client_${client.id}`, JSON.stringify(updatedClient));
+
+      // 목록에 있는 경우 해당 데이터도 업데이트
+      const storedClientsJSON = localStorage.getItem('wizweblast_clients');
+      if (storedClientsJSON) {
+        const storedClients = JSON.parse(storedClientsJSON);
+        if (Array.isArray(storedClients)) {
+          const updatedClients = storedClients.map(c => 
+            c.id === client.id ? updatedClient : c
+          );
+          localStorage.setItem('wizweblast_clients', JSON.stringify(updatedClients));
+        }
+      }
+
+      // 편집 모드 종료
+      setIsEditing(false);
+      
+      // 성공 메시지
+      alert('기본 정보가 업데이트 되었습니다! 👍');
+      
+      // 페이지 새로고침
+      window.location.reload();
+    } catch (error) {
+      console.error('기본 정보 저장 실패:', error);
+      alert('기본 정보 저장 중 오류가 발생했습니다. 다시 시도해주세요.');
+    }
+  };
+  
+  // 서비스 이용 현황 편집 상태
+  const [isServiceEditing, setIsServiceEditing] = useState(false);
+  const [services, setServices] = useState({
+    usesCoupon: client.usesCoupon,
+    publishesNews: client.publishesNews,
+    usesReservation: client.usesReservation
+  });
+  
+  // 업종 정보 상태
+  const [category, setCategory] = useState<string>('');
+  const [existingCategory, setExistingCategory] = useState<boolean>(false);
+
+  // 업종 정보 로컬 스토리지에서 불러오기
+  useEffect(() => {
+    try {
+      const savedCategory = localStorage.getItem(`wizweblast_client_${client.id}_category`);
+      if (savedCategory) {
+        setCategory(savedCategory);
+        setExistingCategory(true);
+      }
+    } catch (e) {
+      console.error('업종 정보 로드 실패:', e);
+    }
+  }, [client.id]);
+  
+  // 서비스 이용 현황 저장
+  const handleSaveServices = async () => {
+    try {
+      // 업종 정보 저장
+      if (category.trim()) {
+        localStorage.setItem(`wizweblast_client_${client.id}_category`, category);
+        setExistingCategory(true);
+      }
+
+      // 서비스 정보 업데이트
+      const updatedClient = {
+        ...client,
+        usesCoupon: services.usesCoupon,
+        publishesNews: services.publishesNews,
+        usesReservation: services.usesReservation
+      };
+
+      // API 요청 시도
+      try {
+        const response = await fetch(`/api/clients/${client.id}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(updatedClient)
+        });
+
+        if (!response.ok) {
+          throw new Error('API 저장에 실패했습니다.');
+        }
+
+        // 로컬 스토리지 업데이트
+        localStorage.setItem(`wizweblast_client_${client.id}`, JSON.stringify(updatedClient));
+
+        // 목록에 있는 경우 해당 데이터도 업데이트
+        const storedClientsJSON = localStorage.getItem('wizweblast_clients');
+        if (storedClientsJSON) {
+          const storedClients = JSON.parse(storedClientsJSON);
+          if (Array.isArray(storedClients)) {
+            const updatedClients = storedClients.map(c => 
+              c.id === client.id ? updatedClient : c
+            );
+            localStorage.setItem('wizweblast_clients', JSON.stringify(updatedClients));
+          }
+        }
+
+        // 편집 모드 종료
+        setIsServiceEditing(false);
+        
+        // 성공 메시지
+        alert('서비스 이용 정보가 업데이트 되었습니다! 👍');
+        
+        // 페이지 새로고침
+        window.location.reload();
+      } catch (apiError) {
+        console.error('API 저장 실패:', apiError);
+        throw new Error('서버에 저장하는 중 오류가 발생했습니다.');
+      }
+    } catch (error) {
+      console.error('서비스 정보 저장 실패:', error);
+      alert('서비스 정보 저장 중 오류가 발생했습니다. 다시 시도해주세요.');
+    }
+  };
+
+  // 키보드 단축키 처리 핸들러 추가
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // 수정 모드에서만 단축키 활성화
+      if (isServiceEditing) {
+        // Alt+S: 저장
+        if (e.altKey && e.key === 's') {
+          e.preventDefault();
+          handleSaveServices();
+        }
+        // Esc: 취소
+        else if (e.key === 'Escape') {
+          e.preventDefault();
+          setIsServiceEditing(false);
+        }
+      }
+      
+      // 기본 정보 수정 모드
+      if (isEditing) {
+        // Alt+S: 저장
+        if (e.altKey && e.key === 's') {
+          e.preventDefault();
+          handleSaveBasicInfo();
+        }
+        // Esc: 취소
+        else if (e.key === 'Escape') {
+          e.preventDefault();
+          setIsEditing(false);
+        }
+      }
+    };
+
+    // 이벤트 리스너 등록
+    window.addEventListener('keydown', handleKeyDown);
+    
+    // 컴포넌트 언마운트 시 이벤트 리스너 제거
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isServiceEditing, isEditing]);
+
   // 남은 계약 일수 계산
   const getDaysRemaining = () => {
     if (!client.contractEnd) return null;
@@ -251,163 +444,17 @@ export function ClientInfo({ client, onContractUpdate }: ClientInfoProps) {
     }
   };
   
-  // 서비스 이용 현황 편집 상태
-  const [isServiceEditing, setIsServiceEditing] = useState(false);
-  const [services, setServices] = useState({
-    usesCoupon: client.usesCoupon,
-    publishesNews: client.publishesNews,
-    usesReservation: client.usesReservation
-  });
-  
-  // 업종 정보 상태
-  const [category, setCategory] = useState<string>('');
-  const [existingCategory, setExistingCategory] = useState<boolean>(false);
-
-  // 업종 정보 로컬 스토리지에서 불러오기
-  useEffect(() => {
-    try {
-      const savedCategory = localStorage.getItem(`wizweblast_client_${client.id}_category`);
-      if (savedCategory) {
-        setCategory(savedCategory);
-        setExistingCategory(true);
-      }
-    } catch (e) {
-      console.error('업종 정보 로드 실패:', e);
-    }
-  }, [client.id]);
-
-  // 키보드 단축키 처리 핸들러 추가
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      // 수정 모드에서만 단축키 활성화
-      if (isServiceEditing) {
-        // Alt+S: 저장
-        if (e.altKey && e.key === 's') {
-          e.preventDefault();
-          handleSaveServices();
-        }
-        // Esc: 취소
-        else if (e.key === 'Escape') {
-          e.preventDefault();
-          setIsServiceEditing(false);
-        }
-      }
-      
-      // 계약 정보 수정 모드
-      if (isEditing) {
-        // Alt+S: 저장
-        if (e.altKey && e.key === 's') {
-          e.preventDefault();
-          handleSaveContract();
-        }
-        // Esc: 취소
-        else if (e.key === 'Escape') {
-          e.preventDefault();
-          setIsEditing(false);
-        }
-      }
-    };
-
-    // 이벤트 리스너 등록
-    window.addEventListener('keydown', handleKeyDown);
-    
-    // 컴포넌트 언마운트 시 이벤트 리스너 제거
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown);
-    };
-  }, [isServiceEditing, isEditing]);
-
-  // 서비스 이용 현황 저장
-  const handleSaveServices = async () => {
-    try {
-      // 업종 정보 저장
-      if (category.trim()) {
-        localStorage.setItem(`wizweblast_client_${client.id}_category`, category);
-        setExistingCategory(true);
-      }
-
-      // 서비스 정보 업데이트
-      const updatedClient = {
-        ...client,
-        usesCoupon: services.usesCoupon,
-        publishesNews: services.publishesNews,
-        usesReservation: services.usesReservation
-      };
-
-      // 로컬 스토리지 클라이언트 업데이트
-      localStorage.setItem(`wizweblast_client_${client.id}`, JSON.stringify(updatedClient));
-
-      // 목록에 있는 경우 해당 데이터도 업데이트
-      const storedClientsJSON = localStorage.getItem('wizweblast_clients');
-      if (storedClientsJSON) {
-        const storedClients = JSON.parse(storedClientsJSON);
-        if (Array.isArray(storedClients)) {
-          const updatedClients = storedClients.map(c => 
-            c.id === client.id ? { 
-              ...c, 
-              usesCoupon: services.usesCoupon,
-              publishesNews: services.publishesNews,
-              usesReservation: services.usesReservation
-            } : c
-          );
-          localStorage.setItem('wizweblast_clients', JSON.stringify(updatedClients));
-        }
-      }
-
-      console.log('서비스 정보가 로컬 스토리지에 저장되었습니다.');
-
-      // API 요청 시도 (실패해도 로컬 변경 사항은 유지)
-      try {
-        const response = await fetch(`/api/clients/${client.id}`, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            name: client.name,
-            contractStart: client.contractStart,
-            contractEnd: client.contractEnd,
-            icon: client.icon,
-            usesCoupon: services.usesCoupon,
-            publishesNews: services.publishesNews,
-            usesReservation: services.usesReservation,
-            phoneNumber: client.phoneNumber,
-            naverPlaceUrl: client.naverPlaceUrl
-          })
-        });
-
-        if (!response.ok) {
-          console.warn('API 저장 실패하였으나 로컬 저장은 성공했습니다.');
-        } else {
-          console.log('API 저장도 성공했습니다.');
-        }
-      } catch (apiError) {
-        console.warn('API 저장 중 오류 발생:', apiError);
-        console.log('로컬 저장은 성공했습니다.');
-      }
-
-      // 편집 모드 종료
-      setIsServiceEditing(false);
-      
-      // 성공 메시지
-      alert('서비스 이용 정보가 업데이트 되었습니다! 👍');
-      
-      // 페이지 새로고침 (API 저장 여부와 상관없이 로컬 데이터로 표시)
-      setTimeout(() => {
-        window.location.reload();
-      }, 1000);
-    } catch (error) {
-      console.error('서비스 정보 저장 실패:', error);
-      alert('서비스 정보 저장 중 오류가 발생했습니다. 다시 시도해주세요.');
-    }
-  };
-  
   return (
     <div className="bg-[#151523] rounded-lg shadow-xl overflow-hidden border border-white/10">
       {/* 섹션 헤더 */}
       <div className="bg-gradient-to-r from-blue-900/30 to-purple-900/30 backdrop-blur-sm px-6 py-4 border-b border-white/10">
         <h2 className="text-lg font-bold flex items-center text-white">
           <span className="text-xl mr-2">📋</span> 광고주 정보
+          {client.statusTags.includes('신규') && (
+            <span className="ml-2 text-xs bg-green-900/30 text-green-300 px-2 py-1 rounded-full border border-green-500/30">
+              신규 등록
+            </span>
+          )}
         </h2>
       </div>
       
@@ -415,25 +462,107 @@ export function ClientInfo({ client, onContractUpdate }: ClientInfoProps) {
       <div className="p-6 space-y-6 text-white">
         {/* 기본 정보 */}
         <div>
-          <h3 className="text-sm font-semibold text-slate-400 mb-3">기본 정보</h3>
+          <div className="flex justify-between items-center mb-3">
+            <h3 className="text-sm font-semibold text-slate-400">기본 정보</h3>
+            {!isEditing ? (
+              <button 
+                onClick={() => setIsEditing(true)} 
+                className="text-xs bg-blue-900/30 text-blue-300 px-2 py-1 rounded hover:bg-blue-800/40 transition-colors border border-blue-500/30"
+                title="수정하기 (편집 모드에서 Alt+S로 저장, Esc로 취소)"
+              >
+                수정
+              </button>
+            ) : (
+              <div className="flex space-x-2">
+                <button 
+                  onClick={() => setIsEditing(false)} 
+                  className="text-xs bg-white/10 text-white px-2 py-1 rounded hover:bg-white/20 transition-colors"
+                  title="취소 (Esc)"
+                >
+                  취소
+                </button>
+                <button 
+                  onClick={handleSaveBasicInfo} 
+                  className="text-xs bg-blue-600 text-white px-2 py-1 rounded hover:bg-blue-500 transition-colors"
+                  title="저장 (Alt+S)"
+                >
+                  저장
+                </button>
+              </div>
+            )}
+          </div>
           
-          <div className="space-y-4">
-            {/* 업체명 */}
-            <div className="flex justify-between">
-              <span className="text-slate-300">업체명:</span>
-              <span className="font-medium text-white">{client.name}</span>
+          {isEditing ? (
+            <div className="space-y-4">
+              {/* 업체명 */}
+              <div>
+                <label htmlFor="name" className="block text-sm text-slate-300 mb-1">
+                  업체명 <span className="text-red-500">*</span>
+                </label>
+                <input
+                  id="name"
+                  type="text"
+                  value={clientName}
+                  onChange={(e) => setClientName(e.target.value)}
+                  className="w-full border border-slate-600 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-[#1e1e30] text-white"
+                  required
+                />
+              </div>
+              
+              {/* 전화번호 */}
+              <div>
+                <label htmlFor="phoneNumber" className="block text-sm text-slate-300 mb-1">
+                  전화번호
+                </label>
+                <input
+                  id="phoneNumber"
+                  type="text"
+                  value={clientPhone}
+                  onChange={(e) => setClientPhone(e.target.value)}
+                  placeholder="예: 02-1234-5678"
+                  className="w-full border border-slate-600 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-[#1e1e30] text-white"
+                />
+              </div>
+              
+              {/* 네이버 플레이스 */}
+              <div>
+                <label htmlFor="naverPlaceUrl" className="block text-sm text-slate-300 mb-1">
+                  네이버 플레이스 URL
+                </label>
+                <input
+                  id="naverPlaceUrl"
+                  type="text"
+                  value={clientNaverUrl}
+                  onChange={(e) => setClientNaverUrl(e.target.value)}
+                  placeholder="예: https://place.naver.com/..."
+                  className="w-full border border-slate-600 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-[#1e1e30] text-white"
+                />
+                <p className="text-xs text-slate-400 mt-1">
+                  전체 URL 또는 단축 URL(naver.me)을 입력하세요. "http://" 또는 "https://"는 생략 가능합니다.
+                </p>
+              </div>
             </div>
-            
-            {/* 전화번호 */}
-            <div className="flex justify-between">
-              <span className="text-slate-300">전화번호:</span>
-              <span className="font-medium text-white">{client.phoneNumber || '정보 없음'}</span>
-            </div>
-            
-            {/* 네이버 플레이스 */}
-            <div className="flex justify-between">
-              <span className="text-slate-300">네이버 플레이스:</span>
-              <span className="font-medium">
+          ) : (
+            <div className="space-y-4">
+              {/* 업체명 */}
+              <div className="flex justify-between">
+                <span className="text-slate-300">업체명:</span>
+                <span className="font-medium text-white">{client.name}</span>
+              </div>
+              
+              {/* 전화번호 */}
+              <div className="flex justify-between">
+                <span className="text-slate-300">전화번호:</span>
+                {client.phoneNumber ? (
+                  <span className="font-medium text-white">{client.phoneNumber}</span>
+                ) : (
+                  <span className="text-slate-400 italic">미입력</span>
+                )}
+              </div>
+              
+              {/* 네이버 플레이스 */}
+              <div className="flex justify-between">
+                <span className="text-slate-300">네이버 플레이스:</span>
                 {client.naverPlaceUrl ? (
                   <a 
                     href={client.naverPlaceUrl} 
@@ -444,37 +573,11 @@ export function ClientInfo({ client, onContractUpdate }: ClientInfoProps) {
                     바로가기
                   </a>
                 ) : (
-                  '정보 없음'
+                  <span className="text-slate-400 italic">미입력</span>
                 )}
-              </span>
+              </div>
             </div>
-            
-            {/* 최근 활동일 */}
-            <div className="flex justify-between">
-              <span className="text-slate-300">최근 활동일:</span>
-              {client.last_activity_at ? (
-                (() => {
-                  const date = new Date(client.last_activity_at);
-                  const today = new Date();
-                  const diffTime = today.getTime() - date.getTime();
-                  const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-                  
-                  // 시간 포맷팅 추가 (24시간제)
-                  const hours = String(date.getHours()).padStart(2, '0');
-                  const minutes = String(date.getMinutes()).padStart(2, '0');
-                  
-                  return (
-                    <span className={`font-medium ${diffDays >= 5 ? 'text-amber-300' : 'text-white'}`}>
-                      {`${date.getFullYear()}.${String(date.getMonth() + 1).padStart(2, '0')}.${String(date.getDate()).padStart(2, '0')} ${hours}:${minutes}`}
-                      {diffDays >= 5 ? ` (${diffDays}일 전)` : ''}
-                    </span>
-                  );
-                })()
-              ) : (
-                <span className="text-slate-400">정보 없음</span>
-              )}
-            </div>
-          </div>
+          )}
         </div>
         
         {/* 계약 정보 */}
@@ -532,19 +635,160 @@ export function ClientInfo({ client, onContractUpdate }: ClientInfoProps) {
                     <PopoverTrigger asChild>
                       <button
                         type="button"
-                        className="bg-blue-900/30 p-2 rounded-r-lg border border-l-0 border-slate-600 text-blue-300"
+                        className="bg-blue-900/50 p-2 rounded-r-lg border border-l-0 border-slate-600 text-blue-300 hover:bg-blue-800 transition-colors"
                         aria-label="달력에서 날짜 선택"
                       >
                         <CalendarIcon className="h-5 w-5" />
                       </button>
                     </PopoverTrigger>
                     <PopoverContent className="w-auto p-0 bg-[#1e1e30] border border-slate-600">
+                      <style jsx global>{`
+                        /* 달력 전체 레이아웃 */
+                        .rdp {
+                          --rdp-cell-size: 40px !important;
+                          --rdp-accent-color: #3b82f6 !important;
+                          --rdp-background-color: #4f46e5 !important;
+                          margin: 0 !important;
+                        }
+                        
+                        /* 달력 화살표 스타일 강화 */
+                        .rdp-nav {
+                          position: relative !important;
+                          display: flex !important;
+                          justify-content: space-between !important;
+                          width: 100% !important;
+                        }
+                        
+                        .rdp-nav_button {
+                          width: 36px !important;
+                          height: 36px !important;
+                          color: white !important;
+                          background-color: #4f46e5 !important;
+                          border: 2px solid #818cf8 !important;
+                          border-radius: 50% !important;
+                          padding: 0 !important;
+                          margin: 0 !important;
+                          display: flex !important;
+                          align-items: center !important;
+                          justify-content: center !important;
+                          opacity: 1 !important;
+                          position: absolute !important;
+                          top: 50% !important;
+                          transform: translateY(-50%) !important;
+                          z-index: 10 !important;
+                        }
+                        
+                        .rdp-nav_button_previous {
+                          left: 8px !important;
+                        }
+                        
+                        .rdp-nav_button_next {
+                          right: 8px !important;
+                        }
+                        
+                        .rdp-nav_button:hover {
+                          background-color: #6366f1 !important;
+                        }
+                        
+                        .rdp-nav_button svg {
+                          width: 24px !important;
+                          height: 24px !important;
+                          stroke-width: 3px !important;
+                        }
+                        
+                        /* 달력 헤더(요일) 배치 강화 */
+                        .rdp-months {
+                          display: flex !important;
+                          justify-content: center !important;
+                        }
+                        
+                        .rdp-month {
+                          width: 100% !important;
+                        }
+                        
+                        .rdp-table {
+                          width: 100% !important;
+                          max-width: 300px !important;
+                          margin: 0 auto !important;
+                        }
+                        
+                        .rdp-head {
+                          margin-top: 10px !important;
+                          margin-bottom: 10px !important;
+                        }
+                        
+                        .rdp-head_row {
+                          display: grid !important;
+                          grid-template-columns: repeat(7, 1fr) !important;
+                          width: 100% !important;
+                        }
+                        
+                        .rdp-head_cell {
+                          color: #93c5fd !important;
+                          font-weight: 600 !important;
+                          font-size: 0.9rem !important;
+                          text-align: center !important;
+                          padding: 8px 0 !important;
+                          display: flex !important;
+                          align-items: center !important;
+                          justify-content: center !important;
+                        }
+                        
+                        /* 날짜 그리드 레이아웃 개선 */
+                        .rdp-tbody {
+                          width: 100% !important;
+                        }
+                        
+                        .rdp-row {
+                          display: grid !important;
+                          grid-template-columns: repeat(7, 1fr) !important;
+                          width: 100% !important;
+                        }
+                        
+                        .rdp-cell {
+                          text-align: center !important;
+                          padding: 2px !important;
+                        }
+                        
+                        .rdp-day {
+                          display: flex !important;
+                          align-items: center !important;
+                          justify-content: center !important;
+                          width: 100% !important;
+                          height: 36px !important;
+                          margin: 0 auto !important;
+                          border-radius: 50% !important;
+                        }
+                        
+                        /* 선택된 날짜 스타일 */
+                        .rdp-day_selected, 
+                        .rdp-day_selected:hover {
+                          background-color: #3b82f6 !important;
+                          color: white !important;
+                        }
+                        
+                        /* 캡션 (년월 표시) 개선 */
+                        .rdp-caption {
+                          position: relative !important;
+                          display: flex !important;
+                          align-items: center !important;
+                          justify-content: center !important;
+                          padding: 16px 0 !important;
+                        }
+                        
+                        .rdp-caption_label {
+                          font-size: 1.1rem !important;
+                          font-weight: 600 !important;
+                          color: white !important;
+                          padding: 0 40px !important;
+                        }
+                      `}</style>
                       <Calendar
                         mode="single"
                         selected={startDate}
                         onSelect={handleStartDateSelect}
                         locale={ko}
-                        className="bg-[#1e1e30] text-white"
+                        className="bg-[#1e1e30] text-white border-none"
                       />
                     </PopoverContent>
                   </Popover>
@@ -572,7 +816,7 @@ export function ClientInfo({ client, onContractUpdate }: ClientInfoProps) {
                     <PopoverTrigger asChild>
                       <button
                         type="button"
-                        className="bg-blue-900/30 p-2 rounded-r-lg border border-l-0 border-slate-600 text-blue-300"
+                        className="bg-blue-900/50 p-2 rounded-r-lg border border-l-0 border-slate-600 text-blue-300 hover:bg-blue-800 transition-colors"
                         aria-label="달력에서 날짜 선택"
                       >
                         <CalendarIcon className="h-5 w-5" />
@@ -584,7 +828,7 @@ export function ClientInfo({ client, onContractUpdate }: ClientInfoProps) {
                         selected={endDate}
                         onSelect={handleEndDateSelect}
                         locale={ko}
-                        className="bg-[#1e1e30] text-white"
+                        className="bg-[#1e1e30] text-white border-none"
                       />
                     </PopoverContent>
                   </Popover>

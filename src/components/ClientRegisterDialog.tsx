@@ -14,11 +14,14 @@ interface ClientRegisterDialogProps {
 }
 
 export function ClientRegisterDialog({ isOpen, onClose, onSave }: ClientRegisterDialogProps) {
+  // 필수 정보
   const [name, setName] = useState('');
+  
+  // 선택 정보
   const [phoneNumber, setPhoneNumber] = useState('');
   const [naverPlaceUrl, setNaverPlaceUrl] = useState('');
   
-  // 입력 필드 refs 추가
+  // 입력 필드 refs
   const nameInputRef = useRef<HTMLInputElement>(null);
   const phoneInputRef = useRef<HTMLInputElement>(null);
   const urlInputRef = useRef<HTMLInputElement>(null);
@@ -67,7 +70,7 @@ export function ClientRegisterDialog({ isOpen, onClose, onSave }: ClientRegister
       icon: '🏢', 
       contractStart: new Date().toISOString(),
       contractEnd: new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString(),
-      statusTags: [],
+      statusTags: ['신규'],
       usesCoupon: false,
       publishesNews: false,
       usesReservation: false
@@ -124,10 +127,13 @@ export function ClientRegisterDialog({ isOpen, onClose, onSave }: ClientRegister
               className="col-span-3"
               aria-required="true"
             />
+            <p className="text-xs text-gray-500">
+              필수 입력 사항입니다. 나머지 정보는 나중에 추가할 수 있습니다.
+            </p>
           </div>
           
           <div className="grid grid-cols-1 gap-2">
-            <Label htmlFor="phoneNumber" className="font-medium">전화번호</Label>
+            <Label htmlFor="phoneNumber" className="font-medium">전화번호 (선택)</Label>
             <Input
               id="phoneNumber"
               ref={phoneInputRef}
@@ -140,7 +146,7 @@ export function ClientRegisterDialog({ isOpen, onClose, onSave }: ClientRegister
           </div>
           
           <div className="grid grid-cols-1 gap-2">
-            <Label htmlFor="naverPlaceUrl" className="font-medium">네이버플레이스 링크</Label>
+            <Label htmlFor="naverPlaceUrl" className="font-medium">네이버플레이스 링크 (선택)</Label>
             <Input
               id="naverPlaceUrl"
               ref={urlInputRef}
