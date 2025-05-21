@@ -1000,25 +1000,25 @@ export default function ClientsPage() {
                       className={`px-3 py-2 rounded-lg text-sm transition-all ${statusFilter === 'all' ? 'bg-blue-900/50 text-white border border-blue-500/30' : 'bg-white/5 hover:bg-white/10 border border-white/10'}`}
                       onClick={() => setStatusFilter('all')}
                     >
-                      전체 보기
+                      전체 보기 ({statusCounts.total})
                     </button>
                     <button
                       className={`px-3 py-2 rounded-lg text-sm transition-all flex items-center ${statusFilter === '종료 임박' ? 'bg-amber-900/20 text-amber-300 border border-amber-500/30' : 'bg-white/5 hover:bg-white/10 border border-white/10'}`}
                       onClick={() => setStatusFilter('종료 임박')}
                     >
-                      <span className="mr-1">⏰</span> 종료 임박
+                      <span className="mr-1">⏰</span> 종료 임박 ({statusCounts.nearExpiry})
                     </button>
                     <button
                       className={`px-3 py-2 rounded-lg text-sm transition-all flex items-center ${statusFilter === '관리 소홀' ? 'bg-orange-900/20 text-orange-300 border border-orange-500/30' : 'bg-white/5 hover:bg-white/10 border border-white/10'}`}
                       onClick={() => setStatusFilter('관리 소홀')}
                     >
-                      <span className="mr-1">⚠️</span> 관리 소홀
+                      <span className="mr-1">⚠️</span> 관리 소홀 ({statusCounts.poorManaged})
                     </button>
                     <button
                       className={`px-3 py-2 rounded-lg text-sm transition-all flex items-center ${statusFilter === '민원 중' ? 'bg-red-900/20 text-red-300 border border-red-500/30' : 'bg-white/5 hover:bg-white/10 border border-white/10'}`}
                       onClick={() => setStatusFilter('민원 중')}
                     >
-                      <span className="mr-1">🔔</span> 민원 중
+                      <span className="mr-1">🔔</span> 민원 중 ({statusCounts.complaints})
                     </button>
                   </div>
                 </div>
