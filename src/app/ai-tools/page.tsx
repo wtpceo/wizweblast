@@ -16,6 +16,16 @@ const aiTools = [
     path: '/ai-tools/keyword-combinator'
   },
   {
+    id: 'nplace-ai',
+    title: 'N플레이스 AI',
+    description: '네이버 플레이스 최적화를 위한 컨텐츠 및 키워드 추천 도구입니다.',
+    icon: '📍',
+    color: 'from-green-600 to-teal-600',
+    hoverColor: 'from-green-500 to-teal-500',
+    path: '/ai-tools/nplace-ai',
+    comingSoon: false
+  },
+  {
     id: 'content-generator',
     title: '콘텐츠 생성기',
     description: 'AI로 매력적인 마케팅 콘텐츠를 빠르게 작성합니다.',
