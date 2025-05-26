@@ -27,9 +27,12 @@ async function checkAdminPermission(supabaseClient: any) {
 }
 
 // 특정 사용자 정보 조회 API (관리자용)
-export async function GET(request: Request, { params }: { params: { id: string } }) {
+export async function GET(
+  request: Request,
+  context: { params: { id: string } }
+) {
   try {
-    const userId = params.id;
+    const userId = context.params.id;
     const supabaseServerClient = createServerComponentClient<Database>({ cookies });
     
     // 관리자 권한 확인
@@ -60,9 +63,12 @@ export async function GET(request: Request, { params }: { params: { id: string }
 }
 
 // 사용자 정보 수정 API (관리자용)
-export async function PATCH(request: Request, { params }: { params: { id: string } }) {
+export async function PATCH(
+  request: Request,
+  context: { params: { id: string } }
+) {
   try {
-    const userId = params.id;
+    const userId = context.params.id;
     const supabaseServerClient = createServerComponentClient<Database>({ cookies });
     
     // 관리자 권한 확인
