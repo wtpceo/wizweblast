@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { ThemeProvider } from './ThemeProvider';
 
 export function Providers({ children }: { children: React.ReactNode }) {
   const [mounted, setMounted] = useState(false);
@@ -15,5 +14,6 @@ export function Providers({ children }: { children: React.ReactNode }) {
     return <>{children}</>;
   }
 
-  return <ThemeProvider>{children}</ThemeProvider>;
+  // ThemeProvider 없이 children을 직접 반환
+  return <>{children}</>;
 } 

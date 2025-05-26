@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { supabase } from '@/lib/supabase';
 
@@ -7,8 +7,8 @@ import { supabase } from '@/lib/supabase';
  * PATCH /api/todos/[id]/assign
  */
 export async function PATCH(
-  request: Request,
-  { params }: { params: { id: string } }
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     // 인증 확인
@@ -21,7 +21,8 @@ export async function PATCH(
       );
     }
     
-    const todoId = params.id;
+    const resolvedParams = await params;
+    const todoId = resolvedParams.id;
     
     if (!todoId) {
       return NextResponse.json(

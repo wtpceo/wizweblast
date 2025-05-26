@@ -46,3 +46,17 @@ export const clientNotes = pgTable('client_notes', {
   note: text('note').notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
 });
+
+// 광고주 외부 데이터 테이블 (client_external_data)
+export const clientExternalData = pgTable('client_external_data', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  clientId: uuid('client_id').notNull().references(() => clients.id, { onDelete: 'cascade' }),
+  industry: text('industry'),
+  coupon: text('coupon'),
+  news: boolean('news').default(false),
+  reservation: text('reservation'),
+  keywords: json('keywords').$type<string[]>().default([]),
+  lastScrapedAt: timestamp('last_scraped_at', { withTimezone: true }),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }),
+});

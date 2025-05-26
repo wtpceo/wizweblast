@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { db } from '@/lib/db';
 import { clients } from '@/lib/db/schema';
@@ -9,8 +9,8 @@ import { eq } from 'drizzle-orm';
  * PATCH /api/clients/[id]/contract
  */
 export async function PATCH(
-  request: Request,
-  { params }: { params: { id: string } }
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     // 1. 인증 확인
@@ -22,7 +22,9 @@ export async function PATCH(
       );
     }
 
-    const clientId = parseInt(params.id);
+    // params가 Promise로 래핑되어 있으므로 await으로 해결
+    const resolvedParams = await params;
+    const clientId = resolvedParams.id; // UUID는 문자열로 사용
     
     // 2. 요청 본문 파싱
     const body = await request.json();

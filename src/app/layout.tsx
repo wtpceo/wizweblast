@@ -56,18 +56,7 @@ export default function RootLayout({
             elements: {
               formButtonPrimary: 'bg-slate-500 hover:bg-slate-400',
               footerActionLink: 'text-slate-500 hover:text-slate-400',
-            },
-            baseTheme: 'light',
-          }}
-          localization={{
-            signIn: {
-              title: '로그인',
-              subtitle: '계정에 로그인하세요',
-            },
-            signUp: {
-              title: '회원가입',
-              subtitle: '새 계정을 만드세요',
-            },
+            }
           }}
         >
           <NoticeProvider>

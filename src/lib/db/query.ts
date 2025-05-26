@@ -71,7 +71,7 @@ const testConnection = async (): Promise<boolean> => {
 /**
  * 광고주 크롤링 데이터 가져오기
  */
-export async function getClientExternalData(clientId: number) {
+export async function getClientExternalData(clientId: string) {
   try {
     // db 객체에서 dbInstance 접근 (직접 추가한 필드가 아니므로 타입 단언 사용)
     const dbInstance = (db as any).dbInstance || db;
@@ -111,7 +111,7 @@ export async function getClientExternalData(clientId: number) {
 /**
  * 광고주 정보 가져오기
  */
-export async function getClient(clientId: number) {
+export async function getClient(clientId: string) {
   try {
     // db 객체에서 dbInstance 접근
     const dbInstance = (db as any).dbInstance || db;
@@ -152,7 +152,7 @@ export async function getClient(clientId: number) {
  * 광고주 크롤링 데이터 업데이트
  */
 export async function updateClientExternalData(
-  clientId: number, 
+  clientId: string, 
   data: {
     industry?: string | null;
     coupon?: string | null;
@@ -198,9 +198,9 @@ export async function updateClientExternalData(
           .returning();
       }
     } else {
-      // 새로 생성 - 실제 DB 쿼리 시도
+      // 새 데이터 추가 - 실제 DB 쿼리 시도
       if (dbInstance && typeof dbInstance.insert === 'function') {
-        console.log('[쿼리] 실제 DB를 통해 외부 데이터 생성');
+        console.log('[쿼리] 실제 DB를 통해 외부 데이터 추가');
         
         return await dbInstance
           .insert(clientExternalData)
@@ -229,27 +229,15 @@ export async function updateClientExternalData(
     }
   } catch (error) {
     console.error('[쿼리] 광고주 외부 데이터 업데이트 오류:', error);
-    // 오류 처리: 모의 응답 반환
-    return [{
-      id: 1,
-      clientId,
-      industry: data.industry || null,
-      coupon: data.coupon || null,
-      news: data.news || false,
-      reservation: data.reservation || null,
-      keywords: data.keywords || [],
-      lastScrapedAt: new Date(),
-      createdAt: new Date(),
-      updatedAt: new Date()
-    }];
+    return null;
   }
 }
 
 /**
- * 광고주 크롤링 결과 기반으로 정보 업데이트
+ * 광고주 정보 크롤링 데이터로 업데이트
  */
 export async function updateClientFromCrawlData(
-  clientId: number,
+  clientId: string,
   data: {
     usesCoupon?: boolean;
     publishesNews?: boolean;
@@ -257,59 +245,77 @@ export async function updateClientFromCrawlData(
   }
 ) {
   try {
+    // 기존 클라이언트 정보 조회 시도
+    const client = await getClient(clientId);
+    
+    // 오류 처리: 모의 응답 반환
+    if (!client) {
+      console.error('[쿼리] 광고주 정보를 찾을 수 없음:', clientId);
+      return {
+        success: false,
+        error: '광고주 정보를 찾을 수 없습니다.'
+      };
+    }
+    
     // db 객체에서 dbInstance 접근
     const dbInstance = (db as any).dbInstance || db;
     
     console.log('[쿼리] 광고주 정보 업데이트 시도:', clientId, data);
     
+    // 업데이트 할 데이터 객체
+    const updateData: {
+      usesCoupon?: boolean;
+      publishesNews?: boolean;
+      usesReservation?: boolean;
+      statusTags?: string[];
+      updatedAt: Date;
+    } = {
+      ...data,
+      updatedAt: new Date()
+    };
+    
+    // 상태 태그 업데이트
+    const statusTags = [...(client.statusTags || [])];
+    if (!statusTags.includes('크롤링 완료')) {
+      statusTags.push('크롤링 완료');
+      updateData.statusTags = statusTags;
+    }
+    
     // 실제 DB 쿼리 시도
     if (dbInstance && typeof dbInstance.update === 'function') {
       console.log('[쿼리] 실제 DB를 통해 광고주 정보 업데이트');
       
-      return await dbInstance
+      const result = await dbInstance
         .update(clients)
-        .set({
-          ...data,
-          updatedAt: new Date()
-        })
+        .set(updateData)
         .where(eq(clients.id, clientId))
         .returning();
+        
+      return {
+        success: true,
+        data: result[0]
+      };
     } else {
       // 폴백으로 기존 메서드 사용
       console.warn('[쿼리] 실제 DB 접근 불가, 폴백 메서드 사용');
-      return await db
+      
+      const result = await db
         .update(clients)
-        .set({
-          ...data,
-          updatedAt: new Date()
-        })
+        .set(updateData)
         .where(eq(clients.id, clientId))
         .returning();
+        
+      return {
+        success: true,
+        data: result[0]
+      };
     }
   } catch (error) {
     console.error('[쿼리] 광고주 정보 업데이트 오류:', error);
-    
-    // 기존 클라이언트 정보 조회 시도
-    const client = await getClient(clientId);
-    
-    // 오류 처리: 모의 응답 반환
-    return [{
-      id: clientId,
-      name: client?.name || '임시 광고주 데이터',
-      icon: client?.icon || '🏢',
-      contractStart: client?.contractStart || new Date('2024-01-01'),
-      contractEnd: client?.contractEnd || new Date('2024-12-31'),
-      statusTags: client?.statusTags || ['정상', '크롤링 완료'],
-      usesCoupon: data.usesCoupon !== undefined ? data.usesCoupon : (client?.usesCoupon || false),
-      publishesNews: data.publishesNews !== undefined ? data.publishesNews : (client?.publishesNews || false),
-      usesReservation: data.usesReservation !== undefined ? data.usesReservation : (client?.usesReservation || false),
-      phoneNumber: client?.phoneNumber || '',
-      naverPlaceUrl: client?.naverPlaceUrl || '',
-      teamId: client?.teamId || 1,
-      createdBy: client?.createdBy || null,
-      createdAt: client?.createdAt || new Date(),
-      updatedAt: new Date()
-    }];
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : '알 수 없는 오류'
+    };
   }
 }
 

@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '../../../../../lib/supabase';
 
 /**
@@ -6,14 +6,15 @@ import { createServerClient } from '../../../../../lib/supabase';
  * POST /api/clients/[id]/scrape
  */
 export async function POST(
-  request: Request,
-  { params }: { params: { id: string } }
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    console.log("크롤링 API 호출됨: clientId =", params.id);
+    const resolvedParams = await params;
+    console.log("크롤링 API 호출됨: clientId =", resolvedParams.id);
     
     // 클라이언트 ID 파라미터 받기
-    const clientId = params.id;
+    const clientId = resolvedParams.id;
     
     if (!clientId) {
       return NextResponse.json(

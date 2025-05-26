@@ -1,10 +1,11 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { supabase, createServerClient } from '@/lib/supabase';
 
 // 특정 공지사항 조회 API
-export async function GET(request: Request, { params }: { params: { id: string } }) {
+export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const noticeId = params.id;
+    const resolvedParams = await params;
+    const noticeId = resolvedParams.id;
     
     // 공지사항 조회
     const { data, error } = await supabase
@@ -56,9 +57,10 @@ export async function GET(request: Request, { params }: { params: { id: string }
 }
 
 // 공지사항 수정 API
-export async function PATCH(request: Request, { params }: { params: { id: string } }) {
+export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const noticeId = params.id;
+    const resolvedParams = await params;
+    const noticeId = resolvedParams.id;
     const body = await request.json();
     const { title, content, isFixed } = body;
     
@@ -165,9 +167,10 @@ export async function PATCH(request: Request, { params }: { params: { id: string
 }
 
 // 공지사항 삭제 API
-export async function DELETE(request: Request, { params }: { params: { id: string } }) {
+export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const noticeId = params.id;
+    const resolvedParams = await params;
+    const noticeId = resolvedParams.id;
     
     // 서비스 롤 Supabase 클라이언트 생성
     const adminSupabase = createServerClient();

@@ -2,8 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { Database } from '@/lib/database.types';
 
-// 안전한 서버 클라이언트 생성 함수
-export function createSafeServerClient() {
+// 안전한 서버 클라이언트 생성 함수 (내부 함수로 사용)
+function createSafeServerClient() {
   try {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
     let supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -30,9 +30,10 @@ export function createSafeServerClient() {
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { table: string } }
+  { params }: { params: Promise<{ table: string }> }
 ) {
-  const { table } = params;
+  const resolvedParams = await params;
+  const { table } = resolvedParams;
   const searchParams = request.nextUrl.searchParams;
   const id = searchParams.get('id');
   
@@ -151,9 +152,10 @@ export async function GET(
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { table: string } }
+  { params }: { params: Promise<{ table: string }> }
 ) {
-  const { table } = params;
+  const resolvedParams = await params;
+  const { table } = resolvedParams;
   
   // 허용된 테이블 목록
   const allowedTables = [
@@ -215,9 +217,10 @@ export async function POST(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { table: string } }
+  { params }: { params: Promise<{ table: string }> }
 ) {
-  const { table } = params;
+  const resolvedParams = await params;
+  const { table } = resolvedParams;
   const searchParams = request.nextUrl.searchParams;
   const id = searchParams.get('id');
   
@@ -289,9 +292,10 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { table: string } }
+  { params }: { params: Promise<{ table: string }> }
 ) {
-  const { table } = params;
+  const resolvedParams = await params;
+  const { table } = resolvedParams;
   const searchParams = request.nextUrl.searchParams;
   const id = searchParams.get('id');
   

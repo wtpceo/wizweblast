@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
 
 // UUID 패턴을 확인하는 함수
@@ -24,12 +24,13 @@ const formatToUUID = (id: string) => {
 
 // 특정 메모 조회 API
 export async function GET(
-  request: Request,
-  { params }: { params: { id: string; noteId: string } }
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string; noteId: string }> }
 ) {
   try {
-    const clientId = formatToUUID(params.id);
-    const noteId = formatToUUID(params.noteId);
+    const resolvedParams = await params;
+    const clientId = formatToUUID(resolvedParams.id);
+    const noteId = formatToUUID(resolvedParams.noteId);
     
     console.log(`특정 메모 조회: clientId=${clientId}, noteId=${noteId}`);
     
@@ -61,12 +62,13 @@ export async function GET(
 
 // 메모 삭제 API
 export async function DELETE(
-  request: Request,
-  { params }: { params: { id: string; noteId: string } }
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string; noteId: string }> }
 ) {
   try {
-    const clientId = formatToUUID(params.id);
-    const noteId = formatToUUID(params.noteId);
+    const resolvedParams = await params;
+    const clientId = formatToUUID(resolvedParams.id);
+    const noteId = formatToUUID(resolvedParams.noteId);
     
     console.log(`메모 삭제: clientId=${clientId}, noteId=${noteId}`);
     
@@ -97,12 +99,13 @@ export async function DELETE(
 
 // 메모 업데이트 API
 export async function PATCH(
-  request: Request,
-  { params }: { params: { id: string; noteId: string } }
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string; noteId: string }> }
 ) {
   try {
-    const clientId = formatToUUID(params.id);
-    const noteId = formatToUUID(params.noteId);
+    const resolvedParams = await params;
+    const clientId = formatToUUID(resolvedParams.id);
+    const noteId = formatToUUID(resolvedParams.noteId);
     const body = await request.json();
     const { note } = body;
     

@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
 import { auth } from '@clerk/nextjs/server';
 
@@ -25,12 +25,13 @@ const formatToUUID = (id: string) => {
 
 // 특정 할 일 조회 API
 export async function GET(
-  request: Request,
-  { params }: { params: { id: string; todoId: string } }
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string; todoId: string }> }
 ) {
   try {
-    const clientId = formatToUUID(params.id);
-    const todoId = formatToUUID(params.todoId);
+    const resolvedParams = await params;
+    const clientId = formatToUUID(resolvedParams.id);
+    const todoId = formatToUUID(resolvedParams.todoId);
     
     console.log(`특정 할 일 조회: clientId=${clientId}, todoId=${todoId}`);
     
@@ -62,12 +63,13 @@ export async function GET(
 
 // 할 일 삭제 API
 export async function DELETE(
-  request: Request,
-  { params }: { params: { id: string; todoId: string } }
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string; todoId: string }> }
 ) {
   try {
-    const clientId = formatToUUID(params.id);
-    const todoId = formatToUUID(params.todoId);
+    const resolvedParams = await params;
+    const clientId = formatToUUID(resolvedParams.id);
+    const todoId = formatToUUID(resolvedParams.todoId);
     
     console.log(`할 일 삭제: clientId=${clientId}, todoId=${todoId}`);
     
@@ -98,12 +100,13 @@ export async function DELETE(
 
 // 할 일 업데이트 API (내용 변경)
 export async function PATCH(
-  request: Request,
-  { params }: { params: { id: string; todoId: string } }
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string; todoId: string }> }
 ) {
   try {
-    const clientId = formatToUUID(params.id);
-    const todoId = formatToUUID(params.todoId);
+    const resolvedParams = await params;
+    const clientId = formatToUUID(resolvedParams.id);
+    const todoId = formatToUUID(resolvedParams.todoId);
     const body = await request.json();
     const { content, title, assignedTo, completed } = body;
     

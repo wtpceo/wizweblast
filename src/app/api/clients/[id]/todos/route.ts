@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
 import { auth } from '@clerk/nextjs/server';
 
@@ -24,9 +24,10 @@ const formatToUUID = (id: string) => {
 };
 
 // 광고주 할 일 조회 API
-export async function GET(request: Request, { params }: { params: { id: string } }) {
+export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const clientId = params.id;
+    const resolvedParams = await params;
+    const clientId = resolvedParams.id;
     const formattedClientId = formatToUUID(clientId);
     
     console.log(`할 일 조회 요청: clientId=${clientId}, 변환된 ID=${formattedClientId}`);
@@ -75,14 +76,15 @@ export async function GET(request: Request, { params }: { params: { id: string }
 }
 
 // 광고주 할 일 추가 API
-export async function POST(request: Request, { params }: { params: { id: string } }) {
+export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     // Clerk 인증 확인
     const { userId } = await auth();
     const createdBy = userId || 'unknown';
     
     // 클라이언트 ID
-    const clientId = params.id;
+    const resolvedParams = await params;
+    const clientId = resolvedParams.id;
     const formattedClientId = formatToUUID(clientId);
     
     console.log(`할 일 추가 요청: clientId=${clientId}, 변환된 ID=${formattedClientId}`);

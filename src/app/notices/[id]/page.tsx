@@ -12,7 +12,7 @@ const formatNoticeDate = (dateString: string) => {
   return `${date.getFullYear()}년 ${date.getMonth() + 1}월 ${date.getDate()}일`;
 };
 
-export default function NoticeDetailPage({ params }: { params: { id: string } }) {
+export default function NoticeDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter();
   const { notices, deleteNotice, refreshNotices } = useNoticeContext();
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);

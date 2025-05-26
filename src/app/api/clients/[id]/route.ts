@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { createServerClient } from '../../../../lib/supabase';
 
@@ -65,9 +65,10 @@ const saveClientsToStorage = (clients: any[]) => {
 let clients = getClientsFromStorage();
 
 // 단일 광고주 조회 API
-export async function GET(request: Request, { params }: { params: { id: string } }) {
+export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    console.log("GET 광고주 조회 API 호출됨, clientId:", params.id);
+    const resolvedParams = await params;
+    console.log("GET 광고주 조회 API 호출됨, clientId:", resolvedParams.id);
     
     // 인증 검사를 임시로 비활성화 (개발 편의를 위함)
     /* 
@@ -80,7 +81,7 @@ export async function GET(request: Request, { params }: { params: { id: string }
     }
     */
 
-    const clientId = params.id;
+    const clientId = resolvedParams.id;
     
     if (!clientId) {
       return NextResponse.json(
@@ -191,7 +192,8 @@ export async function GET(request: Request, { params }: { params: { id: string }
     
     // 개발 환경에서만 테스트 데이터 반환
     if (process.env.NODE_ENV === 'development') {
-      const clientId = params.id;
+      const resolvedParams = await params;
+      const clientId = resolvedParams.id;
       console.log('개발 환경에서 샘플 데이터 반환');
       const sampleClient = {
         id: clientId,
@@ -217,9 +219,10 @@ export async function GET(request: Request, { params }: { params: { id: string }
 }
 
 // 광고주 정보 수정 API
-export async function PUT(request: Request, { params }: { params: { id: string } }) {
+export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    console.log('PUT API 요청 수신됨, 클라이언트 ID:', params.id);
+    const resolvedParams = await params;
+    console.log('PUT API 요청 수신됨, 클라이언트 ID:', resolvedParams.id);
     
     // 인증 검사를 임시로 비활성화 (개발 편의를 위함)
     /*
@@ -235,7 +238,7 @@ export async function PUT(request: Request, { params }: { params: { id: string }
     const body = await request.json();
     console.log('요청 데이터:', body);
     
-    const clientId = params.id;
+    const clientId = resolvedParams.id;
     
     if (!clientId) {
       return NextResponse.json(
@@ -353,8 +356,10 @@ export async function PUT(request: Request, { params }: { params: { id: string }
 }
 
 // 광고주 삭제 API
-export async function DELETE(request: Request, { params }: { params: { id: string } }) {
+export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const resolvedParams = await params;
+    
     // 인증 검사를 임시로 비활성화 (개발 편의를 위함)
     /*
     const { userId } = await auth();
@@ -366,7 +371,7 @@ export async function DELETE(request: Request, { params }: { params: { id: strin
     }
     */
 
-    const clientId = params.id;
+    const clientId = resolvedParams.id;
     
     if (!clientId) {
       return NextResponse.json(

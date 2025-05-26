@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
 import { auth } from '@clerk/nextjs/server';
 
@@ -44,10 +44,11 @@ const formatToUUID = (id: string) => {
 };
 
 // 광고주 메모 조회 API
-export async function GET(request: Request, { params }: { params: { id: string } }) {
+export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   // 전역 try-catch로 모든 예외 처리
   try {
-    console.log(`메모 조회 API 호출: URL=${request.url}, 클라이언트 ID=${params.id}`);
+    const resolvedParams = await params;
+    console.log(`메모 조회 API 호출: URL=${request.url}, 클라이언트 ID=${resolvedParams.id}`);
     
     // 응답 헤더 설정 (캐시 방지)
     const headers = {
@@ -58,7 +59,7 @@ export async function GET(request: Request, { params }: { params: { id: string }
     };
     
     // 클라이언트 ID 유효성 검사
-    const clientId = params.id;
+    const clientId = resolvedParams.id;
     if (!clientId) {
       console.error('클라이언트 ID가 제공되지 않음');
       return NextResponse.json(
@@ -162,11 +163,12 @@ export async function GET(request: Request, { params }: { params: { id: string }
 }
 
 // 광고주 메모 추가 API
-export async function POST(request: Request, { params }: { params: { id: string } }) {
-  console.log(`메모 추가 API 호출: URL=${request.url}, 클라이언트 ID=${params.id}`);
-  
+export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const clientId = params.id;
+    const resolvedParams = await params;
+    console.log(`메모 추가 API 호출: URL=${request.url}, 클라이언트 ID=${resolvedParams.id}`);
+    
+    const clientId = resolvedParams.id;
     
     // 클라이언트 ID가 없는 경우 처리
     if (!clientId) {

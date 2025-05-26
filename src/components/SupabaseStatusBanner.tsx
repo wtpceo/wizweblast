@@ -12,6 +12,7 @@ export function SupabaseStatusBanner({ onSetup }: SupabaseStatusBannerProps) {
   const [message, setMessage] = useState<string>('Supabase 연결 상태를 확인하는 중...');
   const [details, setDetails] = useState<any>(null);
   const [isVisible, setIsVisible] = useState<boolean>(true);
+  const [isSettingUp, setIsSettingUp] = useState<boolean>(false);
   
   useEffect(() => {
     const checkSupabaseStatus = async () => {
@@ -66,6 +67,7 @@ export function SupabaseStatusBanner({ onSetup }: SupabaseStatusBannerProps) {
   // 환경 설정 실행 함수
   const handleSetup = async () => {
     try {
+      setIsSettingUp(true);
       setStatus('loading');
       setMessage('Supabase 스키마 설정 중...');
       
@@ -96,6 +98,8 @@ export function SupabaseStatusBanner({ onSetup }: SupabaseStatusBannerProps) {
       setStatus('error');
       setMessage('Supabase 스키마 설정 중 오류가 발생했습니다');
       setDetails(error);
+    } finally {
+      setIsSettingUp(false);
     }
   };
   
@@ -134,9 +138,9 @@ export function SupabaseStatusBanner({ onSetup }: SupabaseStatusBannerProps) {
               <button
                 onClick={handleSetup}
                 className="mt-2 inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:bg-blue-300 disabled:cursor-not-allowed"
-                disabled={status === 'loading'}
+                disabled={isSettingUp}
               >
-                {status === 'loading' ? '설정 중...' : 'Supabase 스키마 설정'}
+                {isSettingUp ? '설정 중...' : 'Supabase 스키마 설정'}
               </button>
             </div>
           )}
