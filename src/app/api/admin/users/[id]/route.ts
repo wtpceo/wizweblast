@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { createServerComponentClient } from '@supabase/auth-helpers-nextjs';
 import type { Database } from '@/lib/database.types';
@@ -28,7 +28,7 @@ async function checkAdminPermission(supabaseClient: any) {
 
 // 특정 사용자 정보 조회 API (관리자용)
 export async function GET(
-  request: Request,
+  request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
@@ -64,7 +64,7 @@ export async function GET(
 
 // 사용자 정보 수정 API (관리자용)
 export async function PATCH(
-  request: Request,
+  request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
