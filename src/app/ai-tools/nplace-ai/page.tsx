@@ -35,7 +35,7 @@ interface BusinessTypeData {
   coupons: { title: string; period: string }[];
   posts: { title: string; date: string; content: string }[];
   clips: { title: string; views: string; date: string }[];
-  reviews: { author: string; rating: number; content: string; date: string }[];
+  reviews: { author: string; rating: number; content: string; date: string; image?: string }[];
   blogReviews: { title: string; author: string; views: string; date: string }[];
 }
 
@@ -257,6 +257,11 @@ export default function NplaceAIPage() {
           menus: prevData[businessType].menus.map((menu, index) => ({
             ...menu,
             image: menuImages[index % menuImages.length] || menu.image
+          })),
+          // 리뷰 이미지도 업데이트
+          reviews: prevData[businessType].reviews.map((review, index) => ({
+            ...review,
+            image: reviewImages[index % reviewImages.length] || undefined
           }))
         }
       };
@@ -329,10 +334,14 @@ export default function NplaceAIPage() {
               {/* 미리보기 버튼 */}
               <div className="pt-4">
                 <button
-                  onClick={() => setPreviewMode(true)}
-                  className="w-full px-4 py-2 bg-gradient-to-r from-green-600 to-teal-600 hover:from-green-500 hover:to-teal-500 text-white rounded-lg transition-all duration-300 flex items-center justify-center shadow-lg hover:shadow-green-700/30 font-medium"
+                  onClick={() => setPreviewMode(!previewMode)}
+                  className={`w-full px-4 py-2 ${previewMode 
+                    ? 'bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-500 hover:to-blue-500' 
+                    : 'bg-gradient-to-r from-green-600 to-teal-600 hover:from-green-500 hover:to-teal-500'} 
+                    text-white rounded-lg transition-all duration-300 flex items-center justify-center shadow-lg hover:shadow-green-700/30 font-medium`}
                 >
-                  <span className="mr-2">👁️</span> 네이버 플레이스 미리보기
+                  <span className="mr-2">{previewMode ? '✏️' : '👁️'}</span> 
+                  {previewMode ? '편집 모드로 전환' : '네이버 플레이스 미리보기'}
                 </button>
               </div>
             </div>
@@ -345,8 +354,15 @@ export default function NplaceAIPage() {
                 * 아래는 실제 네이버 플레이스가 아닌 시뮬레이션입니다 *
               </div>
               
+              {/* 미리보기 모드 전환 메시지 */}
+              {previewMode && (
+                <div className="text-center bg-green-100 text-green-800 py-2 px-4 rounded-lg mb-4 animate-pulse">
+                  미리보기 모드가 활성화되었습니다
+                </div>
+              )}
+              
               {/* 모바일 화면 프레임 */}
-              <div className="max-w-sm mx-auto border-4 border-gray-800 rounded-3xl overflow-hidden bg-white shadow-xl">
+              <div className={`max-w-sm mx-auto border-4 border-gray-800 rounded-3xl overflow-hidden bg-white shadow-xl ${previewMode ? 'ring-4 ring-green-400' : ''}`}>
                 {/* 상단 상태바 */}
                 <div className="bg-gray-800 text-white py-2 px-4 flex justify-between items-center text-xs">
                   <div>11:37</div>
@@ -605,6 +621,21 @@ export default function NplaceAIPage() {
                               </div>
                             </div>
                             <p className="text-sm">{review.content}</p>
+                            
+                            {/* 리뷰 이미지 표시 (리뷰에 이미지가 있는 경우) */}
+                            {review.image && (
+                              <div className="mt-2 w-full h-32 relative rounded overflow-hidden">
+                                <Image
+                                  src={review.image}
+                                  alt={`${review.author}의 리뷰 이미지`}
+                                  fill
+                                  style={{ objectFit: 'cover' }}
+                                  onError={(e) => {
+                                    e.currentTarget.style.display = 'none';
+                                  }}
+                                />
+                              </div>
+                            )}
                           </div>
                         ))}
                       </div>
