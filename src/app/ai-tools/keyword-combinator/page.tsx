@@ -242,6 +242,26 @@ export default function KeywordCombinatorPage() {
               onFocus={(e) => e.target.select()}
               className="w-full bg-slate-800/50 border border-slate-700 rounded-lg p-4 text-slate-300 whitespace-pre-wrap"
             />
+            
+            <div className="mt-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+              {resultKeywords.slice(0, 9).map((keyword, idx) => (
+                <div key={idx} className="bg-slate-800/30 rounded-lg p-3 flex justify-between items-center">
+                  <span className="text-sm text-slate-300 truncate">{keyword}</span>
+                  <button 
+                    onClick={() => copyToClipboard(keyword)}
+                    className="ml-2 text-slate-400 hover:text-blue-400 transition-colors"
+                    title="키워드 복사"
+                  >
+                    📋
+                  </button>
+                </div>
+              ))}
+              {resultKeywords.length > 9 && (
+                <div className="bg-slate-800/30 rounded-lg p-3 text-center text-slate-400">
+                  + {resultKeywords.length - 9}개 더 있음
+                </div>
+              )}
+            </div>
           </div>
         )}
       </div>
